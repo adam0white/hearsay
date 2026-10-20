@@ -1,7 +1,8 @@
 import { credence } from '@adam0white/human-framework';
 import { act, advance, newGame, REPUTATION_TRAITS, replay, spokenClaim, view } from '../sim/engine';
-import { DAILY_INCIDENTS } from '../sim/incidents';
-import type { Game, Input, Line, LoggedInput, Trait } from '../sim/types';
+import { DAILY_INCIDENTS, storyScene } from '../sim/incidents';
+import type { Game, Input, Line, LoggedInput, State, Trait } from '../sim/types';
+import { knownIncidentClaim } from '../sim/voices';
 import { PEOPLE } from '../sim/world';
 import { exportRun, verifyImport } from './export';
 import { lab } from './lab';
@@ -20,20 +21,29 @@ let last = performance.now();
 let accumulator = 0;
 let listener = '';
 let target = 'kemal';
-let trait: Trait = 'dishonest';
+let trait: Trait | null = null;
+let story: number | null = null;
 let buySilence = false;
 let firstStart = false;
 let slowReason = '';
 let dismissedIncident = 0;
 type SceneMemory = { seed: number; dismissedIncident: number };
 let sceneMemory: SceneMemory | null = null;
-let incidentSpeed: number | null = null;
+let chosenSpeed = 5;
+let slowUntil = 0;
+let seenLean = '';
+let leanHighlightUntil = 0;
+let departureTimer: ReturnType<typeof setTimeout> | undefined;
+let verbReason = '';
 let seenIncident = 0;
 let reply = '';
+type Story = NonNullable<State['stories']>[number];
+const state = () => game.s;
+
 let acting = false;
 let seenGarden = new Set<string>();
-let seenNews = false;
-let seenQuestion = 0;
+let shownPresence = '';
+let shownRiza = '';
 let conversation: HTMLDialogElement | null = null;
 let refreshConversation: (() => void) | null = null;
 let pendingJournal: Promise<boolean> | null = null;
@@ -135,68 +145,129 @@ function dismissIncident(): void {
   finishIncidentSlowdown();
   render();
 }
+function liveQuestion(): Line | undefined {
+  if (!game.s.newsWaiting) return;
+  const present = view(game.s).present;
+  const question = game.s.log.findLast((l) => ['question', 'confrontation'].includes(l.kind));
+  if (!question?.speaker || !present.includes(question.speaker)) return;
+  const answered = game.inputs.some(
+    ({ at, input }) =>
+      at >= question.at &&
+      (input.type === 'hold-tongue' || ('listener' in input && input.listener === question.speaker)),
+  );
+  return answered ? undefined : question;
+}
 function finishIncidentSlowdown(): void {
-  if (incidentSpeed === null) return;
-  if (!game.s.newsWaiting) {
-    speed = incidentSpeed;
-    slowReason = '';
-    incidentSpeed = null;
-  } else {
-    slowReason = 'A neighbour is waiting for your answer. Slowed to Slow.';
-  }
+  noticeVisitors();
 }
 function resetScene(): void {
+  chosenSpeed = 5;
   speed = 5;
   dismissedIncident = sceneMemory?.seed === game.s.seed ? sceneMemory.dismissedIncident : 0;
-  incidentSpeed = null;
   seenIncident = 0;
   accumulator = 0;
+  slowUntil = 0;
   slowReason = '';
   reply = '';
+  verbReason = '';
   listener = '';
-  seenGarden = new Set(Object.keys(game.s.locations).filter((id) => game.s.locations[id] === 'garden'));
-  seenNews = game.s.newsWaiting;
-  seenQuestion = game.s.log.at(-1)?.id ?? 0;
-  if (tableIncident()) {
-    incidentSpeed = speed;
-    speed = 1;
-    seenIncident = tableIncident()!.id;
-    slowReason = 'You overheard something. Slowed to Slow so you can read and choose whom to tell.';
-  } else if (seenNews) {
-    speed = 1;
-    slowReason = 'A neighbour is waiting for your answer. Slowed to Slow.';
-  }
+  seenLean = state().riza?.lean ?? 'unsure';
+  leanHighlightUntil = 0;
+  seenGarden = new Set(view(game.s).present.filter((id) => game.s.locations[id] === 'garden'));
+  noticeVisitors();
 }
 function noticeVisitors(): boolean {
-  const garden = new Set(Object.keys(game.s.locations).filter((id) => game.s.locations[id] === 'garden'));
-  const arrivals = [...garden].filter((id) => id !== 'hatice' && !seenGarden.has(id));
-  const question = game.s.log.findLast(
-    (l) => l.id > seenQuestion && ['question', 'confrontation'].includes(l.kind),
-  );
-  const waiting = game.s.newsWaiting && !seenNews;
+  const previous = `${speed}:${slowReason}`;
+  const present = view(game.s).present.filter((id) => id !== 'hatice');
+  const garden = new Set(present.filter((id) => game.s.locations[id] === 'garden'));
+  const arrivals = [...garden].filter((id) => !seenGarden.has(id));
   seenGarden = garden;
-  seenNews = game.s.newsWaiting;
-  seenQuestion = game.s.log.at(-1)?.id ?? seenQuestion;
+  const question = liveQuestion();
   const incident = tableIncident();
-  if (incident && incident.id > seenIncident) {
-    seenIncident = incident.id;
-    incidentSpeed ??= speed;
-    speed = 1;
+  const riza = state().riza;
+  if (riza && riza.lean !== seenLean) {
+    seenLean = riza.lean;
+    leanHighlightUntil = performance.now() + 3000;
+    slowUntil = game.s.minute + 6;
+    slowReason = 'Rıza’s view of the marriage changed. Slowed to Slow.';
     accumulator = 0;
+  } else if (incident && incident.id > seenIncident) {
+    seenIncident = incident.id;
     slowReason = 'You overheard something. Slowed to Slow so you can read and choose whom to tell.';
-    return true;
+  } else if (question) {
+    slowReason = `${name(question.speaker ?? '')} is waiting for your answer. Slowed to Slow.`;
+  } else if (arrivals.length && !previous.includes('The garden is quiet.')) {
+    slowUntil = game.s.minute + 6;
+    slowReason = `${arrivals.map(name).join(' and ')} arrived at your table. Slowed to Slow.`;
+  } else if (!incident && game.s.minute >= slowUntil) {
+    slowReason = '';
+  } else if (!question && /waiting/.test(slowReason)) {
+    slowReason = '';
   }
-  const released = incidentSpeed !== null && !incident && !game.s.newsWaiting;
-  if (!incident) finishIncidentSlowdown();
-  if (incident) return false;
-  if (!waiting && !question && !arrivals.length) return released;
-  speed = 1;
-  accumulator = 0;
-  slowReason =
-    waiting || question
-      ? `${question?.speaker ? name(question.speaker) : 'A neighbour'} is waiting to talk. Slowed to Slow.`
-      : `${arrivals.map(name).join(' and ')} arrived at your table. Slowed to Slow.`;
-  return true;
+  if (!present.length && !(game.s.minute < slowUntil && slowReason.startsWith('Rıza'))) {
+    speed =
+      speeds[Math.min(speeds.length - 1, speeds.findIndex((s) => s.rate === chosenSpeed) + 1)]?.rate ?? 80;
+    slowReason = 'The garden is quiet. Time hurries until someone comes.';
+  } else {
+    if (slowReason.startsWith('The garden is quiet.')) slowReason = '';
+    speed = slowReason ? 1 : chosenSpeed;
+  }
+  return previous !== `${speed}:${slowReason}`;
+}
+function selectedBelief(subject: string): void {
+  target = subject;
+  story = null;
+  const own = game.s.people.hatice;
+  const household = PEOPLE.find((p) => p.id === subject)?.household === 0;
+  const negative = new Set(['dishonest', 'unreliable', 'stingy', 'cruel', 'lazy', 'owes']);
+  trait = own
+    ? ((Object.keys(REPUTATION_TRAITS) as Trait[])
+        .filter((word) => !household || !negative.has(word))
+        .map((word) => ({ word, belief: credence(own, `${subject}:${word}`) }))
+        .filter(({ belief }) => belief > 0.5)
+        .sort((a, b) => b.belief - a.belief)[0]?.word ?? null)
+    : null;
+}
+function storySentence(incident: Story): string {
+  const scene = storyScene(incident.id);
+  return scene ? `${'detail' in scene ? scene.detail : knownIncidentClaim(scene)}.` : incident.title;
+}
+function unavailable(reason: string): string {
+  return reason ? `aria-disabled="true" data-reason="${html(reason)}"` : '';
+}
+function explainLimits(scope: ParentNode): void {
+  scope.querySelectorAll<HTMLButtonElement>('[data-reason]').forEach((b) => {
+    b.onclick = () => {
+      const reason = scope.querySelector<HTMLElement>('.verb-reason');
+      if (reason) reason.textContent = b.dataset.reason ?? '';
+    };
+  });
+}
+function departure(id: string, d: HTMLDialogElement): void {
+  if (d.dataset.departed) return;
+  d.dataset.departed = 'true';
+  const place = game.s.locations[id];
+  const destination =
+    (
+      {
+        bakery: 'the bakery',
+        grocer: 'the grocer',
+        tailor: 'the tailor',
+        barber: 'the barber',
+        courtyard: 'the courtyard',
+        coffee: 'the coffee house',
+        doorsteps: 'the doorsteps',
+      } as Record<string, string>
+    )[place ?? ''] ?? 'home';
+  reply = `${name(id)} has gone toward ${destination}.`;
+  d.querySelector('.conversation-body')?.replaceChildren(
+    Object.assign(document.createElement('p'), { textContent: reply }),
+  );
+  if (departureTimer) clearTimeout(departureTimer);
+  departureTimer = setTimeout(() => {
+    d.close();
+    render();
+  }, 2200);
 }
 async function perform(input: Input): Promise<void> {
   if (acting) return;
@@ -205,22 +276,34 @@ async function perform(input: Input): Promise<void> {
     if (pendingJournal) await pendingJournal;
     const before = game.s.log.at(-1)?.id ?? 0;
     const accepted = act(game, input);
-    if (accepted && (input.type === 'tell' || input.type === 'defend')) lab.milestone('first word told');
-    const answers = game.s.log.filter((l) => l.id > before && l.kind === 'answer');
+    if (accepted && (input.type === 'tell' || input.type === 'defend' || input.type === 'tell-story'))
+      lab.milestone('first word told');
+    const lines = game.s.log.filter((l) => l.id > before);
+    const answer = lines.findLast((l) => l.kind === 'reply' && l.reply?.to === game.inputs.length - 1);
+    const reaction = answer?.reply
+      ? { yes: 'Believes you.', doubt: 'Doubts it.', no: 'Doesn’t believe you.', refuse: 'Won’t hear it.' }[
+          answer.reply.believes
+        ]
+      : '';
+    const will =
+      answer?.reply?.will && !answer.text.includes(answer.reply.will) ? ` “${answer.reply.will}”` : '';
     reply = accepted
-      ? answers.map((l) => `${l.speaker ? name(l.speaker) : 'Hatice'}: ${l.text}`).join(' ')
+      ? answer
+        ? `${answer.speaker ? name(answer.speaker) : 'Hatice'}: “${answer.text}” ${reaction}${will}`
+        : lines
+            .filter((l) => ['answer', 'shop', 'refusal'].includes(l.kind))
+            .map((l) => `${l.speaker ? `${name(l.speaker)}: ` : ''}${l.text}`)
+            .join(' ')
       : 'They have moved on. Choose someone still at the garden or passing the fountain.';
-    if (accepted && !reply)
-      reply = game.s.log
-        .filter((l) => l.id > before)
-        .map((l) => l.text)
-        .join(' ');
+    verbReason = '';
+    firstStart = false;
     noticeVisitors();
     await persistJournal();
     save();
     conversation?.close();
     conversation = null;
     render();
+    window.scrollTo(0, 0);
   } finally {
     acting = false;
   }
@@ -254,6 +337,7 @@ function preview(kind: 'tell' | 'defend'): string {
     cruel: 'kind',
     lazy: 'hardworking',
   };
+  if (!trait) return 'Choose a word you want to say.';
   const word = kind === 'defend' ? (opposites[trait] ?? trait) : trait;
   const negative = kind === 'defend' && word === 'owes';
   const belief = game.s.people.hatice ? credence(game.s.people.hatice, `${target}:${word}`) : 0.5;
@@ -267,18 +351,31 @@ function chooseTalk(id: string): void {
   const talkTo = id;
   const d = dialog(`Talk to ${name(id)}`);
   conversation = d;
-  const subjects = recentSubjects();
-  if (!subjects.includes(target) || target === talkTo) target = subjects.find((p) => p !== talkTo) ?? 'emre';
   let fullList = false;
+  const subjects = recentSubjects();
+  selectedBelief(
+    subjects.includes(target) && target !== talkTo ? target : (subjects.find((p) => p !== talkTo) ?? 'emre'),
+  );
   const body = document.createElement('div');
+  body.className = 'conversation-body';
   d.append(body);
   const update = () => {
-    const active = document.activeElement as HTMLElement | null;
-    const focusedTarget = active?.dataset.target;
-    const focusedTrait = active?.dataset.trait;
-    const scroll = body.querySelector('.subject-chips')?.scrollTop ?? 0;
     const available = view(game.s).present.includes(talkTo);
-    body.innerHTML = `<p class="fine">${html(name(talkTo))} is ${outwardLook(talkTo).toLowerCase()}. The clock keeps moving.</p><h3>About whom?</h3><div class="subject-chips">${(fullList ? PEOPLE.filter((p) => p.id !== 'hatice').map((p) => p.id) : subjects).map((p) => `<button type="button" data-target="${p}" aria-pressed="${target === p}">${html(name(p))}</button>`).join('')}<button type="button" id="other-person">${fullList ? 'Show today’s people' : 'Someone else…'}</button></div><h3>Which word?</h3><div class="word-chips">${Object.keys(
+    if (!available) {
+      departure(talkTo, d);
+      return;
+    }
+    const stories = state().stories ?? [];
+    const selectedStory = stories.find((item) => item.id === story);
+    const tellReason =
+      target === talkTo
+        ? 'Tell someone else about this person.'
+        : !trait && !selectedStory
+          ? 'Choose a word or a story first.'
+          : '';
+    const defendReason =
+      target === talkTo ? 'Defend this person to someone else.' : !trait ? 'Choose a word first.' : '';
+    body.innerHTML = `<p class="fine presence">${html(name(talkTo))} is ${outwardLook(talkTo).toLowerCase()}. The clock keeps moving.</p><h3>About whom?</h3><div class="subject-chips">${(fullList ? PEOPLE.filter((p) => p.id !== 'hatice').map((p) => p.id) : subjects).map((p) => `<button type="button" data-target="${p}" aria-pressed="${target === p}">${html(name(p))}</button>`).join('')}<button type="button" id="other-person">${fullList ? 'Show today’s people' : 'Someone else…'}</button></div>${stories.length ? `<h3>Tell what you saw</h3><div class="story-chips">${stories.map((item) => `<button type="button" data-story="${item.id}" aria-pressed="${story === item.id}">${html(item.title)}</button>`).join('')}</div>${selectedStory ? `<p class="story-preview">You'll say: “${html(storySentence(selectedStory))}”</p>` : ''}` : ''}<h3>Which word?</h3><div class="word-chips">${Object.keys(
       REPUTATION_TRAITS,
     )
       .map(
@@ -287,52 +384,67 @@ function chooseTalk(id: string): void {
       )
       .join(
         '',
-      )}</div><div class="statement"><p class="tell-preview">${html(preview('tell'))}</p><button type="button" data-verb="tell" ${!available || target === talkTo ? 'disabled' : ''}>Tell</button></div><div class="statement"><p class="defend-preview">${html(preview('defend'))}</p><button type="button" data-verb="defend" ${!available || target === talkTo ? 'disabled' : ''}>Defend</button></div><div class="conversation-actions"><button type="button" data-verb="ask" ${!available ? 'disabled' : ''}>Ask</button><button type="button" data-verb="make-amends" ${!available ? 'disabled' : ''}>Make amends</button></div><p class="fine">Ask about ${html(name(target))}, or withdraw what you told ${html(name(talkTo))} about them.</p>`;
-    if (focusedTarget) body.querySelector<HTMLButtonElement>(`[data-target="${focusedTarget}"]`)?.focus();
-    if (focusedTrait) body.querySelector<HTMLButtonElement>(`[data-trait="${focusedTrait}"]`)?.focus();
-    const chips = body.querySelector('.subject-chips');
-    if (chips) chips.scrollTop = scroll;
+      )}</div><div class="statement"><p class="tell-preview">${html(selectedStory ? `You'll say: “${storySentence(selectedStory)}”` : preview('tell'))}</p><button type="button" data-verb="tell" ${unavailable(tellReason)}>Tell</button></div><div class="statement"><p class="defend-preview">${html(preview('defend'))}</p><button type="button" data-verb="defend" ${unavailable(defendReason)}>Defend</button></div><div class="conversation-actions"><button type="button" data-verb="ask" ${unavailable(target === talkTo ? 'Ask someone else about this person.' : '')}>Ask</button><button type="button" data-verb="make-amends">Make amends</button></div><p class="verb-reason" role="status"></p><p class="fine">Ask about ${html(name(target))}, or withdraw what you told ${html(name(talkTo))} about them.</p>`;
     body.querySelectorAll<HTMLButtonElement>('[data-target]').forEach((b) => {
       b.onclick = () => {
-        target = b.dataset.target ?? target;
+        selectedBelief(b.dataset.target ?? target);
         update();
       };
     });
     body.querySelectorAll<HTMLButtonElement>('[data-trait]').forEach((b) => {
       b.onclick = () => {
         trait = b.dataset.trait as Trait;
+        story = null;
         update();
+      };
+    });
+    body.querySelectorAll<HTMLButtonElement>('[data-story]').forEach((b) => {
+      b.onclick = () => {
+        const item = stories.find((item) => item.id === Number(b.dataset.story));
+        if (item) {
+          target = item.target;
+          trait = null;
+          story = item.id;
+          update();
+        }
       };
     });
     body.querySelector('#other-person')?.addEventListener('click', () => {
       fullList = !fullList;
       update();
     });
-    body.querySelectorAll<HTMLButtonElement>('[data-verb]').forEach((b) => {
+    body.querySelectorAll<HTMLButtonElement>('[data-verb]:not([data-reason])').forEach((b) => {
       b.onclick = () => {
         const type = b.dataset.verb as 'tell' | 'defend' | 'ask' | 'make-amends';
-        void perform(
-          type === 'tell' || type === 'defend'
-            ? { type, listener: talkTo, target, trait }
-            : { type, listener: talkTo, target },
-        );
+        if (type === 'tell' && story !== null) {
+          void perform({ type: 'tell-story', listener: talkTo, incident: story });
+        } else if ((type === 'tell' || type === 'defend') && trait) {
+          void perform({ type, listener: talkTo, target, trait });
+        } else if (type === 'ask' || type === 'make-amends') {
+          void perform({ type, listener: talkTo, target });
+        }
       };
     });
+    explainLimits(body);
   };
   refreshConversation = () => {
-    const available = view(game.s).present.includes(talkTo);
-    const presence = body.querySelector('.fine');
+    if (!view(game.s).present.includes(talkTo)) {
+      departure(talkTo, d);
+      return;
+    }
+    if ((state().stories?.length ?? 0) !== body.querySelectorAll('[data-story]').length) {
+      update();
+      return;
+    }
+    const presence = body.querySelector('.presence');
     if (presence)
-      presence.textContent = available
-        ? `${name(talkTo)} is ${outwardLook(talkTo).toLowerCase()}. The clock keeps moving.`
-        : `${name(talkTo)} has moved on. Close this conversation and choose someone nearby.`;
-    const tell = body.querySelector('.tell-preview');
+      presence.textContent = `${name(talkTo)} is ${outwardLook(talkTo).toLowerCase()}. The clock keeps moving.`;
+    if (story === null) {
+      const tell = body.querySelector('.tell-preview');
+      if (tell) tell.textContent = preview('tell');
+    }
     const defend = body.querySelector('.defend-preview');
-    if (tell) tell.textContent = preview('tell');
     if (defend) defend.textContent = preview('defend');
-    body.querySelectorAll<HTMLButtonElement>('[data-verb]').forEach((b) => {
-      b.disabled = !available || (['tell', 'defend'].includes(b.dataset.verb ?? '') && target === talkTo);
-    });
   };
   update();
 }
@@ -340,26 +452,38 @@ function choosePasser(id?: string): void {
   if (id) dismissIncident();
   const d = dialog(id ? `${name(id)} is passing` : 'Call someone over');
   conversation = d;
-  const nearby = view(game.s).present.filter((p) => p !== 'hatice');
-  const people = id ? nearby.filter((p) => p === id) : nearby;
-  const p = document.createElement('p');
-  p.textContent = 'Only people at the garden or passing the fountain can hear you.';
-  d.append(p);
-  for (const person of people) {
-    d.append(
-      button(`Call over ${name(person)}`, () =>
-        perform({ type: 'call-over', person, ...(buySilence ? { buySilence: true } : {}) }),
-      ),
-    );
-  }
-  if (!people.length) d.append(document.createTextNode('No one is close enough just now.'));
-  const offer = document.createElement('label');
-  offer.className = 'silence-offer';
-  offer.innerHTML = `<input type="checkbox" ${buySilence ? 'checked' : ''}> Pay for their tea and ask for silence`;
-  offer.querySelector('input')?.addEventListener('change', (e) => {
-    buySilence = (e.target as HTMLInputElement).checked;
-  });
-  d.append(offer);
+  const body = document.createElement('div');
+  body.className = 'conversation-body';
+  d.append(body);
+  const update = () => {
+    const nearby = view(game.s).present.filter((p) => p !== 'hatice');
+    if (id && !nearby.includes(id)) {
+      departure(id, d);
+      return;
+    }
+    body.replaceChildren();
+    const people = id ? nearby.filter((p) => p === id) : nearby;
+    const p = document.createElement('p');
+    p.textContent = 'Only people at the garden or passing the fountain can hear you.';
+    body.append(p);
+    for (const person of people) {
+      body.append(
+        button(`Call over ${name(person)}`, () =>
+          perform({ type: 'call-over', person, ...(buySilence ? { buySilence: true } : {}) }),
+        ),
+      );
+    }
+    if (!people.length) body.append(document.createTextNode('No one is close enough just now.'));
+    const offer = document.createElement('label');
+    offer.className = 'silence-offer';
+    offer.innerHTML = `<input type="checkbox" ${buySilence ? 'checked' : ''}> Pay for their tea and ask for silence`;
+    offer.querySelector('input')?.addEventListener('change', (e) => {
+      buySilence = (e.target as HTMLInputElement).checked;
+    });
+    body.append(offer);
+  };
+  refreshConversation = update;
+  update();
 }
 function feedText(line: Game['s']['log'][number]): string {
   if (line.kind !== 'echo') return line.text;
@@ -381,11 +505,15 @@ function render(): void {
   const present = v.present.filter((id) => id !== 'hatice');
   if (!present.includes(listener)) listener = '';
   const incident = tableIncident();
+  const question = liveQuestion();
+  const riza = state().riza;
+  shownPresence = presenceStamp();
+  shownRiza = JSON.stringify(riza);
   const concerned = incident ? DAILY_INCIDENTS[Math.floor(incident.at / 1440)]?.listener : undefined;
   const introduction = firstStart
     ? `<aside class="first-start" aria-label="How to play"><p>Keep your word good. See Emre married.</p><p>Tap people at the table or passing on the map.</p><p>Your standing fills benches. Watch Rıza’s mind.</p><p>Speak only to people here. Hear only nearby talk.</p><p>Someone will ask you for news soon.</p><button type="button" id="dismiss-intro">Got it</button></aside>`
     : '';
-  host.innerHTML = `<main class="game${incident ? ' has-incident' : ''}"><header><a class="wordmark" href="#" id="home">Hearsay</a><div class="clock" id="clock">${dateLabel(game.s.minute)}</div><button type="button" id="game-menu" class="text-button">Game menu</button></header>${introduction}<div class="speeds" role="group" aria-label="Time speed">${speeds.map((s) => `<button type="button" data-speed="${s.rate}" aria-pressed="${speed === s.rate}">${s.label}</button>`).join('')}</div>${slowReason ? `<p class="slow-reason" role="status">${html(slowReason)}</p>` : ''}<div class="map-wrap"><canvas id="map" aria-label="The neighbourhood. Tap a person near the tea garden or fountain to call them over."></canvas><span class="map-caption">HATICE’S TEA GARDEN · TAP A PASSER-BY</span></div><section class="garden" aria-label="Your tea garden"><div class="section-heading"><h2>At your table</h2><span>and by the fountain</span></div>${incident ? `<aside class="table-incident" aria-label="What you overheard"><p>${html(incident.text)}</p></aside>` : ''}<p class="standing">${standing()}</p><p class="engagement">${game.s.engagement === 'waiting' ? 'Rıza is still considering Emre and Elif’s marriage.' : game.s.engagement === 'accepted' ? 'Rıza has agreed to the marriage.' : 'Rıza has refused the marriage.'}</p><div class="people-chips" aria-label="People close enough to talk">${present.map((id) => `<button type="button" data-person="${id}" aria-label="Talk to ${html(name(id))}"><strong>${html(name(id))}</strong><small>${outwardLook(id)}</small>${id === concerned ? '<small class="would-want">would want to know</small>' : ''}</button>`).join('') || '<p class="fine">No one is close enough. Watch for people passing.</p>'}</div><p class="question">${html(v.question ?? 'Tap a person. Choose what to say.')}</p><div class="actions"><button type="button" data-open-talk ${present.length ? '' : 'disabled'}>Tell</button><button type="button" data-open-talk ${present.length ? '' : 'disabled'}>Defend</button><button type="button" data-open-talk ${present.length ? '' : 'disabled'}>Ask</button><button type="button" id="hold" ${game.s.newsWaiting ? '' : 'disabled'}>Hold your tongue</button><button type="button" data-open-talk ${present.length ? '' : 'disabled'}>Make amends</button><button type="button" id="call">Call over</button></div>${reply ? `<p class="reply" role="status">${html(reply)}</p>` : ''}</section><section class="heard" aria-label="What you witnessed"><h2>What reaches your ears</h2><div role="log" aria-live="polite">${
+  host.innerHTML = `<main class="game${incident ? ' has-incident' : ''}"><header><a class="wordmark" href="#" id="home">Hearsay</a><div class="clock" id="clock">${dateLabel(game.s.minute)}</div><button type="button" id="game-menu" class="text-button">Game menu</button></header>${introduction}<div class="speeds" role="group" aria-label="Time speed">${speeds.map((s) => `<button type="button" data-speed="${s.rate}" aria-pressed="${speed === s.rate}" ${chosenSpeed === s.rate ? 'data-chosen="true"' : ''}>${s.label}</button>`).join('')}</div>${slowReason ? `<p class="slow-reason" role="status">${html(slowReason)}</p>` : ''}<section class="garden" aria-label="Your tea garden"><aside class="riza-mind${performance.now() < leanHighlightUntil ? ' lean-changed' : ''}" aria-label="Rıza’s mind"><p class="lean-label"><span class="lean-mark ${riza?.lean ?? 'unsure'}" aria-hidden="true"></span>Rıza leans ${riza?.lean ?? 'unsure'}</p><p class="riza-line">“${html(riza?.line ?? 'I am still considering Emre and Elif’s marriage.')}”</p><p class="answer-day">He will answer on Day ${riza?.answerDay ?? 13}, Saturday</p></aside><section class="conversation-panel" aria-label="Conversation"><div class="section-heading"><h2>At your table</h2><span>and by the fountain</span></div>${question ? `<p class="question">${html(name(question.speaker ?? ''))}: ${html(question.text)}</p>` : ''}${reply ? `<p class="reply" role="status">${html(reply)}</p>` : ''}<div class="actions"><button type="button" data-open-talk ${unavailable(present.length ? '' : 'No one is close enough. Wait for someone at the garden or fountain.')}>Tell</button><button type="button" data-open-talk ${unavailable(present.length ? '' : 'No one is close enough. Wait for someone at the garden or fountain.')}>Defend</button><button type="button" data-open-talk ${unavailable(present.length ? '' : 'No one is close enough. Wait for someone at the garden or fountain.')}>Ask</button><button type="button" id="hold" ${unavailable(question ? '' : 'No one has asked you anything.')}>Hold your tongue</button><button type="button" data-open-talk ${unavailable(present.length ? '' : 'No one is close enough. Wait for someone at the garden or fountain.')}>Make amends</button><button type="button" id="call" ${unavailable(present.length ? '' : 'No one is close enough to hear you. Wait for someone at the fountain.')}>Call over</button></div><p class="verb-reason" role="status">${html(verbReason)}</p></section>${incident ? `<aside class="table-incident" aria-label="What you overheard"><p>${html(incident.text)}</p></aside>` : ''}<div class="people-chips" aria-label="People close enough to talk">${present.map((id) => `<button type="button" data-person="${id}" aria-label="Talk to ${html(name(id))}"><strong>${html(name(id))}</strong><small>${outwardLook(id)}${id === question?.speaker ? ' · waiting' : ''}</small>${id === concerned ? '<small class="would-want">would want to know</small>' : ''}</button>`).join('') || '<p class="fine">No one is close enough. Watch for people passing.</p>'}</div><p class="standing">${standing()}</p>${game.s.engagement !== 'waiting' ? `<p class="engagement">${game.s.engagement === 'accepted' ? 'Rıza has agreed to the marriage.' : 'Rıza has refused the marriage.'}</p>` : ''}</section><div class="map-wrap"><canvas id="map" aria-label="The neighbourhood. Tap a person near the tea garden or fountain to call them over."></canvas><span class="map-caption">HATICE’S TEA GARDEN · TAP A PASSER-BY</span></div><section class="heard" aria-label="What you witnessed"><h2>What reaches your ears</h2><div role="log" aria-live="polite">${
     game.s.log
       .slice(-5)
       .reverse()
@@ -408,33 +536,54 @@ function render(): void {
   });
   host.querySelectorAll<HTMLButtonElement>('[data-speed]').forEach((b) => {
     b.onclick = () => {
-      speed = Number(b.dataset.speed);
-      incidentSpeed = null;
+      chosenSpeed = Number(b.dataset.speed);
+      slowUntil = 0;
       slowReason = '';
+      noticeVisitors();
       render();
     };
   });
   host.querySelectorAll<HTMLButtonElement>('[data-person]').forEach((b) => {
     b.onclick = () => chooseTalk(b.dataset.person ?? '');
   });
-  host.querySelectorAll('[data-open-talk]').forEach((b) => {
+  host.querySelectorAll('[data-open-talk]:not([data-reason])').forEach((b) => {
     b.addEventListener('click', () => {
       if (listener) {
         chooseTalk(listener);
         return;
       }
       const d = dialog('Who will you talk to?');
-      for (const person of present)
-        d.append(
-          button(name(person), () => {
-            d.close();
-            chooseTalk(person);
-          }),
-        );
+      conversation = d;
+      const choices = document.createElement('div');
+      d.append(choices);
+      const update = () => {
+        choices.replaceChildren();
+        for (const person of view(game.s).present)
+          choices.append(
+            button(name(person), () => {
+              d.close();
+              chooseTalk(person);
+            }),
+          );
+        if (!choices.childElementCount) choices.textContent = 'No one is close enough just now.';
+      };
+      refreshConversation = update;
+      update();
     });
   });
-  host.querySelector('#hold')?.addEventListener('click', () => perform({ type: 'hold-tongue' }));
-  host.querySelector('#call')?.addEventListener('click', () => choosePasser());
+  host
+    .querySelector('#hold:not([data-reason])')
+    ?.addEventListener('click', () => perform({ type: 'hold-tongue' }));
+  host.querySelector('#call:not([data-reason])')?.addEventListener('click', () => choosePasser());
+  explainLimits(host);
+  host.querySelectorAll<HTMLButtonElement>('[data-reason]').forEach((b) => {
+    b.onclick = () => {
+      verbReason = b.dataset.reason ?? '';
+      const reason = host.querySelector('.verb-reason');
+      if (reason) reason.textContent = verbReason;
+    };
+  });
+  showDayCard();
   const canvas = host.querySelector<HTMLCanvasElement>('#map');
   if (canvas) {
     drawMap(canvas, game.s, 0);
@@ -448,6 +597,10 @@ function render(): void {
   if (game.s.engagement !== 'waiting') lab.milestone('the engagement settled');
 }
 function dialog(titleText: string): HTMLDialogElement {
+  document.querySelectorAll<HTMLDialogElement>('dialog').forEach((open) => {
+    open.close();
+  });
+  const origin = document.activeElement as HTMLElement | null;
   const d = document.createElement('dialog');
   d.className = 'sheet';
   d.innerHTML = `<div class="dialog-head"><h2>${titleText}</h2><button type="button" aria-label="Close ${html(titleText)}">Close</button></div>`;
@@ -461,6 +614,8 @@ function dialog(titleText: string): HTMLDialogElement {
       conversation = null;
       refreshConversation = null;
     }
+    if (departureTimer) clearTimeout(departureTimer);
+    origin?.focus();
     lab.screen(game?.s.ended ? 'review' : playing ? 'play' : 'title');
     d.remove();
   });
@@ -592,7 +747,55 @@ function review(): void {
     }),
   );
 }
+function presenceStamp(): string {
+  return `${view(game.s)
+    .present.map((id) => `${id}:${game.s.locations[id]}`)
+    .join('|')}:${liveQuestion()?.id ?? ''}`;
+}
+function showDayCard(): void {
+  const minuteOfDay = game.s.minute % 1440;
+  if ((minuteOfDay >= 360 && minuteOfDay < 1380) || game.s.ended || document.querySelector('[data-day-card]'))
+    return;
+  const day = Math.floor(game.s.minute / 1440) + (minuteOfDay < 360 ? 0 : 1);
+  const entry = state().days?.find((item) => item.day === day);
+  const d = dialog(`Day ${day} has ended`);
+  let sleeping = false;
+  d.dataset.dayCard = 'true';
+  d.dataset.systemMenu = 'true';
+  d.querySelector('.dialog-head button')?.remove();
+  d.addEventListener('cancel', (e) => e.preventDefault());
+  const content = document.createElement('div');
+  content.innerHTML = `${(entry?.summary ?? ['The garden has closed for the night.']).map((line) => `<p>${html(line)}</p>`).join('')}<h3>Tomorrow</h3><p>${html(entry?.question ?? 'Who will come to your table tomorrow?')}</p>`;
+  d.append(
+    content,
+    button(
+      'Sleep',
+      async () => {
+        if (sleeping) return;
+        sleeping = true;
+        if (pendingJournal) await pendingJournal;
+        advance(
+          game,
+          Math.min(
+            20160,
+            Math.floor(game.s.minute / 1440) * 1440 + (game.s.minute % 1440 < 360 ? 360 : 1800),
+          ),
+        );
+        accumulator = 0;
+        reply = '';
+        slowUntil = 0;
+        noticeVisitors();
+        await persistJournal();
+        save();
+        d.close();
+        render();
+      },
+      'primary',
+    ),
+  );
+}
 function frame(now: number): void {
+  if (now >= leanHighlightUntil) host.querySelector('.lean-changed')?.classList.remove('lean-changed');
   const elapsed = Math.min(250, now - last);
   last = now;
   if (
@@ -602,18 +805,30 @@ function frame(now: number): void {
     !document.hidden &&
     !document.querySelector('dialog[data-system-menu]')
   ) {
-    const hour = Math.floor((game.s.minute % 1440) / 60);
-    accumulator += (elapsed * (hour < 6 || hour >= 23 ? 240 : speed)) / 1000;
+    showDayCard();
+    if (document.querySelector('[data-day-card]')) {
+      requestAnimationFrame(frame);
+      return;
+    }
+    accumulator += (elapsed * speed) / 1000;
     if (accumulator >= 1 && !pendingJournal) {
       const minutes = Math.floor(accumulator);
       accumulator -= minutes;
-      advance(game, game.s.minute + minutes);
+      const night = Math.floor(game.s.minute / 1440) * 1440 + 1380;
+      advance(game, Math.min(game.s.minute + minutes, night));
       const visitor = noticeVisitors();
       refreshConversation?.();
       const current = game;
       void persistJournal().then(() => {
         if (game !== current || !playing) return;
-        if (visitor || Math.floor(game.s.minute / 15) !== Math.floor(shownMinute / 15)) render();
+        if (
+          visitor ||
+          presenceStamp() !== shownPresence ||
+          JSON.stringify(state().riza) !== shownRiza ||
+          game.s.minute % 1440 >= 1380 ||
+          Math.floor(game.s.minute / 15) !== Math.floor(shownMinute / 15)
+        )
+          render();
         const clockEl = host.querySelector('#clock');
         if (clockEl) clockEl.textContent = dateLabel(game.s.minute);
       });

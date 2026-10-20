@@ -21,7 +21,7 @@ select {
   color: inherit;
 }
 button {
-  min-height: 40px;
+  min-height: 44px;
   border: 1px solid #c6c7b8;
   border-radius: 5px;
   background: #faf6ed;
@@ -48,7 +48,7 @@ select:focus-visible {
   border-color: var(--teal);
   min-width: 180px;
   padding: 12px 32px;
-  font-size: 18px;
+  font-size: 1.0588rem;
 }
 .primary:hover {
   background: #254d49;
@@ -57,7 +57,7 @@ select:focus-visible {
   border: 0;
   background: transparent;
   padding: 5px 7px;
-  font-size: 13px;
+  font-size: 0.7647rem;
   text-decoration: underline;
   text-underline-offset: 4px;
 }
@@ -67,21 +67,21 @@ p {
   margin: 0;
 }
 h2 {
-  font-size: 18px;
+  font-size: 1.0588rem;
   font-weight: 400;
 }
 a {
   color: inherit;
 }
 .fine {
-  font-size: 13px;
+  font-size: 0.7647rem;
   color: #737b6c;
 }
 .eyebrow {
   font-family: system-ui, sans-serif;
   text-transform: uppercase;
   letter-spacing: 0.18em;
-  font-size: 10px;
+  font-size: 0.5882rem;
 }
 .title-page {
   max-width: 580px;
@@ -99,20 +99,20 @@ a {
 .title-page .subtitle {
   font-style: italic;
   display: block;
-  font-size: 22px;
+  font-size: 1.2941rem;
   letter-spacing: 0;
   color: var(--rust);
   margin: 12px 0;
 }
 .title-page p:not(.eyebrow) {
-  font-size: 15px;
+  font-size: 0.8824rem;
   line-height: 1.8;
 }
 .title-page #start {
   margin: 25px 0 20px;
 }
 .title-page .fine {
-  font-size: 12px;
+  font-size: 0.7059rem;
 }
 .title-illustration {
   height: 125px;
@@ -156,7 +156,7 @@ a {
 .title-illustration b {
   position: absolute;
   bottom: 0;
-  font-size: 33px;
+  font-size: 1.9412rem;
   left: 130px;
 }
 .heard strong {
@@ -171,10 +171,10 @@ button[aria-pressed="true"] {
 summary {
   cursor: pointer;
   padding: 10px 0;
-  font-size: 14px;
+  font-size: 0.8235rem;
 }
 .opening-evidence summary {
-  font-size: 12px;
+  font-size: 0.7059rem;
   padding: 4px 0;
 }
 .game {
@@ -189,28 +189,29 @@ header {
   padding: 0 20px;
 }
 .wordmark {
-  font-size: 28px;
+  font-size: 1.6471rem;
   text-decoration: none;
   letter-spacing: -0.055em;
 }
 .clock {
-  font-size: 12px;
+  font-size: 0.7059rem;
   font-family: system-ui, sans-serif;
 }
 .clock span {
   margin-left: 6px;
   font-variant-numeric: tabular-nums;
-  font-size: 15px;
+  font-size: 0.8824rem;
 }
 .speeds {
   display: flex;
+  flex-wrap: wrap;
   gap: 6px;
   justify-content: center;
   padding: 0 15px 10px;
 }
 .speeds button {
   font-family: system-ui, sans-serif;
-  font-size: 10px;
+  font-size: 0.5882rem;
   text-transform: uppercase;
   letter-spacing: 0.07em;
   min-height: 28px;
@@ -242,7 +243,7 @@ canvas {
   right: 0;
   text-align: center;
   font-family: system-ui, sans-serif;
-  font-size: 8px;
+  font-size: 0.4706rem;
   letter-spacing: 0.17em;
   color: #4c6459;
   pointer-events: none;
@@ -257,7 +258,7 @@ canvas {
   align-items: baseline;
 }
 .section-heading span {
-  font-size: 11px;
+  font-size: 0.6471rem;
   font-style: italic;
   color: #6c7864;
 }
@@ -268,9 +269,11 @@ canvas {
   margin-top: 13px;
 }
 .actions button {
+  overflow-wrap: anywhere;
+  min-width: 0;
   padding: 7px 3px;
-  font-size: 12px;
-  min-height: 40px;
+  font-size: 0.7059rem;
+  min-height: 44px;
 }
 .actions button:first-child {
   background: var(--teal);
@@ -281,7 +284,7 @@ canvas {
   padding: 20px 22px;
 }
 .heard h2 {
-  font-size: 15px;
+  font-size: 0.8824rem;
   font-style: italic;
   margin-bottom: 14px;
 }
@@ -291,19 +294,19 @@ canvas {
   gap: 10px;
   border-top: 1px solid #e6decf;
   padding: 12px 0;
-  font-size: 14px;
+  font-size: 0.8235rem;
   line-height: 1.5;
 }
 .heard time,
 .route-list time {
   font-family: system-ui, sans-serif;
-  font-size: 9px;
+  font-size: 0.5294rem;
   color: #8c8c7a;
   padding-top: 4px;
 }
 footer {
   text-align: center;
-  font-size: 11px;
+  font-size: 0.6471rem;
   color: #8a8c7c;
   padding: 15px 10px 30px;
   font-style: italic;
@@ -330,12 +333,12 @@ footer {
   margin-bottom: 18px;
 }
 .dialog-head button {
-  font-size: 24px;
+  font-size: 1.4118rem;
   border: 0;
   background: transparent;
 }
 .sheet p {
-  font-size: 14px;
+  font-size: 0.8235rem;
   margin: 12px 0 20px;
 }
 .sheet > button {
@@ -344,7 +347,7 @@ footer {
   margin: 9px 0;
 }
 .sheet .fine {
-  font-size: 12px;
+  font-size: 0.7059rem;
 }
 .review {
   max-width: 600px;
@@ -352,7 +355,7 @@ footer {
   padding: 50px 24px;
 }
 .review h1 {
-  font-size: 42px;
+  font-size: 2.4706rem;
   line-height: 1.1;
   font-weight: 400;
   margin: 20px 0;
@@ -363,7 +366,7 @@ footer {
 .route-list p {
   border-bottom: 1px solid var(--line);
   padding: 16px 0;
-  font-size: 14px;
+  font-size: 0.8235rem;
 }
 .route-list small {
   color: #6b7b69;
@@ -410,10 +413,10 @@ footer {
     padding: 26px 36px;
   }
   .actions button {
-    font-size: 14px;
+    font-size: 0.8235rem;
   }
   .selectors select {
-    font-size: 15px;
+    font-size: 0.8824rem;
   }
   .game {
     border-left: 1px solid #e6dfd0;
@@ -434,16 +437,16 @@ footer {
   padding: 0 8px;
 }
 .journal time {
-  font-size: 10px;
+  font-size: 0.5882rem;
   color: #7f8676;
 }
 
 .silence-offer {
-  font-size: 12px;
+  font-size: 0.7059rem;
   color: #737b6c;
 }
 .silence-offer summary {
-  font-size: 11px;
+  font-size: 0.6471rem;
   padding: 8px 0 0;
 }
 .silence-offer label {
@@ -455,13 +458,13 @@ footer {
   margin: 8px 0;
 }
 .review details > summary {
-  font-size: 14px;
+  font-size: 0.8235rem;
 }
 .review .all-routes {
   margin: 24px 0 32px;
 }
 .opening-evidence {
-  font-size: 12px;
+  font-size: 0.7059rem;
   line-height: 1.4;
   color: #53634e;
   border-left: 2px solid #b38365;
@@ -476,10 +479,10 @@ header {
   gap: 8px;
 }
 .wordmark {
-  font-size: 25px;
+  font-size: 1.4706rem;
 }
 .clock {
-  font-size: 10px;
+  font-size: 0.5882rem;
   max-width: 154px;
   text-align: center;
   font-variant-numeric: tabular-nums;
@@ -495,14 +498,14 @@ header {
   padding: 10px 14px 12px;
 }
 .section-heading span {
-  font-size: 10px;
+  font-size: 0.5882rem;
 }
 .standing {
-  font-size: 12px;
+  font-size: 0.7059rem;
   margin: 4px 0 2px;
 }
 .engagement {
-  font-size: 11px;
+  font-size: 0.6471rem;
   color: #89533f;
   margin-bottom: 8px;
 }
@@ -518,19 +521,20 @@ header {
   line-height: 1.2;
 }
 .people-chips strong {
+  overflow-wrap: anywhere;
   display: block;
-  font-size: 15px;
+  font-size: 0.8824rem;
   font-weight: normal;
 }
 .people-chips small {
   display: block;
   font-family: system-ui, sans-serif;
-  font-size: 9px;
+  font-size: 0.5294rem;
   margin-top: 3px;
   color: #67765f;
 }
 .question {
-  font-size: 13px;
+  font-size: 0.7647rem;
   line-height: 1.4;
   margin: 8px 0;
   color: #89533f;
@@ -539,7 +543,7 @@ header {
   margin-top: 8px;
 }
 .actions button {
-  font-size: 12px;
+  font-size: 0.7059rem;
   min-height: 44px;
 }
 .actions button:first-child {
@@ -549,7 +553,7 @@ header {
   border-left: 3px solid var(--teal);
   padding: 7px 10px;
   margin-top: 10px;
-  font-size: 13px;
+  font-size: 0.7647rem;
   background: #e5e8d7;
 }
 .first-start {
@@ -558,24 +562,24 @@ header {
   border-block: 1px solid #cdd4bf;
 }
 .first-start p {
-  font-size: 11px;
+  font-size: 0.6471rem;
   line-height: 1.6;
 }
 .first-start button {
   min-height: 32px;
   padding: 3px 12px;
-  font-size: 12px;
+  font-size: 0.7059rem;
   margin-top: 4px;
 }
 .slow-reason {
-  font-size: 11px;
+  font-size: 0.6471rem;
   color: #89533f;
   padding: 0 14px 6px;
   text-align: center;
 }
 .sheet h3 {
   font-weight: normal;
-  font-size: 15px;
+  font-size: 0.8824rem;
   margin: 12px 0 6px;
 }
 .dialog-head {
@@ -583,10 +587,10 @@ header {
   gap: 8px;
 }
 .dialog-head h2 {
-  font-size: 20px;
+  font-size: 1.1765rem;
 }
 .dialog-head button {
-  font-size: 12px;
+  font-size: 0.7059rem;
 }
 .sheet {
   padding: 16px;
@@ -610,7 +614,7 @@ header {
 .word-chips button {
   min-height: 36px;
   padding: 5px 8px;
-  font-size: 12px;
+  font-size: 0.7059rem;
 }
 
 .statement {
@@ -623,12 +627,12 @@ header {
   padding-top: 8px;
 }
 .statement p {
-  font-size: 12px;
+  font-size: 0.7059rem;
   line-height: 1.4;
   margin: 0;
 }
 .statement button {
-  font-size: 13px;
+  font-size: 0.7647rem;
 }
 .conversation-actions {
   display: flex;
@@ -637,12 +641,12 @@ header {
 }
 .conversation-actions button {
   flex: 1;
-  font-size: 13px;
+  font-size: 0.7647rem;
 }
 .sheet .silence-offer {
   display: block;
   padding: 10px 0;
-  font-size: 12px;
+  font-size: 0.7059rem;
 }
 .heard article.incident {
   background: #e5e8d7;
@@ -652,10 +656,10 @@ header {
 .heard article.incident p::before {
   content: "Witnessed · ";
   color: #52664b;
-  font-size: 11px;
+  font-size: 0.6471rem;
 }
 .heard article.echo {
-  font-size: 12px;
+  font-size: 0.7059rem;
   color: #67765f;
   padding-block: 7px;
 }
@@ -670,7 +674,7 @@ header {
   }
   .clock {
     max-width: none;
-    font-size: 13px;
+    font-size: 0.7647rem;
   }
   .map-wrap {
     height: 290px;
@@ -688,15 +692,167 @@ header {
   padding: 8px 10px;
   border-left: 3px solid #7c8b68;
   background: #e5e8d7;
-  font-size: 13px;
+  font-size: 0.7647rem;
   line-height: 1.35;
 }
 .people-chips .would-want {
   color: #89533f;
-  font-size: 10px;
+  font-size: 0.5882rem;
 }
 @media (max-width: 699px) {
   .has-incident .map-wrap {
     height: 90px;
+  }
+}
+
+/* The conversation comes first; a crowd must never push its answer away. */
+:root {
+  font-size: 17px;
+}
+.game {
+  padding-top: env(safe-area-inset-top);
+  padding-bottom: env(safe-area-inset-bottom);
+}
+.speeds button,
+.subject-chips button,
+.word-chips button,
+.first-start button {
+  min-height: 44px;
+}
+button[aria-disabled="true"] {
+  opacity: 0.55;
+  cursor: help;
+}
+.riza-mind {
+  border-block: 1px solid var(--line);
+  padding: 8px 0;
+  margin-bottom: 10px;
+}
+.lean-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.8824rem;
+}
+.lean-mark {
+  display: inline-block;
+  width: 14px;
+  height: 14px;
+  border: 2px solid currentColor;
+  border-radius: 50%;
+}
+.lean-mark.warm {
+  background: var(--teal);
+}
+.lean-mark.unsure {
+  border-style: dashed;
+}
+.lean-mark.cool {
+  border-radius: 0;
+  transform: rotate(45deg);
+}
+.riza-line {
+  font-style: italic;
+  line-height: 1.3;
+  margin: 3px 0;
+}
+.answer-day {
+  font-size: 0.8235rem;
+}
+.lean-changed {
+  background: #e5e8d7;
+  outline: 2px solid #7c8b68;
+  outline-offset: 3px;
+}
+.reply {
+  font-size: 1rem;
+  line-height: 1.3;
+  margin: 8px 0;
+}
+.actions {
+  margin-block: 8px;
+}
+.actions button {
+  font-size: 0.8235rem;
+}
+.question {
+  font-size: 0.8824rem;
+}
+.verb-reason {
+  font-size: 0.8824rem;
+  line-height: 1.3;
+  color: #89533f;
+}
+.verb-reason:empty {
+  display: none;
+}
+.people-chips {
+  margin-top: 12px;
+}
+.story-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+.story-chips button {
+  min-height: 44px;
+  font-size: 0.8824rem;
+}
+.sheet .story-preview {
+  font-size: 1rem;
+  line-height: 1.4;
+  border-left: 3px solid var(--teal);
+  padding-left: 8px;
+}
+.sheet,
+.sheet button,
+.subject-chips button,
+.word-chips button,
+.sheet p,
+.statement p {
+  font-size: 1rem;
+  overflow-wrap: anywhere;
+  min-width: 0;
+}
+.sheet > div > button {
+  margin: 4px;
+}
+.dialog-head {
+  position: sticky;
+  top: -16px;
+  background: #f5efe3;
+  z-index: 1;
+}
+@media (max-width: 699px) {
+  header {
+    min-height: 48px;
+    height: auto;
+  }
+  .speeds {
+    padding-bottom: 0;
+  }
+  .slow-reason {
+    font-size: 0.8235rem;
+    line-height: 1.25;
+    padding: 3px 14px;
+  }
+  .garden {
+    padding-top: 6px;
+  }
+  .riza-mind {
+    margin-bottom: 6px;
+    padding-block: 5px;
+  }
+  .map-wrap,
+  .has-incident .map-wrap {
+    height: 150px;
+  }
+}
+@media (max-width: 340px) {
+  header {
+    flex-wrap: wrap;
+  }
+  .people-chips {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 }

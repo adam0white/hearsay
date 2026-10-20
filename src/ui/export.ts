@@ -52,10 +52,14 @@ export function verifyImport(text: string): Game {
       throw new Error('Invalid input history.');
     previous = entry.at;
     const input = entry.input;
-    if (!['tell', 'defend', 'ask', 'hold-tongue', 'make-amends', 'call-over'].includes(input.type))
+    if (
+      !['tell', 'defend', 'ask', 'hold-tongue', 'make-amends', 'call-over', 'tell-story'].includes(input.type)
+    )
       throw new Error('Unknown choice in run.');
-    if ('listener' in input && (!ids.has(input.listener) || !ids.has(input.target)))
+    if (('listener' in input && !ids.has(input.listener)) || ('target' in input && !ids.has(input.target)))
       throw new Error('Unknown neighbour in run.');
+    if (input.type === 'tell-story' && (!Number.isSafeInteger(input.incident) || input.incident < 1))
+      throw new Error('Unknown witnessed story in run.');
     if ('trait' in input && !Object.hasOwn(REPUTATION_TRAITS, input.trait))
       throw new Error('Unknown claim in run.');
     if (input.type === 'call-over' && !ids.has(input.person)) throw new Error('Unknown passer-by in run.');

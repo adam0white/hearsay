@@ -1,6 +1,6 @@
 /**
- * A playtest driver: the real game in a headless phone browser (360×780), with time frozen between commands, so a
- * playtester who reads slowly does not lose the hill while thinking. It shows only what the screen shows.
+ * A playtest driver: the real game in a headless phone browser (360×690). The clock keeps moving while
+ * the player reads and chooses. It shows only what the screen shows.
  *
  *   node scripts/browser-drive.ts serve <port> [url] [shots-dir]   start the browser (keeps running)
  *   node scripts/browser-drive.ts <port> look                      the screen as text, and a screenshot
@@ -18,12 +18,14 @@ import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { createServer } from 'node:http';
 import { join, resolve } from 'node:path';
 import { chromium, type Page } from 'playwright-core';
-import { advance, newGame, view } from '../src/sim/engine.ts';
+import { act, advance, newGame, view } from '../src/sim/engine.ts';
 import { verifyImport } from '../src/ui/export.ts';
 
 const [a0, a1, a2, a3] = process.argv.slice(2);
 
-if (a0 === 'verify-p2') {
+if (a0 === 'verify-p3') {
+  await verifyP3(a1 ?? 'http://127.0.0.1:4183/');
+} else if (a0 === 'verify-p2') {
   await verifyP2(a1 ?? 'http://127.0.0.1:5173/');
 } else if (a0 === 'verify-polish') {
   await verifyPolish(a1 ?? 'http://127.0.0.1:5173/');
@@ -34,7 +36,7 @@ if (a0 === 'verify-p2') {
   mkdirSync(shots, { recursive: true });
   const browser = await chromium.launch();
   const ctx = await browser.newContext({
-    viewport: { width: 360, height: 780 },
+    viewport: { width: 360, height: 690 },
     deviceScaleFactor: 2,
     isMobile: true,
     hasTouch: false,
@@ -208,12 +210,12 @@ async function tap(page: Page, arg: string): Promise<string | null> {
           all.find((x) => x.innerText.includes(arg)));
     if (!b) return null;
     b.setAttribute('data-drive', '1');
-    return { disabled: b.disabled };
+    return { disabled: b.disabled, explainable: b.hasAttribute('data-reason') };
   }, arg);
   if (!found) return `No button "${arg}".`;
   if (found.disabled) return 'That button is greyed out.';
   page.once('dialog', (d) => d.accept());
-  await page.locator('[data-drive]').click();
+  await page.locator('[data-drive]').click({ force: found.explainable });
   await page.clock.runFor(400);
   return null;
 }
@@ -595,6 +597,227 @@ async function verifyP2(url: string): Promise<void> {
       JSON.stringify({ viewport: [360, 780], seed: 1, crowd, cardBox, bounds, errors }, null, 2),
     );
     console.log(`Round 2 phone acceptance passed. Evidence: ${shots}/`);
+  } finally {
+    await browser.close();
+  }
+}
+
+/** Round 3: response, marriage and verbs must share the smallest phone viewport. */
+async function verifyP3(url: string): Promise<void> {
+  const shots = 'scratch/ui-shots-p3';
+  mkdirSync(shots, { recursive: true });
+  const browser = await chromium.launch();
+  try {
+    const page = await browser.newPage({ viewport: { width: 360, height: 690 } });
+    const errors: string[] = [];
+    page.on('pageerror', (error) => errors.push(error.message));
+    await page.clock.install();
+    await page.clock.pauseAt(new Date());
+    const load = async (fixture: ReturnType<typeof newGame>) => {
+      await page.goto(url);
+      await page.locator('.title-page').waitFor();
+      await page.evaluate(async (fixture) => {
+        const path = '/src/ui/store.ts';
+        const store = await import(path);
+        await store.putImmediate('run-ui', null);
+        await store.putImmediate('run-log', null);
+        await store.putImmediate('run', fixture);
+      }, fixture);
+      await page.reload();
+      await page.getByRole('button', { name: 'Resume', exact: true }).click();
+      await page.locator('.riza-mind').waitFor();
+    };
+    await page.goto(url);
+    const fixture = newGame(1);
+    advance(fixture, 390);
+    // Keep exactly thirteen people, including the person deciding the marriage.
+    fixture.s.locations.meryem = 'home:11';
+    fixture.s.locations.riza = 'garden';
+    await page.evaluate(async (fixture) => {
+      const path = '/src/ui/store.ts';
+      const store = await import(path);
+      await store.putImmediate('run-ui', null);
+      await store.putImmediate('run-log', null);
+      await store.putImmediate('run', fixture);
+    }, fixture);
+    await page.reload();
+    await page.getByRole('button', { name: 'Resume', exact: true }).click();
+    await page.locator('[data-person]').first().waitFor();
+    assert.equal(await page.locator('[data-person]').count(), 13);
+    assert.match(await page.locator('.riza-mind').innerText(), /Rıza leans.*Day 13, Saturday/s);
+    await page.locator('[data-person="riza"]').click();
+    await page.locator('[data-target="emre"]').click();
+    assert.equal(await page.locator('[data-trait="dishonest"]').getAttribute('aria-pressed'), 'false');
+    await page.getByRole('dialog').getByRole('button', { name: 'Ask', exact: true }).click();
+    await page.getByRole('dialog').waitFor({ state: 'hidden' });
+    await page.locator('.reply').waitFor();
+    assert.match(await page.locator('.reply').innerText(), /Rıza:.*(Believes|Doubts|believe|hear)/s);
+    assert.doesNotMatch(await page.locator('.reply').innerText(), /moved on/);
+    assert.equal(await page.locator('.actions button').count(), 6);
+    const bounds = await page.locator('.reply, .riza-mind, .actions button').evaluateAll((elements) =>
+      elements.map((el) => ({
+        text: el.textContent,
+        top: el.getBoundingClientRect().top,
+        bottom: el.getBoundingClientRect().bottom,
+      })),
+    );
+    assert.ok(
+      bounds.every((b) => b.top >= 0 && b.bottom <= 690),
+      JSON.stringify(bounds),
+    );
+    await page.screenshot({ path: `${shots}/01-answer-crowd.png` });
+    assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
+    const firstReply = await page.locator('.reply').innerText();
+    await page.locator('[data-person="emre"]').click();
+    await page.getByRole('button', { name: 'Close Talk to Emre', exact: true }).click();
+    assert.equal(await page.locator('.reply').innerText(), firstReply, 'Inspection keeps the last answer');
+    await page.getByRole('button', { name: 'Hold your tongue', exact: true }).click({ force: true });
+    assert.equal(await page.locator('.verb-reason').innerText(), 'No one has asked you anything.');
+    assert.equal(
+      await page.locator('.reply').innerText(),
+      firstReply,
+      'A disabled tap does not replace the answer',
+    );
+
+    const basket = newGame(1);
+    advance(basket, 765);
+    await load(basket);
+    await page.locator('[data-person="riza"]').click();
+    await page.locator('[data-story="15"]').click();
+    const exactStory = 'Kemal carried Safiye’s heavy basket up the hill and stopped to help her.';
+    assert.equal(await page.locator('.tell-preview').innerText(), `You'll say: “${exactStory}”`);
+    await page.screenshot({ path: `${shots}/02-basket-preview.png` });
+    await page.getByRole('dialog').getByRole('button', { name: 'Tell', exact: true }).click();
+    await page.getByRole('dialog').waitFor({ state: 'hidden' });
+    await page.locator('.reply').waitFor();
+    assert.doesNotMatch(await page.locator('.reply').innerText(), /moved on/);
+    assert.ok(act(basket, { type: 'tell-story', listener: 'riza', incident: 15 }));
+    assert.ok(
+      basket.s.log.some((line) => line.speaker === 'hatice' && line.text.includes(`“${exactStory}”`)),
+    );
+    verifyImport(JSON.stringify((await import('../src/ui/export.ts')).exportRun(basket)));
+
+    const leaning = newGame(1);
+    advance(leaning, 720);
+    await load(leaning);
+    for (const word of ['reliable', 'honest']) {
+      await page.locator('[data-person="riza"]').click();
+      await page.locator('[data-target="emre"]').click();
+      await page.locator(`[data-trait="${word}"]`).click();
+      await page.getByRole('dialog').getByRole('button', { name: 'Tell', exact: true }).click();
+      await page.getByRole('dialog').waitFor({ state: 'hidden' });
+    }
+    assert.match(await page.locator('.riza-mind').innerText(), /Rıza leans warm/);
+    assert.equal(await page.locator('.lean-changed').count(), 1);
+    assert.equal(await page.locator('[data-speed="1"]').getAttribute('aria-pressed'), 'true');
+    assert.match(await page.locator('.slow-reason').innerText(), /Rıza.*changed.*Slow/);
+    await page.screenshot({ path: `${shots}/07-lean-changed.png` });
+    await page.clock.runFor(3100);
+    assert.equal(await page.locator('.lean-changed').count(), 0, 'The highlight is brief');
+
+    const departing = newGame(1);
+    advance(departing, 479);
+    departing.s.newsWaiting = false;
+    departing.s.locations.aylin = 'garden';
+    await load(departing);
+    await page.getByRole('button', { name: 'Slow', exact: true }).click();
+    await page.locator('[data-person="aylin"]').click();
+    await page.clock.runFor(1200);
+    await page
+      .getByRole('dialog')
+      .getByText(/Aylin has gone toward/)
+      .waitFor();
+    await page.screenshot({ path: `${shots}/03-departure.png` });
+    await page.clock.runFor(2300);
+    await page.getByRole('dialog').waitFor({ state: 'hidden' });
+    assert.match(await page.locator('.reply').innerText(), /Aylin has gone toward/);
+    assert.equal(await page.locator('[data-person="aylin"]').count(), 0);
+    assert.equal(await page.locator('.question').count(), 0);
+
+    const quiet = newGame(1);
+    advance(quiet, 659);
+    quiet.s.newsWaiting = false;
+    await load(quiet);
+    assert.match(
+      await page.locator('.slow-reason').innerText(),
+      /The garden is quiet. Time hurries until someone comes./,
+    );
+    assert.equal(await page.locator('[data-speed="20"]').getAttribute('aria-pressed'), 'true');
+    await page.getByRole('button', { name: 'Gallop', exact: true }).click();
+    assert.equal(await page.locator('[data-speed="80"]').getAttribute('aria-pressed'), 'true');
+    await page.getByRole('button', { name: 'Walk', exact: true }).click();
+    await page.screenshot({ path: `${shots}/04-quiet.png` });
+    await page.clock.runFor(150);
+    await page.locator('[data-person]').first().waitFor();
+    assert.equal(
+      await page.locator('[data-speed="5"]').getAttribute('aria-pressed'),
+      'true',
+      'Arrival restores the chosen pace',
+    );
+
+    const evening = newGame(1);
+    advance(evening, 1379);
+    await load(evening);
+    await page.getByRole('button', { name: 'Gallop', exact: true }).click();
+    await page.clock.runFor(100);
+    await page.locator('[data-day-card]').waitFor();
+    assert.equal(await page.locator('#clock').innerText(), 'Day 1, Monday 23:00');
+    const expectedDay = structuredClone(evening);
+    advance(expectedDay, 1380);
+    for (const summary of expectedDay.s.days?.at(-1)?.summary ?? [])
+      assert.equal(await page.locator('[data-day-card]').getByText(summary, { exact: true }).count(), 1);
+    await page.screenshot({ path: `${shots}/05-day-card.png` });
+    await page.clock.runFor(1000);
+    assert.equal(
+      await page.locator('#clock').innerText(),
+      'Day 1, Monday 23:00',
+      'Day card holds the boundary',
+    );
+    await page.getByRole('button', { name: 'Sleep', exact: true }).evaluate((b) => {
+      (b as HTMLButtonElement).click();
+      (b as HTMLButtonElement).click();
+    });
+    await page.locator('[data-day-card]').waitFor({ state: 'hidden' });
+    assert.match(await page.locator('#clock').innerText(), /^Day 2, Tuesday 06:00$/);
+
+    const oldSave = newGame(1);
+    delete oldSave.s.riza;
+    delete oldSave.s.stories;
+    delete oldSave.s.days;
+    await load(oldSave);
+    assert.match(await page.locator('.riza-mind').innerText(), /Rıza leans unsure/);
+    await page.locator('[data-person]').first().click();
+    assert.equal(await page.locator('.story-chips').count(), 0);
+    await page
+      .getByRole('dialog')
+      .getByRole('button', { name: /^Close / })
+      .click();
+    await page.setViewportSize({ width: 320, height: 690 });
+    await page.evaluate(() => {
+      document.documentElement.style.fontSize = '34px';
+    });
+    await page.screenshot({ path: `${shots}/06-320-text-reflow.png` });
+    const overflow = await page.locator('body *').evaluateAll((elements) =>
+      elements
+        .filter((el) => el.getBoundingClientRect().right > innerWidth + 1)
+        .map((el) => ({
+          tag: el.tagName,
+          class: el.className,
+          right: el.getBoundingClientRect().right,
+          text: el.textContent?.slice(0, 60),
+        }))
+        .slice(0, 20),
+    );
+    assert.ok(
+      await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth),
+      JSON.stringify(overflow),
+    );
+    assert.deepEqual(errors, []);
+    writeFileSync(
+      `${shots}/acceptance.json`,
+      JSON.stringify({ viewport: [360, 690], seed: 1, bounds, errors }, null, 2),
+    );
+    console.log(`Round 3 phone acceptance passed. Evidence: ${shots}/`);
   } finally {
     await browser.close();
   }
