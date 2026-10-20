@@ -1,0 +1,69 @@
+# Hearsay: design
+
+**What done means.** For this first increment: a public, playable build at https://hearsay.adamwhite.work with a playtest export that replays, HF-character playtester runs and two source-unread LLM playtester runs recorded verbatim in `docs/playtests/`, one polish round from them, and an entry on https://human.adamwhite.work/games/ and the lab dashboard. Adam (owner) accepts it by playing it. Later work goes in the Deferred list below, each item with a date.
+
+## The idea
+
+A small mahalle on a hill: about 32 neighbours in 12 households, a fountain, a bakery, a grocer, a tailor, a barber, a mosque courtyard, a coffee house and doorsteps. You are **Hatice**, who keeps the tea garden beside the fountain. Everyone passes you. You hear things.
+
+You live on being the person whose word is good: people sit in your garden because what you tell them turns out true. Your son **Emre** hopes to marry **Elif**, the baker's daughter. Her father **Rıza** is wavering.
+
+On the first morning you overhear something true and damaging about someone. What you do with it is the game. Nobody tells you to gossip. The verbs simply allow it.
+
+Every neighbour is a full HF `Person` (exact pin `@adam0white/human-framework` 2.9.0). Talk between neighbours is HF `converse`: what they tell comes from their own confident beliefs, an unfavourable claim about an absent person costs a speaker who holds that backbiting is wrong (so some refuse to pass it on), and low-honesty speakers may lie when the host offers a temptation. Reputation is beliefs spreading belief by belief; HF turns a changed character belief into a changed relationship.
+
+## The fortnight
+
+Fourteen days, continuous clock with four speeds (slow, walk, trot, gallop); nothing pauses, the clock drops to slow when something waits for you (L6). Days run 06:00 to 23:00; nights pass quickly.
+
+## Player verbs (each gets a visible answer, L4)
+
+All verbs work on people present in the garden or passing the fountain, so where you are matters (you are always at the garden; people come to you on their own schedules, and you may **call someone over** who is passing).
+
+1. **Tell** a listener a claim about a third person: one of HF's reputation traits (honest/dishonest, reliable/unreliable, generous/stingy, kind/cruel, hardworking/lazy, and the rest of `REPUTATION_TRAITS`). If you believe it, it is testimony at your credence. If you do not, it is a lie (you see that marked as yours; the listener does not).
+2. **Defend** someone: tell the favourable opposite.
+3. **Ask** a listener what they think of someone. The answer comes in their words from their beliefs, approximate (L12), never a number.
+4. **Hold your tongue**: decline a neighbour who asks you for news. It costs a little custom and earns a little standing.
+5. **Make amends** to someone you wronged: costs your standing with the listener, can restore the target's standing with them. A state change, not a log line.
+6. **Call over** a passer-by.
+
+Your own standing is the trust neighbours hold in you as a source (`memory.sourceTrust` for your id). It falls when what you said is contradicted by what they see or by someone they trust more, and when the trail of a rumour that hurt someone is traced to you.
+
+## How rumours travel, and what you can see
+
+- Neighbours meet on host schedules (bakery at dawn, fountain, grocer, doorsteps at dusk, courtyard after prayer for those who go, coffee house). When two or more share a place for a quarter hour, the host runs `converse` between pairs, delivers the `told` percepts through `perceive`/`attend`, and applies social events.
+- **The bend.** When a talkative, low-honesty teller relays an unfavourable claim, the host may sharpen it one step on a fixed ladder (lazy → unreliable → dishonest; stingy → cruel), chosen by a seeded hash of the event. Bounded: a claim moves at most two steps from where it started.
+- **Truth leaks.** Some claims have ground truth (the event you overheard). When a neighbour sees the target act against the claim, `confirm` corrects them and lowers their trust in whoever told them.
+- **You see** only conversations at the garden and fountain, and what people tell you. A thin line on the map marks talk you witnessed. The full route of every rumour, with each bend and who started it, appears only in the end-of-fortnight review and in the replay (L13, L14).
+
+## Consequences the host owns (each with a verb, L19)
+
+- **Custom.** A shopkeeper whose believed reputation drops loses customers (people choose another shop when they can). Shutters close earlier. You can see it from the garden.
+- **Greetings.** Neighbours stop greeting someone whose reputation fell; you see the cold shoulder at the fountain.
+- **The engagement.** Rıza's decision about Emre and Elif reads his beliefs about your household and his trust in you. It can settle either way by the end of week two.
+- **Confrontation.** A target who traces a rumour to its teller confronts them, in their words. If it reaches you, your garden empties for a day.
+- **Your garden.** Custom per day follows your standing. Shown as how full the benches are, not a number (show, don't count).
+
+Faith stays quiet: some neighbours go to the courtyard after the evening prayer, and some hold that talebearing is wrong and say so when they refuse to repeat something. That is one norm among others.
+
+## The first ten minutes (L7, L15)
+
+- 06:30 day 1: the overheard moment (the grocer **Kemal** quietly tells his wife he has been mixing old flour into the new). True and damaging.
+- Within the first game hour: a customer asks you for news (a choice), a neighbour you tell refuses to repeat it in her own words (a refusal), and someone greets the target differently (a changed greeting).
+- By midday: Rıza passes and asks what you think of Kemal, whose cousin he is (the collision: the truth helps your standing and hurts your son's chances).
+
+## Naughty edges (L11)
+
+Lying about a rival; ruining someone for sport; playing two households against each other; buying silence. Each is playable and enters the calculations (your standing, the trail, confrontation); none wins outright.
+
+## Determinism, saves and export
+
+One seed; all randomness from seeded RNG held in state or from hashes of (seed, event). Inputs are logged at the minute they apply. Save in IndexedDB. The notebook offers the playtest export (seed, input log, state JSON, fingerprint); `replay(seed, inputs, minute)` reproduces the fingerprint (tested). Lab client 0.1.1 sends regular anonymous telemetry and opt-in runs with notes, as in The Warren.
+
+## Phones
+
+Actions stay above the fold at 360×780 (L9). The map is a Canvas 2D drawing of the hill; the garden panel is below it.
+
+## Deferred
+
+(Filled during the build, each with a date.)
