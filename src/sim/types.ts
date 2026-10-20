@@ -16,6 +16,8 @@ export type Input =
   | { type: 'ask'; listener: string; target: string }
   | { type: 'tell-story'; listener: string; incident: number }
   | { type: 'hold-tongue' }
+  | { type: 'sit'; listener: string }
+  | { type: 'release' }
   | { type: 'make-amends'; listener: string; target: string }
   | { type: 'call-over'; person: string; buySilence?: boolean };
 export interface LoggedInput {
@@ -87,9 +89,23 @@ export interface State {
   groundTruth?: Record<string, boolean>;
   pendingConfrontations?: { root: number; due: number }[];
   heardClaims?: Record<string, { count: number; who: string[]; echo?: number }>;
-  riza?: { lean: 'warm' | 'unsure' | 'cool'; line: string; at: number; answerDay: number };
+  held?: { id: string; until: number };
+  riza?: {
+    lean: 'warm' | 'unsure' | 'cool';
+    line: string;
+    at: number;
+    answerDay: number;
+    doubts?: {
+      key: 'honest' | 'reliable' | 'kind';
+      words: string;
+      status: 'open' | 'settled' | 'worse';
+      because?: string;
+    }[];
+    steps?: { day: number; label: string; status: 'ahead' | 'met' | 'missed' }[];
+    cause?: string;
+  };
   stories?: { id: number; day: number; title: string; target: string; truth: boolean }[];
-  days?: { day: number; summary: string[]; question: string }[];
+  days?: { day: number; summary: string[]; question: string; tomorrow?: string }[];
 }
 export interface Game {
   s: State;

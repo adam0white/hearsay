@@ -558,6 +558,7 @@ export function newGame(seed: number): Game {
 }
 function place(s: State) {
   const t = s.minute % 1440;
+  if (s.held && s.held.until <= s.minute) delete s.held;
   const slot = t < 480 ? 0 : t < 660 ? 1 : t < 780 ? 2 : t < 1020 ? 3 : t < 1140 ? 4 : t < 1260 ? 5 : 6;
   for (const p of PEOPLE) {
     let location = t < 360 || t >= 1380 ? p.home : (SCHEDULES[p.id]?.[slot] ?? p.home);
@@ -567,6 +568,7 @@ function place(s: State) {
     if (t >= 720 && t < 780 && p.id === 'riza') location = 'garden';
     if (location === 'grocer' && avoidsShop(s, p.id, 'kemal')) location = 'bakery';
     if (location === 'bakery' && avoidsShop(s, p.id, 'riza')) location = 'grocer';
+    if (s.held?.id === p.id) location = 'garden';
     s.locations[p.id] = location;
   }
 }
@@ -710,7 +712,13 @@ export function act(g: Game, input: Input): boolean {
     return false;
   const idsHere = present(s).map((p) => p.id);
   if ('listener' in input && (input.listener === 'hatice' || !idsHere.includes(input.listener))) return false;
-  if (input.type === 'call-over') {
+  if (input.type === 'release') {
+    delete s.held;
+    place(s);
+  } else if (input.type === 'sit') {
+    s.held = { id: input.listener, until: s.minute + 90 };
+    s.locations[input.listener] = 'garden';
+  } else if (input.type === 'call-over') {
     if (!idsHere.includes(input.person) || input.person === 'hatice') return false;
     s.called[input.person] = s.minute;
     s.locations[input.person] = 'garden';
@@ -959,7 +967,7 @@ function step(s: State) {
     const chosen = offers.find((a) => a.id === choice.chosenAffordanceId);
     if (chosen) {
       begin(p, chosen, choice);
-      if (chosen.action === 'sleep')
+      if (chosen.action === 'sleep' && s.held?.id !== p.id)
         s.locations[p.id] = PEOPLE.find((w) => w.id === p.id)?.home ?? s.locations[p.id]!;
     }
   }
@@ -1309,6 +1317,11 @@ export function view(s: State) {
     shutters: Object.entries(s.custom)
       .filter(([id, v]) => id !== 'hatice' && v < 0.8)
       .map(([id]) => id),
+    held: s.held,
+    concerned: present(s).some((p) => p.id === DAILY_INCIDENTS[Math.floor(s.minute / 1440)]?.listener)
+      ? DAILY_INCIDENTS[Math.floor(s.minute / 1440)]?.listener
+      : undefined,
+    households: Object.fromEntries(PEOPLE.map((p) => [p.id, String(p.household)])),
     riza: s.riza,
     stories: s.stories,
     days: s.days,
