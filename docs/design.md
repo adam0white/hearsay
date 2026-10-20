@@ -64,6 +64,13 @@ One seed; all randomness from seeded RNG held in state or from hashes of (seed, 
 
 Actions stay above the fold at 360×780 (L9). The map is a Canvas 2D drawing of the hill; the garden panel is below it.
 
+## Build measurement
+
+2026-10-20: `npm run measure` on this Apple Silicon Mac completed a headless fortnight in **1.324 seconds** (seed 1, careful policy, 32 people, 168 inputs, 4,336 testimony routes). The measurement includes the policy and sim, excludes the separate replay check, and is one local sample. Replay reproduced fingerprint `7771d75f`.
+
 ## Deferred
 
-(Filled during the build, each with a date.)
+- **2026-10-20 — Public build and domain activation.** Prepared the static-assets configuration for `hearsay.adamwhite.work`; did not push, create a GitHub repository or deploy, as Adam explicitly requested local review first.
+- **2026-10-20 — Games-page and lab-dashboard listing.** These are external publication changes and would require edits outside this repository. Adam prohibited edits to human-framework and will handle publication after review. The local client is configured with game id `hearsay`.
+- **2026-10-20 — Adam’s play acceptance.** The owner accepts this increment by playing it. That personal review remains outstanding; automated and source-unread playtests do not substitute for it.
+- **2026-10-20 — Longer authored dialogue coverage.** Each neighbour has three authored openings and three refusal lines per day; exhausted spoken pools fall back to factual narrated feedback instead of repeating their dialogue. A larger per-person script is needed to sustain repeated questioning throughout a fortnight without this fallback.

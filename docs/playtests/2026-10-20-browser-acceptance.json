@@ -1,0 +1,36 @@
+{
+  "phone": [
+    360,
+    780
+  ],
+  "actions": [
+    {
+      "label": "Tell",
+      "bottom": 584.890625
+    },
+    {
+      "label": "Defend",
+      "bottom": 584.890625
+    },
+    {
+      "label": "Ask",
+      "bottom": 584.890625
+    },
+    {
+      "label": "Hold your tongue",
+      "bottom": 631.890625
+    },
+    {
+      "label": "Make amends",
+      "bottom": 631.890625
+    },
+    {
+      "label": "Call over",
+      "bottom": 631.890625
+    }
+  ],
+  "exportReplay": true,
+  "importReplay": true,
+  "pagehideResume": true,
+  "consoleErrors": []
+}
