@@ -1062,3 +1062,241 @@ button[aria-disabled="true"] {
   top: -16px;
   margin-bottom: 0;
 }
+
+/* Phone stage: state, visible neighbourhood, one conversation. */
+:root {
+  --paper: #f5efe3;
+  --ink: #263f3b;
+  --ink-soft: #d9d1c0;
+}
+.game.lk-stage {
+  max-width: none;
+  margin: 0;
+  padding-top: env(safe-area-inset-top);
+  padding-bottom: env(safe-area-inset-bottom);
+  grid-template-rows: auto minmax(60px, 1fr) auto;
+}
+.lk-strip {
+  padding: 0 10px 4px;
+}
+.lk-strip header {
+  padding: 0;
+  min-height: 44px;
+  height: auto;
+}
+.lk-strip .wordmark {
+  font-size: 1.25rem;
+}
+.lk-strip .clock {
+  font-size: 0.7rem;
+}
+.lk-strip .speeds {
+  padding: 0;
+  gap: 0;
+  justify-content: space-between;
+}
+.lk-strip .speeds button {
+  padding: 3px 10px;
+  font-size: 0.7rem;
+}
+.lk-strip .lk-chips {
+  gap: 3px;
+  font-size: 0.76rem;
+  line-height: 1.25;
+}
+.lk-strip .lk-chip {
+  background: #e5e8d7;
+  padding: 3px 5px;
+  border-radius: 4px;
+}
+.lk-strip [data-wedding-details] {
+  float: right;
+  min-height: 44px;
+  padding: 2px 5px;
+  font-size: 0.76rem;
+}
+.lk-strip .slow-reason {
+  padding: 1px 0;
+  text-align: left;
+  font-size: 0.76rem;
+}
+.game .lk-scene.map-wrap {
+  height: auto;
+  margin: 0;
+  border: 0;
+  border-radius: 0;
+  grid-row: 2;
+}
+.game .garden.lk-sheet {
+  padding: 0;
+  border-bottom: 0;
+  max-height: max(0px, calc(100dvh - var(--lk-strip-height) - 60px));
+}
+.game .garden[hidden] {
+  display: none;
+}
+.game .lk-sheet .lk-sheet-body {
+  padding: 8px 12px;
+}
+.game dialog.lk-sheet {
+  position: static;
+  width: 100%;
+  max-width: none;
+  margin: 0;
+  border: 0;
+  border-top: 1.5px solid var(--ink);
+  border-radius: 0;
+  box-shadow: none;
+  padding: 0;
+  color: var(--ink);
+  max-height: max(0px, calc(100dvh - var(--lk-strip-height) - 60px));
+}
+.game dialog.lk-sheet[open] {
+  display: flex;
+}
+.game .lk-sheet .dialog-head {
+  position: static;
+  padding: 3px 12px;
+  margin: 0;
+  justify-content: space-between;
+}
+.game .lk-sheet .dialog-head h2 {
+  font-size: 1rem;
+}
+.game .talk-sheet {
+  height: auto;
+  overflow: visible;
+}
+.game .talk-sheet .conversation-body {
+  flex: 1 1 auto;
+  min-height: 0;
+}
+.game .talk-sheet .presence {
+  margin: 0;
+  padding: 0 12px 3px;
+  font-size: 0.76rem;
+}
+.game .talk-choices {
+  flex: 0 1 auto;
+  padding: 0 12px;
+}
+.game .talk-choices summary {
+  padding: 8px 0;
+  font-size: 0.88rem;
+  min-height: 44px;
+}
+.game .talk-bar {
+  display: block;
+  padding: 4px 12px;
+}
+.game .talk-bar .statement {
+  gap: 4px 8px;
+  padding: 2px 0;
+}
+.game .talk-bar .statement p,
+.game .talk-bar .ask-preview {
+  font-size: 0.82rem;
+  line-height: 1.25;
+}
+.game .talk-bar .action-limit {
+  grid-column: 1 / -1;
+  margin: 0;
+}
+.game .talk-bar .conversation-actions {
+  margin: 3px 0;
+}
+.game .talk-bar .verb-reason {
+  margin: 3px 0;
+  font-size: 0.82rem;
+}
+.game .talk-bar .verb-reason:empty {
+  display: none;
+}
+.game .section-heading span {
+  font-size: 0.7rem;
+}
+.game .people-chips {
+  margin-top: 8px;
+}
+.game .scene-card {
+  margin: 0 0 8px;
+}
+@media (min-width: 900px) {
+  .game.lk-stage {
+    grid-template-columns: minmax(0, 1fr) minmax(22rem, 28rem);
+    grid-template-rows: auto minmax(0, 1fr);
+  }
+  .game .lk-scene.map-wrap {
+    grid-column: 1;
+  }
+  .game .garden.lk-sheet,
+  .game dialog.lk-sheet {
+    grid-row: 2;
+    grid-column: 2;
+    max-height: 100%;
+    height: 100%;
+    border-top: 0;
+    border-left: 1px solid var(--ink);
+  }
+  .lk-strip {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0 20px;
+  }
+  .lk-strip header {
+    grid-column: 1;
+  }
+  .lk-strip .speeds {
+    grid-column: 2;
+    grid-row: 1;
+  }
+  .lk-strip .lk-chips {
+    grid-column: 1 / -1;
+  }
+}
+@media (max-width: 340px) {
+  .lk-strip header {
+    flex-wrap: nowrap;
+  }
+  .lk-strip .wordmark {
+    font-size: 1.1rem;
+  }
+  .lk-strip .clock {
+    font-size: 0.6rem;
+  }
+}
+.game dialog.lk-sheet:not([open]) {
+  display: none;
+}
+
+/* At enlarged text, the whole sheet can scroll without clipping the commit row. */
+.game[data-large-text="true"] dialog.lk-sheet {
+  overflow: auto;
+}
+.game[data-large-text="true"] .talk-sheet .conversation-body {
+  flex: 0 0 auto;
+}
+.game[data-large-text="true"] .talk-choices {
+  flex: 0 0 auto;
+}
+.game[data-large-text="true"] .lk-strip header .wordmark {
+  display: none;
+}
+.game[data-large-text="true"] .lk-strip header {
+  justify-content: space-between;
+}
+.game[data-large-text="true"] .lk-strip .clock {
+  max-width: none;
+  font-size: 0.7rem;
+}
+.game[data-large-text="true"] .lk-strip .speeds button {
+  padding-inline: 3px;
+}
+
+.game[data-large-text="true"] .lk-strip .speeds button {
+  letter-spacing: 0;
+  text-transform: none;
+}
+canvas[data-camera="table"] + .map-caption {
+  display: none;
+}

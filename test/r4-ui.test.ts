@@ -47,12 +47,26 @@ async function load(minute = 479, clearQuestion = true) {
   }, fixture);
   await page.reload();
   await page.getByRole('button', { name: 'Resume', exact: true }).click();
-  await page.locator('.riza-mind').waitFor();
+  await page.locator('.lk-strip').waitFor();
+}
+async function talkTo(id: string) {
+  const person = page.locator(`[data-person="${id}"]`);
+  if (!(await person.isVisible())) await page.locator('.other-neighbours > summary').click();
+  await person.click();
+}
+async function choose(selector: string) {
+  const option = page.locator(selector);
+  if (!(await option.isVisible()))
+    await page.getByText('Choose person, story or word', { exact: true }).click();
+  await option.click();
+}
+async function weddingDetails() {
+  await page.getByRole('button', { name: 'Wedding details', exact: true }).click();
 }
 it('holds the listener beyond departure and keeps the statement and every verb on the phone', async () => {
   await load();
   await page.getByRole('button', { name: 'Gallop', exact: true }).click();
-  await page.locator('[data-person="aylin"]').click();
+  await talkTo('aylin');
   expect(await page.locator('.presence').innerText()).toContain('Aylin sits with you');
   await page.locator('[data-speed="1"][aria-pressed="true"]').waitFor();
   await page.clock.runFor(2200);
@@ -73,7 +87,7 @@ it('holds the listener beyond departure and keeps the statement and every verb o
 });
 it('keeps the panel open and explains when the ninety minute hold ends', async () => {
   await load();
-  await page.locator('[data-person="aylin"]').click();
+  await talkTo('aylin');
   for (let i = 0; i < 110 && !(await page.locator('.presence').innerText()).includes('tea is finished'); i++)
     await page.clock.runFor(1000);
   expect(await page.getByRole('dialog').isVisible()).toBe(true);
@@ -87,6 +101,7 @@ it('offers one Talk entry, visible limits, household marks and a compact wedding
   expect(await page.locator('[data-open-talk]').allTextContents()).toEqual(['Talk to…']);
   expect(await page.locator('.action-limit').allTextContents()).toContain('No one has asked you anything.');
   expect(await page.locator('[data-person="emre"]').innerText()).toContain('your household');
+  await weddingDetails();
   expect(await page.locator('.riza-mind').innerText()).toContain('Next: Coffee with Elif');
   expect(await page.locator('.riza-mind').innerText()).toContain('Day 4, Thursday');
   expect(await page.locator('[data-doubt]').count()).toBe(3);
@@ -102,11 +117,11 @@ it('offers one Talk entry, visible limits, household marks and a compact wedding
 
 it('releases a saved hold on Resume when its sheet no longer exists', async () => {
   await load();
-  await page.locator('[data-person="aylin"]').click();
+  await talkTo('aylin');
   await page.locator('[data-speed="1"][aria-pressed="true"]').waitFor();
   await page.reload();
   await page.getByRole('button', { name: 'Resume', exact: true }).click();
-  await page.locator('.riza-mind').waitFor();
+  await page.locator('.lk-strip').waitFor();
   const inputs = await page.evaluate(async () => {
     const db = await new Promise<IDBDatabase>((resolve) => {
       const request = indexedDB.open('hearsay', 1);
@@ -123,13 +138,17 @@ it('releases a saved hold on Resume when its sheet no longer exists', async () =
   expect(inputs.slice(-2)).toEqual(['sit', 'release']);
   expect(await page.getByRole('dialog').count()).toBe(0);
 });
-it('opens the waiting person directly and opening tea does not answer their question', async () => {
+it('opens the waiting person and reports their departure without claiming an answer', async () => {
   await load(405, false);
   const before = await page.locator('.question').innerText();
   await page.locator('[data-open-talk]').click();
   expect(await page.locator('.dialog-head h2').innerText()).toMatch(/^Talk to /);
   await page.getByRole('button', { name: /^Close Talk to / }).click();
   await page.locator('[data-open-talk]').waitFor();
-  expect(await page.locator('.question').innerText()).toBe(before);
-  expect(await page.locator('#hold').getAttribute('aria-disabled')).toBeNull();
+  expect(before).toContain('Aylin');
+  expect(await page.locator('.reply').innerText()).toContain(
+    'Aylin has moved on. You have not answered their question.',
+  );
+  expect(await page.locator('.question').count()).toBe(0);
+  expect(await page.locator('#hold').getAttribute('aria-disabled')).toBe('true');
 });

@@ -70,7 +70,13 @@ Builder checks cover duplicate inputs, private-source discovery, retraction, leg
 
 ## Phones
 
-Actions stay above the fold at 360×780 (L9). The map is a Canvas 2D drawing of the hill; the garden panel is below it.
+Lab kit 0.2.0 supplies the phone stage at 360×690: a wrapping state strip, the visible scene and one nonmodal bottom sheet. Desktop docks the sheet beside the scene. The page stays within the viewport; optional people, story and word lists scroll inside their sheet. Essential statements, limits and talk responses stay visible at default text size. Enlarged text can scroll the sheet to every action.
+
+The strip keeps Emre and Elif's wedding, Rıza's answer day, the next family step and his unresolved doubts (including Hatice's word) readable during a conversation. Wedding details offers the longer explanations and message threads. It updates as time passes. The old lean card could be inside the viewport but covered by the modal talk sheet; the explicit wedding goal disappeared with the introduction, and the crowd pushed standing below the phone viewport. That explains the observed visibility failure, not the owner's private reasoning.
+
+People lists lead with Rıza, Cem, Emre, unfinished business and those present. The remaining village stays behind “Everyone else”; presence shortcuts lead to the full list of people here. People carry plain English relationship or occupation labels.
+
+A pending witnessed incident, question, family choice or confrontation keeps Slow until answered or passed, then restores the chosen pace. A delayed fast animation frame stops at the first pending response instead of skipping its window. System menus and the notebook send dialog may stop time. The first Day 1 incident stayed available for 43.50 seconds before this change and 120.00 seconds after, measured in Chromium at default Walk with seed 1, a 06:29 fixture and 250 ms virtual-clock steps. A second measurement with live animation frames and no virtual clock found 43.4 and 120.1 real seconds, respectively (100 ms polling). These are browser timing checks, not human reading-time evidence.
 
 ## Build measurement
 

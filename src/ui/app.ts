@@ -1,3 +1,4 @@
+import '@adam0white/lab-kit/stage.css';
 import { credence } from '@adam0white/human-framework';
 import {
   act,
@@ -17,6 +18,7 @@ import { exportRun, verifyImport } from './export';
 import { heardLines } from './heard';
 import { lab, notebookRunOptions } from './lab';
 import { drawMap, mapPersonAt } from './map';
+import { focusedPeople, personLabel, personRole } from './people';
 import { get, put, putImmediate, putNow } from './store';
 
 const root = document.querySelector<HTMLDivElement>('#app');
@@ -41,7 +43,6 @@ let dismissedIncident = 0;
 type SceneMemory = { seed: number; dismissedIncident: number };
 let sceneMemory: SceneMemory | null = null;
 let chosenSpeed = 5;
-let slowUntil = 0;
 let seenLean = '';
 let leanHighlightUntil = 0;
 let talking: HTMLDialogElement | null = null;
@@ -50,13 +51,11 @@ const changedDoubts = new Map<string, number>();
 let selectedDoubt = '';
 let leanChanged = false;
 let verbReason = '';
-let seenIncident = 0;
 let reply = '';
 type Story = NonNullable<State['stories']>[number];
 const state = () => game.s;
 
 let acting = false;
-let seenGarden = new Set<string>();
 let shownPresence = '';
 let shownRiza = '';
 let shownScene = '';
@@ -65,6 +64,8 @@ let shownThreads = '';
 let shownQuick = '';
 let conversation: HTMLDialogElement | null = null;
 let refreshConversation: (() => void) | null = null;
+let stripObserver: ResizeObserver | null = null;
+let sceneObserver: ResizeObserver | null = null;
 let pendingJournal: Promise<boolean> | null = null;
 type Journal = { version: 1 | 2; seed: number; minute: number; inputs: LoggedInput[] };
 function persistJournal(): Promise<boolean> {
@@ -190,9 +191,7 @@ function resetScene(): void {
   chosenSpeed = 5;
   speed = 5;
   dismissedIncident = sceneMemory?.seed === game.s.seed ? sceneMemory.dismissedIncident : 0;
-  seenIncident = 0;
   accumulator = 0;
-  slowUntil = 0;
   slowReason = '';
   reply = '';
   verbReason = '';
@@ -205,15 +204,10 @@ function resetScene(): void {
   changedDoubts.clear();
   selectedDoubt = '';
   pendingScene = '';
-  seenGarden = new Set(view(game.s).present.filter((id) => game.s.locations[id] === 'garden'));
   noticeVisitors();
 }
 function noticeVisitors(): boolean {
   const previous = `${speed}:${slowReason}`;
-  const present = view(game.s).present.filter((id) => id !== 'hatice');
-  const garden = new Set(present.filter((id) => game.s.locations[id] === 'garden'));
-  const arrivals = [...garden].filter((id) => !seenGarden.has(id));
-  seenGarden = garden;
   const question = liveQuestion();
   const incident = tableIncident();
   const riza = state().riza;
@@ -221,21 +215,6 @@ function noticeVisitors(): boolean {
     seenLean = riza.lean;
     leanChanged = true;
     leanHighlightUntil = performance.now() + 3000;
-    slowUntil = game.s.minute + 6;
-    slowReason = 'Rıza’s view of the marriage changed. Slowed to Slow.';
-    accumulator = 0;
-  } else if (incident && incident.id > seenIncident) {
-    seenIncident = incident.id;
-    slowReason = 'You overheard something. Slowed to Slow so you can read and choose whom to tell.';
-  } else if (question) {
-    slowReason = `${name(question.speaker ?? '')} is waiting for your answer. Slowed to Slow.`;
-  } else if (arrivals.length && !previous.includes('The garden is quiet.')) {
-    slowUntil = game.s.minute + 6;
-    slowReason = `${arrivals.map(name).join(' and ')} arrived at your table. Slowed to Slow.`;
-  } else if (!incident && game.s.minute >= slowUntil) {
-    slowReason = '';
-  } else if (!question && /waiting/.test(slowReason)) {
-    slowReason = '';
   }
   for (const doubt of riza?.doubts ?? []) {
     if (seenDoubts.has(doubt.key) && seenDoubts.get(doubt.key) !== JSON.stringify(doubt)) {
@@ -244,39 +223,29 @@ function noticeVisitors(): boolean {
     }
     seenDoubts.set(doubt.key, JSON.stringify(doubt));
   }
-  if (!present.length && !(game.s.minute < slowUntil && slowReason.startsWith('Rıza'))) {
-    speed =
-      speeds[Math.min(speeds.length - 1, speeds.findIndex((s) => s.rate === chosenSpeed) + 1)]?.rate ?? 80;
-    slowReason = 'The garden is quiet. Time hurries until someone comes.';
-  } else {
-    if (slowReason.startsWith('The garden is quiet.')) slowReason = '';
-    speed = slowReason ? 1 : chosenSpeed;
+  if (game.s.scene && conversation) {
+    const previousConversation = conversation;
+    conversation = null;
+    refreshConversation = null;
+    endTalk(previousConversation);
+    previousConversation.close();
   }
-  if (talking?.open) {
-    speed = 1;
-    slowReason = 'You are talking. Slowed to Slow.';
-  }
-  if (game.s.scene) {
-    if (conversation) {
-      endTalk(conversation);
-      conversation.close();
-      conversation = null;
-      refreshConversation = null;
-      window.scrollTo(0, 0);
-    }
-    speed = 1;
-    slowReason = 'A conversation is waiting for your choice. Slowed to Slow.';
-    if (pendingScene !== game.s.scene.id) {
-      accumulator = 0;
-      window.scrollTo(0, 0);
-    }
-  } else if (pendingScene) {
-    speed = chosenSpeed;
-    slowReason = '';
-    slowUntil = 0;
-    accumulator = 0;
-  }
-  pendingScene = game.s.scene?.id ?? '';
+  // Re-evaluate every pending response. Ending one must not clear another's slowdown.
+  slowReason = game.s.scene
+    ? game.s.scene.kind === 'confrontation'
+      ? 'Slow · Someone is confronting you.'
+      : 'Slow · A conversation needs your choice.'
+    : question
+      ? `Slow · ${name(question.speaker ?? '')} is waiting for your answer.`
+      : incident
+        ? 'Slow · You overheard something. Choose whom to tell.'
+        : talking?.open
+          ? 'Slow · You are talking.'
+          : '';
+  speed = slowReason ? 1 : chosenSpeed;
+  const nextScene = game.s.scene?.id ?? '';
+  if (pendingScene !== nextScene || previous !== `${speed}:${slowReason}`) accumulator = 0;
+  pendingScene = nextScene;
   return previous !== `${speed}:${slowReason}`;
 }
 function selectedBelief(subject: string): void {
@@ -320,11 +289,14 @@ function explainLimits(scope: ParentNode): void {
 function endTalk(d: HTMLDialogElement): void {
   if (talking !== d) return;
   talking = null;
+  const question = liveQuestion();
   act(game, { type: 'release' });
+  if (question?.speaker && !view(game.s).present.includes(question.speaker))
+    reply = `${name(question.speaker)} has moved on. You have not answered their question.`;
   speed = chosenSpeed;
-  slowUntil = 0;
   slowReason = '';
   accumulator = 0;
+  noticeVisitors();
 }
 function departure(id: string, d: HTMLDialogElement): void {
   if (d.dataset.departed) return;
@@ -397,17 +369,6 @@ const standing = () =>
 function outwardLook(id: string): string {
   return game.s.locations[id] === 'fountain' ? 'Passing' : 'Seated';
 }
-function recentSubjects(): string[] {
-  const today = Math.floor(game.s.minute / 1440);
-  const subjects = new Set([
-    ...view(game.s).present,
-    ...PEOPLE.filter((p) => p.household === 0).map((p) => p.id),
-    ...game.s.log
-      .filter((l) => Math.floor(l.at / 1440) === today && l.target)
-      .flatMap((l) => (l.target ? [l.target] : [])),
-  ]);
-  return PEOPLE.filter((p) => p.id !== 'hatice' && subjects.has(p.id)).map((p) => p.id);
-}
 function preview(kind: 'tell' | 'defend'): string {
   const opposites: Partial<Record<Trait, Trait>> = {
     dishonest: 'honest',
@@ -443,23 +404,32 @@ function askPreview(): string {
   };
   return `You'll ask: Does ${name(target)} ${questions[askTrait()]}?`;
 }
-function chooseTalk(id: string): void {
+function chooseTalk(id: string, backToPeople = false): void {
   if (!view(game.s).present.includes(id)) return;
   dismissIncident();
   listener = id;
   const talkTo = id;
   const d = dialog(`Talk to ${name(id)}`);
   conversation = d;
+  if (backToPeople)
+    d.querySelector('.dialog-head')?.prepend(
+      button('Back to people', () => {
+        d.close();
+        host.querySelector<HTMLButtonElement>('[data-open-talk]')?.click();
+      }),
+    );
   d.classList.add('talk-sheet');
   talking = d;
   act(game, { type: 'sit', listener: id });
   speed = 1;
   accumulator = 0;
-  slowReason = 'You are talking. Slowed to Slow.';
+  slowReason = 'Slow · You are talking.';
   void persistJournal().then(render);
   save();
   let fullList = false;
-  const subjects = recentSubjects();
+  let choicesOpen = false;
+  const priorities = focusedPeople(game.s);
+  const subjects = [...new Set([...priorities.primary, target])];
   if (!state().stories?.some((item) => item.id === story && item.target !== talkTo))
     selectedBelief(
       subjects.includes(target) && target !== talkTo
@@ -502,7 +472,19 @@ function chooseTalk(id: string): void {
         : !trait
           ? 'Choose a word first.'
           : (tellingUnavailable(game.s, { type: 'defend', listener: talkTo, target, trait }) ?? '');
-    body.innerHTML = `<p class="fine presence" role="status">${html(presenceText)}</p><div class="talk-choices"><h3>About whom?</h3><div class="subject-chips">${(fullList ? PEOPLE.filter((p) => p.id !== 'hatice').map((p) => p.id) : subjects).map((p) => `<button type="button" data-target="${p}" aria-pressed="${target === p}">${html(name(p))}</button>`).join('')}<button type="button" id="other-person">${fullList ? 'Show today’s people' : 'Someone else…'}</button></div>${stories.length ? `<h3>Tell what you saw</h3><div class="story-chips">${stories.map((item) => `<button type="button" data-story="${item.id}" aria-pressed="${story === item.id}">${html(item.title)}</button>`).join('')}</div>${selectedStory ? `<p class="story-preview">You'll say: “${html(storySentence(selectedStory))}”</p>` : ''}` : ''}<h3>Which word?</h3><div class="word-chips">${Object.keys(
+    const active = body.contains(document.activeElement) ? (document.activeElement as HTMLElement) : null;
+    const focusAttribute = ['data-verb', 'data-target', 'data-trait', 'data-story'].find((key) =>
+      active?.hasAttribute(key),
+    );
+    const focusSelector = focusAttribute
+      ? `[${focusAttribute}="${active?.getAttribute(focusAttribute)}"]`
+      : active?.id
+        ? `#${active.id}`
+        : '';
+    const shownSubjects = [...new Set([...priorities.primary, target])];
+    const otherSubjects = priorities.others.filter((id) => !shownSubjects.includes(id));
+    choicesOpen = body.querySelector('details')?.open ?? choicesOpen;
+    body.innerHTML = `<p class="fine presence" role="status">${html(presenceText)}</p><div class="talk-choices lk-sheet-body"><details><summary>Choose person, story or word</summary><h3>About whom?</h3><div class="subject-chips">${(fullList ? [...shownSubjects, ...otherSubjects] : shownSubjects).map((p) => `<button type="button" data-target="${p}" aria-pressed="${target === p}">${html(personLabel(p))}</button>`).join('')}<button type="button" id="other-person">${fullList ? 'Show relevant people' : `Everyone else (${otherSubjects.length})`}</button></div>${stories.length ? `<h3>Tell what you saw</h3><div class="story-chips">${stories.map((item) => `<button type="button" data-story="${item.id}" aria-pressed="${story === item.id}">${html(item.title)}</button>`).join('')}</div>${selectedStory ? `<p class="story-preview">You'll say: “${html(storySentence(selectedStory))}”</p>` : ''}` : ''}<h3>Which word?</h3><div class="word-chips">${Object.keys(
       REPUTATION_TRAITS,
     )
       .map(
@@ -511,7 +493,9 @@ function chooseTalk(id: string): void {
       )
       .join(
         '',
-      )}</div></div><div class="talk-bar"><div class="statement"><p class="tell-preview">${html(selectedStory ? storyPreview(selectedStory) : preview('tell'))}</p><button type="button" data-verb="tell" ${unavailable(tellReason)}>Tell</button>${tellReason ? `<p class="telling-limit action-limit">${html(tellReason)}</p>` : ''}</div>${selectedStory || preview('tell') !== preview('defend') ? `<div class="statement"><p class="defend-preview">${html(preview('defend'))}</p><button type="button" data-verb="defend" ${unavailable(defendReason)}>Defend</button>${defendReason ? `<p class="defending-limit action-limit">${html(defendReason)}</p>` : ''}</div>` : ''}<p class="ask-preview">${html(askPreview())}</p><div class="conversation-actions"><button type="button" data-verb="ask" ${unavailable(target === talkTo ? 'Ask someone else about this person.' : '')}>Ask</button><button type="button" data-verb="make-amends">Make amends</button></div><p class="verb-reason" role="status"></p><p class="fine">Ask about ${html(name(target))}, or withdraw what you told ${html(name(talkTo))} about them.</p></div>`;
+      )}</div></details></div><div class="talk-bar lk-commit"><div class="statement"><p class="tell-preview">${html(selectedStory ? storyPreview(selectedStory) : preview('tell'))}</p><button type="button" data-verb="tell" ${unavailable(tellReason)}>Tell</button>${tellReason ? `<p class="telling-limit action-limit">${html(tellReason)}</p>` : ''}</div>${selectedStory || preview('tell') !== preview('defend') ? `<div class="statement"><p class="defend-preview">${html(preview('defend'))}</p><button type="button" data-verb="defend" ${unavailable(defendReason)}>Defend</button>${defendReason ? `<p class="defending-limit action-limit">${html(defendReason)}</p>` : ''}</div>` : ''}<p class="ask-preview">${html(askPreview())}</p><div class="conversation-actions"><button type="button" data-verb="ask" ${unavailable(target === talkTo ? 'Ask someone else about this person.' : '')}>Ask</button><button type="button" data-verb="make-amends">Make amends</button></div><p class="verb-reason" role="status"></p><p class="fine">Ask about ${html(name(target))}, or withdraw what you told ${html(name(talkTo))} about them.</p></div>`;
+    const details = body.querySelector('details');
+    if (details) details.open = choicesOpen;
     body.querySelectorAll<HTMLButtonElement>('[data-target]').forEach((b) => {
       b.onclick = () => {
         selectedBelief(b.dataset.target ?? target);
@@ -555,6 +539,7 @@ function chooseTalk(id: string): void {
       };
     });
     explainLimits(body);
+    if (focusSelector) body.querySelector<HTMLElement>(focusSelector)?.focus({ preventScroll: true });
   };
   refreshConversation = () => {
     if (!view(game.s).present.includes(talkTo)) {
@@ -596,13 +581,13 @@ function choosePasser(id?: string): void {
       return;
     }
     body.replaceChildren();
-    const people = id ? nearby.filter((p) => p === id) : nearby;
+    const people = id ? nearby.filter((p) => p === id) : focusedPeople(game.s, nearby).primary;
     const p = document.createElement('p');
     p.textContent = 'Only people at the garden or passing the fountain can hear you.';
     body.append(p);
     for (const person of people) {
       body.append(
-        button(`Call over ${name(person)}`, () =>
+        button(`Call over ${personLabel(person)}`, () =>
           perform({ type: 'call-over', person, ...(buySilence ? { buySilence: true } : {}) }),
         ),
       );
@@ -649,6 +634,67 @@ function rizaCard(): string {
   const threads = [...(state().threads ?? [])].sort((a, b) => b.at - a.at || b.id - a.id).slice(0, 2);
   return `<aside class="riza-mind${changing ? ' lean-changed' : ''}" aria-label="Rıza’s mind"><p class="lean-label"><span class="lean-mark ${riza?.lean ?? 'unsure'}" aria-hidden="true"></span>Rıza leans ${riza?.lean ?? 'unsure'}</p>${doubts.length || riza?.word ? `<div class="doubt-chips${riza?.word ? ' has-word' : ''}">${doubts.map((d) => `<button type="button" data-doubt="${d.key}" aria-pressed="${selectedDoubt === d.key}" class="${(changedDoubts.get(d.key) ?? 0) > performance.now() ? 'doubt-changed' : ''}">${labels[d.key]}<small>${marks[d.status]} ${d.status}</small></button>`).join('')}${riza?.word ? `<button type="button" data-word aria-pressed="${selectedDoubt === 'word'}">Your word<small>${marks[riza.word.status]} ${riza.word.status}</small></button>` : ''}</div>` : ''}${threads.map((t) => `<p class="message-thread">${html(name(t.who))} → ${html(name(t.to))}: ${html(t.about)}${t.where ? ` · ${html(t.where)}` : ''} <span>${t.status === 'stalled' ? html(t.reason ?? `${name(t.who)} hasn't brought back word of reaching ${name(t.to)}.`) : t.status}</span></p>`).join('')}${selected ? `<p class="doubt-detail" role="status">“${html(selected.words)}”${selected.because ? `<br>${html(selected.because)}` : ''}${'mend' in selected && selected.mend ? `<br>${html(selected.mend)}` : ''}</p>` : ''}${causes.length ? `<p class="riza-cause" role="status">${[...new Set(causes)].map(html).join(' ')}</p>` : ''}<p class="next-step">${next ? `Next: ${html(next.label)} · ${dayLabel(next.day)}` : `The answer · ${dayLabel(riza?.answerDay ?? 13)}`}</p></aside>`;
 }
+function weddingStrip(): string {
+  const riza = state().riza;
+  const next = riza?.steps?.find((step) => step.status === 'ahead');
+  const labels = { honest: 'Honesty', reliable: 'Promises', kind: 'Kindness' };
+  const doubts = riza?.doubts?.filter((d) => d.status !== 'settled').map((d) => labels[d.key]) ?? [];
+  if (riza?.word?.status !== 'settled') doubts.push('Your word');
+  const answer =
+    game.s.engagement === 'waiting'
+      ? `Rıza’s answer Day ${riza?.answerDay ?? 13}`
+      : game.s.engagement === 'accepted'
+        ? 'Rıza agreed'
+        : 'Rıza refused';
+  return `<div class="lk-chips" aria-label="Wedding goal"><span class="lk-chip">Emre & Elif’s wedding · ${answer}${next ? ` · Next: ${next.day === 4 ? 'coffee' : next.day === 8 ? 'his word' : 'answer'}, Day ${next.day}` : ''}</span><span class="lk-chip">${doubts.length ? `Doubts: ${doubts.join(', ')}` : 'Doubts settled'}</span></div><button type="button" class="text-button" data-wedding-details>Wedding details</button>`;
+}
+function measureStrip(): void {
+  stripObserver?.disconnect();
+  const stage = host.querySelector<HTMLElement>('.lk-stage');
+  const strip = stage?.querySelector<HTMLElement>('.lk-strip');
+  if (!stage || !strip) return;
+  const measure = () => {
+    stage.dataset.largeText = String(
+      Number.parseFloat(getComputedStyle(document.documentElement).fontSize) >= 26,
+    );
+    const measured = `${Math.ceil(strip.getBoundingClientRect().height)}px`;
+    if (stage.style.getPropertyValue('--lk-strip-height') !== measured)
+      stage.style.setProperty('--lk-strip-height', measured);
+  };
+  measure();
+  stripObserver = new ResizeObserver(measure);
+  stripObserver.observe(strip);
+}
+function mountSheet(d: HTMLDialogElement): void {
+  const stage = host.querySelector('.lk-stage');
+  if (!stage) return;
+  const garden = stage.querySelector<HTMLElement>('.garden');
+  if (garden) garden.hidden = true;
+  stage.append(d);
+}
+function weddingDetails(): void {
+  const d = dialog('Wedding details');
+  conversation = d;
+  const body = document.createElement('div');
+  body.className = 'lk-sheet-body';
+  const update = () => {
+    body.innerHTML = rizaCard();
+    body.querySelectorAll<HTMLButtonElement>('[data-doubt], [data-word]').forEach((b) => {
+      b.onclick = () => {
+        selectedDoubt = b.dataset.doubt ?? 'word';
+        update();
+        body
+          .querySelector<HTMLButtonElement>(
+            selectedDoubt === 'word' ? '[data-word]' : `[data-doubt="${selectedDoubt}"]`,
+          )
+          ?.focus();
+      };
+    });
+  };
+  d.append(body);
+  refreshConversation = update;
+  update();
+}
 function render(): void {
   if (!playing || pendingJournal) return;
   const v = view(game.s);
@@ -672,21 +718,42 @@ function render(): void {
     riza?.doubts?.some((d) => d.status === 'open' && d.words.split('?').slice(1).join('?').includes(p.name)),
   ).map((p) => p.id);
   const concerned = v.concerned;
+  const orderedPeople = focusedPeople(game.s, present).primary;
   const holdReason = question ? '' : 'No one has asked you anything.';
   const callReason = present.length ? '' : 'No one is close enough to hear you.';
   const introduction = firstStart
-    ? `<aside class="first-start" aria-label="How to play"><p>Keep your word good. See Emre married.</p><p>Tap people at the table or passing on the map.</p><p>Your standing fills benches. Watch Rıza’s mind.</p><p>Speak only to people here. Hear only nearby talk.</p><p>Someone will ask you for news soon.</p><button type="button" id="dismiss-intro">Got it</button></aside>`
+    ? `<aside class="first-start" aria-label="How to play"><p>Keep your word good. Help Emre marry Elif. Tap a neighbour to speak.</p><button type="button" id="dismiss-intro">Got it</button></aside>`
     : '';
-  host.innerHTML = `<main class="game${incident ? ' has-incident' : ''}"><header><a class="wordmark" href="#" id="home">Hearsay</a><div class="clock" id="clock">${dateLabel(game.s.minute)}</div><button type="button" id="game-menu" class="text-button">Game menu</button></header>${introduction}<div class="speeds" role="group" aria-label="Time speed">${speeds.map((s) => `<button type="button" data-speed="${s.rate}" aria-pressed="${speed === s.rate}" ${chosenSpeed === s.rate ? 'data-chosen="true"' : ''}>${s.label}</button>`).join('')}</div>${slowReason ? `<p class="slow-reason" role="status">${html(slowReason)}</p>` : ''}<section class="garden" aria-label="Your tea garden">${sceneCard()}${rizaCard()}<section class="conversation-panel" aria-label="Conversation"><div class="section-heading"><h2>At your table</h2><span>and by the fountain</span></div>${reply ? `<p class="reply" role="status">${html(reply)}</p>` : ''}${question ? `<p class="question">${html(name(question.speaker ?? ''))}: ${html(question.text)}</p>` : ''}${v.quick ? `<div class="quick-replies" aria-label="Answer ${html(name(v.quick.listener))}">${v.quick.options.map((option, i) => `<button type="button" data-quick="${i}"><strong>${html(option.label)}</strong><small>${html(option.says)}</small></button>`).join('')}</div>` : ''}<div class="actions"><button type="button" class="primary" data-open-talk ${unavailable(present.length ? '' : 'No one is close enough. Wait for someone at the garden or fountain.')}>Talk to…</button><div class="action-option"><button type="button" id="hold" ${unavailable(holdReason)}>Hold your tongue</button>${holdReason ? `<small class="action-limit">${html(holdReason)}</small>` : ''}</div><div class="action-option"><button type="button" id="call" ${unavailable(callReason)}>Call over</button>${callReason ? `<small class="action-limit">${html(callReason)}</small>` : ''}</div></div><p class="verb-reason" role="status">${html(verbReason)}</p></section>${incident ? `<aside class="table-incident" aria-label="What you overheard"><p>${html(incident.text)}</p></aside>` : ''}<div class="people-chips" aria-label="People close enough to talk">${present.map((id) => `<button type="button" data-person="${id}" aria-label="Talk to ${html(name(id))}"><strong>${html(name(id))}</strong><small>${outwardLook(id)}${v.households[id] === v.households.hatice ? ' · your household' : ''}${id === question?.speaker ? ' · waiting' : ''}</small>${trusted.includes(id) ? '<small class="riza-listens">Rıza listens to them</small>' : ''}${id === concerned ? '<small class="would-want">would want to know</small>' : ''}</button>`).join('') || '<p class="fine">No one is close enough. Watch for people passing.</p>'}</div><p class="standing">${standing()}</p>${game.s.engagement !== 'waiting' ? `<p class="engagement">${game.s.engagement === 'accepted' ? 'Rıza has agreed to the marriage.' : 'Rıza has refused the marriage.'}</p>` : ''}</section><div class="map-wrap"><canvas id="map" aria-label="The neighbourhood. Tap a person near the tea garden or fountain to call them over."></canvas><span class="map-caption">HATICE’S TEA GARDEN · TAP A PASSER-BY</span></div><section class="heard" aria-label="What you witnessed"><h2>What reaches your ears</h2><div role="log" aria-live="polite">${
-    heardLines(game)
-      .slice(-5)
-      .reverse()
+  const openSheet = host.querySelector<HTMLDialogElement>('dialog.lk-sheet[open]');
+  const sheetFocus = openSheet?.contains(document.activeElement)
+    ? (document.activeElement as HTMLElement)
+    : null;
+  openSheet?.remove();
+  host.innerHTML = `<main class="game lk-stage${incident ? ' has-incident' : ''}" data-sheet="fit"><div class="lk-strip"><header><a class="wordmark" href="#" id="home">Hearsay</a><div class="clock" id="clock">${dateLabel(game.s.minute)}</div><button type="button" id="game-menu" class="text-button">Game menu</button></header><div class="speeds" role="group" aria-label="Time speed">${speeds.map((s) => `<button type="button" data-speed="${s.rate}" aria-pressed="${speed === s.rate}" ${chosenSpeed === s.rate ? 'data-chosen="true"' : ''}>${s.label}</button>`).join('')}</div>${slowReason ? `<p class="slow-reason" role="status">${html(slowReason)}</p>` : ''}${weddingStrip()}</div><section class="garden lk-sheet" aria-label="Your tea garden"><div class="lk-sheet-body">${sceneCard()}${introduction}<section class="conversation-panel" aria-label="Conversation"><div class="section-heading"><h2>At your table</h2><span>and by the fountain</span></div>${reply ? `<p class="reply" role="status">${html(reply)}</p>` : ''}${question ? `<p class="question">${html(name(question.speaker ?? ''))}: ${html(question.text)}</p>` : ''}${v.quick ? `<div class="quick-replies" aria-label="Answer ${html(name(v.quick.listener))}">${v.quick.options.map((option, i) => `<button type="button" data-quick="${i}"><strong>${html(option.label)}</strong><small>${html(option.says)}</small></button>`).join('')}</div>` : ''}<div class="actions"><button type="button" class="primary" data-open-talk ${unavailable(present.length ? '' : 'No one is close enough. Wait for someone at the garden or fountain.')}>Talk to…</button><div class="action-option"><button type="button" id="hold" ${unavailable(holdReason)}>Hold your tongue</button>${holdReason ? `<small class="action-limit">${html(holdReason)}</small>` : ''}</div><div class="action-option"><button type="button" id="call" ${unavailable(callReason)}>Call over</button>${callReason ? `<small class="action-limit">${html(callReason)}</small>` : ''}</div></div><p class="verb-reason" role="status">${html(verbReason)}</p></section>${incident ? `<aside class="table-incident" aria-label="What you overheard"><p>${html(incident.text)}</p></aside>` : ''}<div class="people-chips" aria-label="People close enough to talk">${
+    orderedPeople
+      .slice(0, 3)
       .map(
-        (l) =>
-          `<article class="${l.kind === 'echo' ? 'echo' : ['overheard', 'witness', 'incident', 'witnessed'].includes(l.kind) ? 'incident' : ''}"><time>${clock(l.at)}</time><p>${!['echo', 'overheard', 'witness', 'incident', 'witnessed'].includes(l.kind) && l.speaker && l.speaker !== 'hatice' ? `<strong>${html(name(l.speaker))}</strong> · ` : ''}${html(feedText(l))}</p></article>`,
+        (id) =>
+          `<button type="button" data-person="${id}" aria-label="Talk to ${html(name(id))}"><strong>${html(name(id))}</strong><small>${html(personRole(id))} · ${outwardLook(id)}${v.households[id] === v.households.hatice ? ' · your household' : ''}${id === question?.speaker ? ' · waiting' : ''}</small>${trusted.includes(id) ? '<small class="riza-listens">Rıza listens to them</small>' : ''}${id === concerned ? '<small class="would-want">would want to know</small>' : ''}</button>`,
       )
-      .join('') || '<p class="fine">The hill is waking.</p>'
-  }</div></section><footer>Only what you witness, and what people tell you. Open Game menu for What you heard.</footer></main>`;
+      .join('') || '<p class="fine">No one is close enough. Watch for people passing.</p>'
+  }</div>${
+    orderedPeople.length > 3
+      ? `<details class="other-neighbours"><summary>Talk to people here (${orderedPeople.length})</summary><div class="people-chips">${orderedPeople
+          .slice(3)
+          .map(
+            (id) =>
+              `<button type="button" data-person="${id}"><strong>${html(name(id))}</strong><small>${html(personRole(id))}</small></button>`,
+          )
+          .join('')}</div></details>`
+      : ''
+  }<p class="standing">${standing()}</p>${game.s.engagement !== 'waiting' ? `<p class="engagement">${game.s.engagement === 'accepted' ? 'Rıza has agreed to the marriage.' : 'Rıza has refused the marriage.'}</p>` : ''}</div></section><div class="map-wrap lk-scene"><canvas id="map" aria-label="The neighbourhood. Tap a person near the tea garden or fountain to call them over."></canvas><span class="map-caption">HATICE’S TEA GARDEN · TAP A PASSER-BY</span></div></main>`;
+  measureStrip();
+  if (openSheet) {
+    mountSheet(openSheet);
+    sheetFocus?.focus({ preventScroll: true });
+  }
+  host.querySelector('[data-wedding-details]')?.addEventListener('click', weddingDetails);
   host.querySelector('#home')?.addEventListener('click', (e) => {
     e.preventDefault();
     save();
@@ -701,7 +768,6 @@ function render(): void {
   host.querySelectorAll<HTMLButtonElement>('[data-speed]').forEach((b) => {
     b.onclick = () => {
       chosenSpeed = Number(b.dataset.speed);
-      slowUntil = 0;
       slowReason = '';
       noticeVisitors();
       render();
@@ -723,11 +789,11 @@ function render(): void {
       d.append(choices);
       const update = () => {
         choices.replaceChildren();
-        for (const person of view(game.s).present.filter((id) => id !== 'hatice'))
+        for (const person of focusedPeople(game.s, view(game.s).present).primary)
           choices.append(
-            button(name(person), () => {
+            button(personLabel(person), () => {
               d.close();
-              chooseTalk(person);
+              chooseTalk(person, true);
             }),
           );
         if (!choices.childElementCount) choices.textContent = 'No one is close enough just now.';
@@ -776,7 +842,12 @@ function render(): void {
   showDayCard();
   const canvas = host.querySelector<HTMLCanvasElement>('#map');
   if (canvas) {
-    drawMap(canvas, game.s, 0);
+    drawMap(canvas, game.s, 0, talking?.open ? listener : undefined);
+    sceneObserver?.disconnect();
+    sceneObserver = new ResizeObserver(() => {
+      if (canvas.isConnected) drawMap(canvas, game.s, 0, talking?.open ? listener : undefined);
+    });
+    sceneObserver.observe(canvas);
     canvas.onclick = (e) => {
       const id = mapPersonAt(canvas, e.clientX, e.clientY);
       if (id) choosePasser(id);
@@ -787,16 +858,22 @@ function render(): void {
   if (game.s.engagement !== 'waiting') lab.milestone('the engagement settled');
 }
 function dialog(titleText: string): HTMLDialogElement {
+  const system =
+    titleText === 'Game menu' || titleText === 'Run could not open' || titleText.startsWith('Day ');
   document.querySelectorAll<HTMLDialogElement>('dialog').forEach((open) => {
     const wasTalking = talking === open;
     endTalk(open);
     if (wasTalking) void persistJournal().then(save);
     open.close();
   });
-  const origin = document.activeElement as HTMLElement | null;
+  const origin =
+    titleText === 'Who will you talk to?'
+      ? host.querySelector<HTMLElement>('[data-open-talk]')
+      : (document.activeElement as HTMLElement | null);
   const d = document.createElement('dialog');
-  d.className = 'sheet';
-  d.innerHTML = `<div class="dialog-head"><h2>${titleText}</h2><button type="button" aria-label="Close ${html(titleText)}">Close</button></div>`;
+  d.className = system ? 'sheet' : 'sheet lk-sheet';
+  d.setAttribute('aria-label', titleText);
+  d.innerHTML = `<div class="dialog-head lk-sheet-head"><h2>${titleText}</h2><button type="button" aria-label="Close ${html(titleText)}">Close</button></div>`;
   d.querySelector('button')?.addEventListener('click', () => {
     const wasTalking = talking === d;
     endTalk(d);
@@ -831,12 +908,27 @@ function dialog(titleText: string): HTMLDialogElement {
       refreshConversation = null;
     }
 
-    origin?.focus();
+    if (!system && !document.querySelector('dialog.lk-sheet[open]')) render();
+    const replacement = origin?.id
+      ? document.getElementById(origin.id)
+      : origin?.dataset.person
+        ? host.querySelector<HTMLElement>(`[data-person="${origin.dataset.person}"]`)
+        : origin?.hasAttribute('data-wedding-details')
+          ? host.querySelector<HTMLElement>('[data-wedding-details]')
+          : origin?.hasAttribute('data-open-talk')
+            ? host.querySelector<HTMLElement>('[data-open-talk]')
+            : null;
+    (origin?.isConnected ? origin : replacement)?.focus();
     lab.screen(game?.s.ended ? 'review' : playing ? 'play' : 'title');
     d.remove();
   });
-  document.body.append(d);
-  d.showModal();
+  if (system) {
+    document.body.append(d);
+    d.showModal();
+  } else {
+    mountSheet(d);
+    d.show();
+  }
   return d;
 }
 function gameMenu(): void {
@@ -1034,7 +1126,6 @@ function showDayCard(): void {
           ),
         );
         accumulator = 0;
-        slowUntil = 0;
         noticeVisitors();
         await persistJournal();
         save();
@@ -1080,7 +1171,12 @@ function frame(now: number): void {
       const night = Math.floor(game.s.minute / 1440) * 1440 + 1380;
       const sceneBefore = game.s.scene?.id;
       const lineBefore = game.s.log.at(-1)?.id ?? 0;
-      advance(game, Math.min(game.s.minute + minutes, night));
+      const to = Math.min(game.s.minute + minutes, night);
+      while (game.s.minute < to && !game.s.ended) {
+        advance(game, game.s.minute + 1);
+        // A delayed fast frame must stop when a live response first becomes available.
+        if (game.s.scene || tableIncident() || liveQuestion()) break;
+      }
       if (sceneBefore && game.s.scene?.id !== sceneBefore) {
         const outcome = game.s.log.findLast(
           (l) => l.id > lineBefore && l.kind === 'reply' && l.reply?.to === -1,
@@ -1110,7 +1206,7 @@ function frame(now: number): void {
       });
     }
     const canvas = host.querySelector<HTMLCanvasElement>('#map');
-    if (canvas) drawMap(canvas, game.s, elapsed);
+    if (canvas) drawMap(canvas, game.s, elapsed, talking?.open ? listener : undefined);
   }
   requestAnimationFrame(frame);
 }

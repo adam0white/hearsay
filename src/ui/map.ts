@@ -1,5 +1,6 @@
 import type { State } from '../sim/types';
-import { PLACES } from '../sim/world';
+import { PEOPLE, PLACES } from '../sim/world';
+import { personLabel } from './people';
 
 interface Rect {
   x: number;
@@ -10,6 +11,7 @@ interface Rect {
 interface MapPerson extends Rect {
   id: string;
   location: string;
+  selected?: boolean;
 }
 interface Witness {
   id: number;
@@ -38,19 +40,114 @@ export function mapPersonAt(canvas: HTMLCanvasElement, clientX: number, clientY:
   const y = ((clientY - bounds.top) * canvas.clientHeight) / bounds.height;
   return layouts
     .get(canvas)
-    ?.people.filter((p) => ['garden', 'fountain'].includes(p.location))
+    ?.people.filter((p) => p.id !== 'hatice' && ['garden', 'fountain'].includes(p.location))
     .map((p) => ({ id: p.id, distance: Math.hypot(x - p.x - p.width / 2, y - p.y - p.height / 2) }))
     .filter((p) => p.distance <= 12)
     .sort((a, b) => a.distance - b.distance)[0]?.id;
 }
-export function drawMap(canvas: HTMLCanvasElement, state: State, _elapsed: number): void {
+function closeUp(
+  canvas: HTMLCanvasElement,
+  ctx: CanvasRenderingContext2D,
+  state: State,
+  signature: string,
+  selectedId?: string,
+): void {
   const width = canvas.clientWidth;
   const height = canvas.clientHeight;
+  const nearby = PEOPLE.filter(
+    (p) => p.id !== 'hatice' && ['garden', 'fountain'].includes(state.locations[p.id] ?? ''),
+  );
+  const selected = nearby.find((p) => p.id === selectedId);
+  const hatice = PEOPLE.find((p) => p.id === 'hatice');
+  if (!hatice) return;
+  const shown = [hatice, ...(selected ? [selected] : nearby.slice(0, 3))];
+  const people: MapPerson[] = [];
+  const labels: (Rect & { id: string; text: string })[] = [];
+  const benches: Rect[] = [];
+  ctx.font = '13px Georgia';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  const title = 'Tea garden';
+  const titleWidth = ctx.measureText(title).width + 8;
+  labels.push({ id: 'garden', text: title, x: 4, y: 1, width: titleWidth, height: 16 });
+  ctx.fillStyle = '#364b45';
+  ctx.fillText(title, titleWidth / 2 + 4, 9);
+  const y = height < 90 ? 27 : height * 0.52;
+  for (const [i, person] of shown.entries()) {
+    const x = (width / shown.length) * (i + 0.5);
+    const isSelected = person.id === selectedId;
+    const box = {
+      id: person.id,
+      location: state.locations[person.id] ?? 'garden',
+      x: x - 8,
+      y: y - 9,
+      width: 16,
+      height: 20,
+      selected: isSelected,
+    };
+    people.push(box);
+    benches.push({ x: x - 23, y: y + 8, width: 46, height: 5 });
+    ctx.strokeStyle = '#76684d';
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.moveTo(x - 23, y + 10);
+    ctx.lineTo(x + 23, y + 10);
+    ctx.stroke();
+    if (isSelected) {
+      ctx.strokeStyle = '#244f50';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.ellipse(x, y, 14, 13, 0, 0, Math.PI * 2);
+      ctx.stroke();
+    }
+    ctx.fillStyle = person.id === 'hatice' ? '#a45f4b' : '#335f60';
+    ctx.beginPath();
+    ctx.arc(x, y - 6, 4, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillRect(x - 4, y - 1, 8, 10);
+    const labelWidth = Math.ceil(ctx.measureText(person.name).width) + 6;
+    const labelY = Math.min(height - 17, y + 15);
+    labels.push({
+      id: person.id,
+      text: person.name,
+      x: x - labelWidth / 2,
+      y: labelY,
+      width: labelWidth,
+      height: 16,
+    });
+    ctx.fillStyle = '#364b45';
+    ctx.fillText(person.name, x, labelY + 8);
+  }
+  canvas.setAttribute(
+    'aria-label',
+    `Tea garden. ${selected ? `Selected: ${personLabel(selected.id)}.` : `Nearby: ${shown.map((p) => p.name).join(', ')}.`}`,
+  );
+  layouts.set(canvas, { people, state, signature });
+  canvas.dataset.mapLayout = JSON.stringify({
+    mode: 'close-up',
+    selectedId,
+    labels,
+    people,
+    benches,
+    witnessed: [],
+  });
+}
+
+export function drawMap(
+  canvas: HTMLCanvasElement,
+  state: State,
+  _elapsed: number,
+  selectedId?: string,
+): void {
+  const width = canvas.clientWidth;
+  const height = canvas.clientHeight;
+  canvas.dataset.camera = height < 180 ? 'table' : 'village';
   const ratio = window.devicePixelRatio || 1;
   const signature = JSON.stringify([
     width,
     height,
     ratio,
+    selectedId,
     state.seed,
     state.minute,
     state.garden,
@@ -71,6 +168,14 @@ export function drawMap(canvas: HTMLCanvasElement, state: State, _elapsed: numbe
   ctx.clearRect(0, 0, width, height);
   ctx.fillStyle = '#e5e8d7';
   ctx.fillRect(0, 0, width, height);
+  if (height < 180) {
+    closeUp(canvas, ctx, state, signature, selectedId);
+    return;
+  }
+  canvas.setAttribute(
+    'aria-label',
+    `The neighbourhood.${selectedId ? ` Selected: ${personLabel(selectedId)}.` : ' People near the tea garden or fountain can be called over.'}`,
+  );
   const point = (x: number, y: number) => ({ x: 18 + x * (width - 36), y: 12 + y * (height - 32) });
   ctx.strokeStyle = '#f6f0df';
   ctx.lineWidth = 17;
@@ -215,7 +320,16 @@ export function drawMap(canvas: HTMLCanvasElement, state: State, _elapsed: numbe
       (a, b) => (a.x - target.x) ** 2 + (a.y - target.y) ** 2 - (b.x - target.x) ** 2 - (b.y - target.y) ** 2,
     );
     const p = available[0];
-    if (p) people.push({ id, location, x: p.x - 4, y: p.y - 5, width: 8, height: 11 });
+    if (p)
+      people.push({
+        id,
+        location,
+        x: p.x - 4,
+        y: p.y - 5,
+        width: 8,
+        height: 11,
+        selected: id === selectedId,
+      });
   }
   const previous = witnessHistory.get(state);
   const witnesses =
@@ -260,6 +374,13 @@ export function drawMap(canvas: HTMLCanvasElement, state: State, _elapsed: numbe
     ctx.stroke();
   }
   for (const p of people) {
+    if (p.selected) {
+      ctx.strokeStyle = '#244f50';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.arc(p.x + 4, p.y + 5, 8, 0, Math.PI * 2);
+      ctx.stroke();
+    }
     ctx.fillStyle = ['#335f60', '#a45f4b', '#6e7551', '#9a854f'][hash(p.id) % 4] ?? '#335f60';
     ctx.beginPath();
     ctx.arc(p.x + 4, p.y + 2.5, 2.5, 0, Math.PI * 2);
@@ -269,6 +390,13 @@ export function drawMap(canvas: HTMLCanvasElement, state: State, _elapsed: numbe
   layouts.set(canvas, { people, state, signature });
   witnessHistory.set(state, { witnesses, seed: state.seed, minute: state.minute });
   // Browser checks can inspect the exact CSS-pixel bounds used by the drawing.
-  const debug = JSON.stringify({ labels, people, benches, witnessed: fadedWitnesses });
+  const debug = JSON.stringify({
+    mode: 'village',
+    selectedId,
+    labels,
+    people,
+    benches,
+    witnessed: fadedWitnesses,
+  });
   if (canvas.dataset.mapLayout !== debug) canvas.dataset.mapLayout = debug;
 }
