@@ -1,10 +1,11 @@
-/** Headless text driver. node scripts/drive.ts [careful|quiet|reckless] [seed] [days] */
+/** Headless text driver. node scripts/drive.ts [careful|quiet|reckless|cunning] [seed] [days] */
 import { writeFileSync } from 'node:fs';
 import { fingerprint } from '../src/sim/game.ts';
 import { type Policy, runPolicy } from './policy.ts';
 
 const policy = process.argv[2] ?? 'careful';
-if (!['careful', 'quiet', 'reckless'].includes(policy)) throw new Error('policy: careful, quiet, reckless');
+if (!['careful', 'quiet', 'reckless', 'cunning'].includes(policy))
+  throw new Error('policy: careful, quiet, reckless, cunning');
 const seed = Number(process.argv[3] ?? 1);
 const days = Number(process.argv[4] ?? 14);
 if (!Number.isInteger(seed) || !Number.isFinite(days) || days <= 0 || days > 14)

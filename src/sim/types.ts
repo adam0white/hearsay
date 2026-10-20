@@ -36,13 +36,18 @@ export interface Line {
   speaker?: string;
   text: string;
   target?: string;
+  count?: number;
+  who?: string[];
 }
 export interface Route {
   id: number;
   parent?: number;
+  root?: number;
   retractionOf?: number;
   retractedAt?: number;
   confrontedAt?: number;
+  contradictedAt?: number;
+  contradictedHouseholds?: number[];
   value: boolean;
   at: number;
   from: string;
@@ -72,6 +77,9 @@ export interface State {
   silence: Record<string, number>;
   confronted: number[];
   greetings: Record<string, boolean>;
+  groundTruth?: Record<string, boolean>;
+  pendingConfrontations?: { root: number; due: number }[];
+  heardClaims?: Record<string, { count: number; who: string[]; echo?: number }>;
 }
 export interface Game {
   s: State;

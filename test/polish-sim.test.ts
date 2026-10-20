@@ -1,0 +1,100 @@
+import { credence, trustOf } from '@adam0white/human-framework';
+import { expect, it } from 'vitest';
+import { runPolicy } from '../scripts/policy.ts';
+import { act, advance, newGame } from '../src/sim/game.ts';
+import { DAILY_INCIDENTS } from '../src/sim/incidents.ts';
+
+it('witnesses the promised scene in plain words at 06:30', () => {
+  const g = newGame(1);
+  advance(g, 390);
+  const scene = g.s.log.find((l) => l.kind === 'overheard');
+  expect(scene?.text).toMatch(/Kemal.*wife Zehra.*mixing old flour into the new/);
+  expect(scene?.at).toBe(390);
+  expect(credence(g.s.people.hatice!, 'kemal:dishonest')).toBeGreaterThan(0.9);
+  expect(g.s.locations.kemal).toBe('fountain');
+  expect(g.s.locations.zehra).toBe('fountain');
+});
+
+it('offers a new witnessed incident and a table question every day', () => {
+  const g = newGame(7);
+  for (let day = 0; day < 14; day++) {
+    advance(g, day * 1440 + 405);
+    const scenes = g.s.log.filter((l) => l.kind === 'overheard');
+    expect(scenes).toHaveLength(day + 1);
+    const scene = DAILY_INCIDENTS[day]!;
+    const belief = credence(g.s.people.hatice!, `${scene.target}:${scene.trait}`);
+    expect(scene.value ? belief : 1 - belief).toBeGreaterThan(0.9);
+    expect(new Set(scenes.map((l) => l.target)).size).toBe(day + 1);
+    expect(g.s.newsWaiting).toBe(true);
+    const q = g.s.log.findLast((l) => l.kind === 'question');
+    expect(g.s.locations[q!.speaker!]).toBe('garden');
+    expect(q?.text).toBe(scene.question);
+  }
+});
+
+it('collects repeated visible claims into one daily echo with count and speakers', () => {
+  const g = newGame(3);
+  advance(g, 1380);
+  const echoes = g.s.log.filter((l) => l.kind === 'echo');
+  expect(echoes.length).toBeGreaterThan(0);
+  expect(echoes.every((l) => /again.*\d|\d.*again/.test(l.text))).toBe(true);
+  expect(echoes.every((l) => /heard from/.test(l.text))).toBe(true);
+  expect(new Set(echoes.map((l) => `${l.target}:${l.text.split('heard again')[0]}`)).size).toBe(
+    echoes.length,
+  );
+});
+
+it('seeing a contradiction traces a lie and costs trust across the witness household', () => {
+  const g = newGame(8);
+  advance(g, 405);
+  act(g, { type: 'tell', listener: 'ayse', target: 'emre', trait: 'dishonest' });
+  const before = trustOf(g.s.people.riza!, 'hatice');
+  advance(g, 1080);
+  expect(trustOf(g.s.people.riza!, 'hatice')).toBeLessThan(before);
+  const confrontation = g.s.log.find((l) => l.kind === 'confrontation' && l.speaker === 'emre');
+  expect(confrontation?.at).toBe(1080);
+  expect(confrontation?.text).toContain('Mother,');
+  expect(g.s.locations.emre).toBe('garden');
+  expect(trustOf(g.s.people.elif!, 'hatice')).toBeLessThan(before);
+  expect(trustOf(g.s.people.ayse!, 'hatice')).toBeLessThan(before);
+});
+
+const policySeeds = [1, 2, 3, 8, 13];
+it('careful honest play wins a majority of seeded engagements', () => {
+  const states = policySeeds.map((seed) => runPolicy(seed, 'careful').s);
+  expect(states.filter((s) => s.engagement === 'accepted').length).toBeGreaterThan(policySeeds.length / 2);
+});
+it('reckless lies lose the engagement and empty the garden for a majority of seeds', () => {
+  const states = policySeeds.map((seed) => runPolicy(seed, 'reckless').s);
+  expect(states.filter((s) => s.engagement === 'refused' && s.garden === 'empty').length).toBeGreaterThan(
+    policySeeds.length / 2,
+  );
+});
+it('a few distant lies can still win a majority of seeded cunning runs', () => {
+  const states = policySeeds.map((seed) => runPolicy(seed, 'cunning').s);
+  expect(states.filter((s) => s.engagement === 'accepted').length).toBeGreaterThan(policySeeds.length / 2);
+  expect(states.every((s) => s.routes.some((r) => r.from === 'hatice' && r.lie))).toBe(true);
+});
+
+// A contradicted account in another household is not knowledge Rıza possesses.
+it('does not let an unseen contradiction veto Rıza’s decision', () => {
+  const g = runPolicy(11, 'careful', 12 * 1440 + 1185);
+  const root = g.s.routes.find((r) => r.from === 'hatice' && r.to === 'riza')!;
+  root.contradictedAt = g.s.minute;
+  root.contradictedHouseholds = [7];
+  advance(g, 12 * 1440 + 1200);
+  expect(g.s.engagement).toBe('accepted');
+});
+
+it('keeps equivalent opposite-form testimony attached to Hatice’s route', () => {
+  const g = newGame(3);
+  advance(g, 405);
+  act(g, { type: 'tell', listener: 'ayse', target: 'emre', trait: 'lazy' });
+  const root = g.s.routes.at(-1)!;
+  advance(g, 1020);
+  expect(
+    g.s.routes.some(
+      (r) => r.trait === 'hardworking' && r.value === false && r.origin === 'hatice' && r.root === root.id,
+    ),
+  ).toBe(true);
+});

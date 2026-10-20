@@ -1,4 +1,4 @@
-import type { Affordance } from '@adam0white/human-framework';
+import type { Affordance, Percept } from '@adam0white/human-framework';
 import {
   applyReputationBelief,
   begin,
@@ -55,7 +55,8 @@ const bad: Record<string, Trait> = {
 };
 
 import { hash } from './hash.ts';
-import { receiveTestimony } from './testimony.ts';
+import { DAILY_INCIDENTS } from './incidents.ts';
+import { completeClaims, OPPOSITE, receiveTestimony } from './testimony.ts';
 import { say } from './voices.ts';
 
 const prop = (target: string, trait: string) => `${target}:${trait}`;
@@ -82,15 +83,156 @@ function line(s: State, kind: string, text: string, speaker?: string, target?: s
 function answer(s: State, id: string, detail: string, target?: string) {
   const spoken = say(s, id, 'reply', detail);
   if (spoken) line(s, 'answer', spoken, id, target);
-  else
+  else {
+    const day = Math.floor(s.minute / 1440);
+    const text = `${PEOPLE.find((p) => p.id === id)?.name} considers your words. ${detail}`;
+    const previous = s.log.findLast((l) => Math.floor(l.at / 1440) === day && l.text.startsWith(text));
+    if (previous) {
+      previous.count = (previous.count ?? 1) + 1;
+      previous.kind = 'echo';
+      previous.who = [id];
+      previous.text = `${text} The same answer was heard again ${previous.count - 1} times today; heard from ${PEOPLE.find((p) => p.id === id)?.name}.`;
+    } else line(s, 'answer', text, undefined, target);
+  }
+}
+function rootOf(s: State, route: Route): Route {
+  if (route.root) return s.routes[route.root - 1]!;
+  let root = route;
+  const visited = new Set<number>();
+  while (root.parent && !visited.has(root.id)) {
+    visited.add(root.id);
+    const parent = s.routes[root.parent - 1];
+    if (!parent || parent.to !== root.from || parent.target !== root.target) break;
+    root = parent;
+  }
+  return root;
+}
+
+function contradict(s: State, listener: string, proposition: string, truth: boolean, source?: string) {
+  const [target, trait] = proposition.split(':');
+  for (const r of s.routes.filter(
+    (r) =>
+      r.to === listener &&
+      r.target === target &&
+      ((r.trait === trait && r.value !== truth) || (OPPOSITE[r.trait] === trait && r.value === truth)) &&
+      !r.retractionOf &&
+      !r.retractedAt &&
+      (!source || r.from === source),
+  )) {
+    const root = rootOf(s, r);
+    if (root.from !== 'hatice') continue;
+    const household = PEOPLE.find((p) => p.id === listener)!.household;
+    root.contradictedHouseholds ??= [];
+    if (root.contradictedHouseholds.includes(household)) continue;
+    root.contradictedHouseholds.push(household);
+    root.contradictedAt ??= s.minute;
+    for (const member of PEOPLE.filter((p) => p.household === household && p.id !== 'hatice'))
+      s.people[member.id]!.memory.sourceTrust.hatice = Math.max(
+        0,
+        trustOf(s.people[member.id]!, 'hatice') - 0.18,
+      );
+    if (!s.confronted.includes(root.id) && !s.pendingConfrontations!.some((p) => p.root === root.id)) {
+      const evening = Math.floor(s.minute / 1440) * 1440 + 1080;
+      s.pendingConfrontations!.push({ root: root.id, due: evening < s.minute ? evening + 1440 : evening });
+    }
     line(
       s,
-      'answer',
-      `${PEOPLE.find((p) => p.id === id)?.name} considers your words. ${detail}`,
-      undefined,
+      'contradiction',
+      `${PEOPLE.find((p) => p.id === listener)!.name} finds that the claim about ${PEOPLE.find((p) => p.id === target)!.name} was wrong and follows its source back to Hatice. Their household no longer trusts her account.`,
+      listener,
       target,
     );
+  }
 }
+
+function observe(s: State, id: string, target: string, trait: Trait, truth: boolean) {
+  confirm(s.people[id]!, prop(target, trait), truth, s.minute);
+  contradict(s, id, prop(target, trait), truth);
+  const opposite = OPPOSITE[trait];
+  if (opposite) {
+    confirm(s.people[id]!, prop(target, opposite), !truth, s.minute);
+    contradict(s, id, prop(target, opposite), !truth);
+  }
+}
+
+function deliver(s: State, listener: string, percepts: Percept[]) {
+  const p = s.people[listener]!;
+  const observed = completeClaims(percepts).flatMap((pc) =>
+    (pc.claims ?? []).flatMap((c) => {
+      const own = p.memory.beliefs
+        .find((b) => b.prop === c.prop)
+        ?.sources.find((source) => source.id === listener || source.id === 'self');
+      return own && own.value !== c.value ? [{ proposition: c.prop, truth: own.value }] : [];
+    }),
+  );
+  receiveTestimony(p, percepts, (proposition, truth, source) =>
+    contradict(s, listener, proposition, truth, source),
+  );
+  // An account cannot displace an act the listener already witnessed.
+  for (const fact of observed) {
+    const [target, trait] = fact.proposition.split(':');
+    observe(s, listener, target!, trait as Trait, fact.truth);
+  }
+}
+
+function visibleClaim(s: State, from: string, to: string, target: string, trait: string, value: boolean) {
+  s.heardClaims ??= {};
+  const spokenTrait = !value && OPPOSITE[trait] ? OPPOSITE[trait]! : trait;
+  const spokenValue = !value && OPPOSITE[trait] ? true : value;
+  const key = `${Math.floor(s.minute / 1440)}:${target}:${spokenTrait}:${spokenValue}`;
+  s.heardClaims[key] ??= { count: 0, who: [] };
+  const heard = s.heardClaims[key];
+  heard.count++;
+  if (!heard.who.includes(from)) heard.who.push(from);
+  const claim = `${PEOPLE.find((p) => p.id === target)?.name ?? 'Our neighbour'} ${spokenValue ? 'is' : 'is not'} ${spokenTrait}`;
+  if (heard.count === 1) {
+    const text = say(s, from, 'reply', `${claim}. That is what I am telling you.`);
+    if (text) line(s, to === 'hatice' ? 'rumour' : 'conversation', text, from, target);
+    else line(s, 'conversation', `${PEOPLE.find((p) => p.id === from)!.name} says ${claim}.`, from, target);
+  } else {
+    if (!heard.echo) {
+      line(s, 'echo', '', undefined, target);
+      heard.echo = s.log.length;
+    }
+    const echo = s.log[heard.echo - 1]!;
+    echo.count = heard.count - 1;
+    echo.who = [...heard.who];
+    echo.text = `${claim}: heard again ${echo.count} time${echo.count === 1 ? '' : 's'} today; heard from ${heard.who.map((id) => PEOPLE.find((p) => p.id === id)!.name).join(', ')}.`;
+  }
+}
+
+function confrontHatice(s: State, root: Route, recipient: string) {
+  const target = PEOPLE.find((p) => p.id === root.target)!;
+  const personal: Record<string, string> = {
+    emre: 'Mother, you know how I work and what I return. Why did you tell people otherwise?',
+    riza: 'I must be able to trust the family Elif joins. Your account did not hold up.',
+    elif: 'You spoke about me without asking me. How am I meant to join your family now?',
+    osman: 'We share a house, Hatice. You could have spoken to me at home.',
+    kemal: 'People have stopped coming to my shop. I came to ask what you told them.',
+  };
+  s.locations[target.id] = 'garden';
+  const spoken = say(
+    s,
+    target.id,
+    'opening',
+    personal[target.id] ??
+      `I spoke to ${PEOPLE.find((p) => p.id === recipient)?.name ?? 'our neighbours'} about your account of me. You should have asked me first.`,
+  );
+  line(
+    s,
+    'confrontation',
+    `${target.name} comes to your table. “${spoken ?? personal[target.id] ?? `You spoke about me as ${root.trait}. I followed that account back to you. Explain it to me here.`}” The neighbours take their cups away. The benches will stay empty for a day.`,
+    target.id,
+    'hatice',
+  );
+  s.closedUntil = Math.max(s.closedUntil, s.minute + 1440);
+  for (const witness of present(s).filter((p) => p.id !== 'hatice'))
+    s.people[witness.id]!.memory.sourceTrust.hatice = Math.max(
+      0,
+      trustOf(s.people[witness.id]!, 'hatice') - 0.06,
+    );
+}
+
 export function newGame(seed: number): Game {
   const s: State = {
     version: 1,
@@ -111,6 +253,9 @@ export function newGame(seed: number): Game {
     silence: {},
     confronted: [],
     greetings: {},
+    groundTruth: { 'emre:honest': true, 'emre:reliable': true },
+    pendingConfrontations: [],
+    heardClaims: {},
   };
   for (const [i, p] of PEOPLE.entries()) {
     s.people[p.id] = createPerson({
@@ -156,7 +301,7 @@ function place(s: State) {
     if (s.minute === 720 && p.id === 'riza') location = 'garden';
     if (
       location === 'grocer' &&
-      !['kemal', 'ayse', 'murat'].includes(p.id) &&
+      !['kemal', 'zehra', 'murat'].includes(p.id) &&
       ['dishonest', 'cruel', 'stingy', 'unreliable'].some(
         (t) => credence(s.people[p.id]!, prop('kemal', t)) > 0.7,
       )
@@ -164,7 +309,7 @@ function place(s: State) {
       location = 'bakery';
     if (
       location === 'bakery' &&
-      !['riza', 'elif', 'zehra'].includes(p.id) &&
+      !['riza', 'elif', 'ayse'].includes(p.id) &&
       ['dishonest', 'cruel', 'stingy', 'unreliable'].some(
         (t) => credence(s.people[p.id]!, prop('riza', t)) > 0.7,
       )
@@ -177,11 +322,28 @@ export function present(s: State) {
   return PEOPLE.filter((p) => ['garden', 'fountain'].includes(s.locations[p.id]!));
 }
 function route(s: State, from: string, to: string, target: string, trait: Trait, lie: boolean, value = true) {
-  const prior = [...s.routes]
-    .reverse()
-    .find((r) => r.to === from && r.target === target && r.trait === trait && r.value === value);
+  const belief = s.people[from]!.memory.beliefs.find((b) => b.prop === prop(target, trait));
+  const firsthand = belief?.sources.some(
+    (source) => (source.id === from || source.id === 'self') && source.value === value,
+  );
+  const prior =
+    from === 'hatice' || firsthand
+      ? undefined
+      : [...s.routes]
+          .reverse()
+          .find(
+            (r) =>
+              r.to === from &&
+              r.target === target &&
+              !r.retractedAt &&
+              !r.retractionOf &&
+              ((r.trait === trait && r.value === value) ||
+                (OPPOSITE[r.trait] === trait && r.value !== value)) &&
+              belief?.sources.some((source) => source.id === r.from),
+          );
   const r: Route = {
     id: s.routes.length + 1,
+    root: prior ? rootOf(s, prior).id : s.routes.length + 1,
     ...(prior ? { parent: prior.id } : {}),
     value,
     at: s.minute,
@@ -191,22 +353,24 @@ function route(s: State, from: string, to: string, target: string, trait: Trait,
     trait,
     origin: prior?.origin ?? from,
     steps: prior?.steps ?? 0,
-    lie,
+    lie: lie || (prior?.lie ?? false),
   };
   const ladder: Partial<Record<Trait, Trait>> = {
     lazy: 'unreliable',
     unreliable: 'dishonest',
     stingy: 'cruel',
   };
+  const bendTrait = (value ? trait : OPPOSITE[trait]) as Trait | undefined;
   if (
     from !== 'hatice' &&
     s.people[from]!.traits.honesty < 0.3 &&
     r.steps < 2 &&
-    value &&
-    ladder[trait] &&
+    bendTrait &&
+    ladder[bendTrait] &&
     hash(`${s.seed}:${s.minute}:${from}:${to}:${trait}`) % 3 === 0
   ) {
-    r.trait = ladder[trait]!;
+    r.trait = ladder[bendTrait]!;
+    r.value = true;
     r.steps++;
   }
   s.routes.push(r);
@@ -220,7 +384,7 @@ function talk(s: State, from: string, to: string) {
     at: s.minute,
     placeId: s.locations[from],
     maxClaims: 1,
-    topics: ['kemal'],
+    topics: [DAILY_INCIDENTS[Math.min(13, Math.floor(s.minute / 1440))]!.target, 'emre'],
     temptations: a.traits.honesty < 0.3 ? [{ prop: 'kemal:cruel', value: true, gain: 0.9 }] : [],
   });
 
@@ -229,24 +393,21 @@ function talk(s: State, from: string, to: string) {
   for (const c of result.claims) {
     if (c.about && c.prop.split(':')[1]) {
       const r = route(s, from, to, c.about, c.prop.split(':')[1] as Trait, c.deceit, c.value);
-      if (r.trait !== c.prop.split(':')[1]) {
+      if (r.trait !== c.prop.split(':')[1] || r.value !== c.value) {
         for (const percept of result.told)
           for (const claim of percept.claims ?? [])
-            if (claim.prop === c.prop) claim.prop = prop(c.about, r.trait);
+            if (claim.prop === c.prop) {
+              claim.prop = prop(c.about, r.trait);
+              claim.value = r.value;
+            }
         c.prop = prop(c.about, r.trait);
+        c.value = r.value;
       }
     }
-    if (['garden', 'fountain'].includes(s.locations[from]!)) {
-      const text = say(
-        s,
-        from,
-        'reply',
-        `${PEOPLE.find((p) => p.id === c.about)?.name ?? 'Our neighbour'} ${c.value ? 'is' : 'is not'} ${c.prop.split(':')[1]}. That is what I am telling you.`,
-      );
-      if (text) line(s, to === 'hatice' ? 'rumour' : 'conversation', text, from, c.about);
-    }
+    if (['garden', 'fountain'].includes(s.locations[from]!))
+      visibleClaim(s, from, to, c.about ?? '', c.prop.split(':')[1]!, c.value);
   }
-  receiveTestimony(b, result.told);
+  deliver(s, to, result.told);
   if (result.norms.length)
     recordDeed(
       a,
@@ -394,7 +555,8 @@ export function act(g: Game, input: Input): boolean {
           : []),
       ],
     };
-    receiveTestimony(s.people[input.listener]!, [percept]);
+    route(s, 'hatice', input.listener, input.target, trait, lie, value);
+    deliver(s, input.listener, [percept]);
     recordDeed(
       own,
       {
@@ -410,7 +572,6 @@ export function act(g: Game, input: Input): boolean {
       s.minute,
       true,
     );
-    route(s, 'hatice', input.listener, input.target, trait, lie, value);
     line(
       s,
       'answer',
@@ -507,21 +668,21 @@ function step(s: State) {
   }
   const t = s.minute % 1440,
     day = Math.floor(s.minute / 1440);
-  if (s.minute === 390) {
-    s.locations.ayse = 'grocer';
-    confirm(s.people.hatice!, 'kemal:dishonest', true, s.minute);
-    confirm(s.people.hatice!, 'kemal:honest', false, s.minute);
-    line(
-      s,
-      'overheard',
-      'Behind the grocer’s shutter, Kemal tells Ayşe: “Mix yesterday’s old flour into the new sacks. They will not notice.” You heard him yourself.',
-      'kemal',
-      'kemal',
-    );
+  const incident = DAILY_INCIDENTS[day];
+  if (incident && t === incident.at) {
+    s.locations[incident.target] = incident.place;
+    if (day === 0) s.locations.zehra = incident.place;
+    s.groundTruth![prop(incident.target, incident.trait)] = incident.value;
+    observe(s, 'hatice', incident.target, incident.trait, incident.value);
+    observe(s, incident.target, incident.target, incident.trait, incident.value);
+    if (day === 0) observe(s, 'zehra', incident.target, incident.trait, incident.value);
   }
-  if (s.minute === 405) {
+  if (incident && t === incident.questionAt) {
+    s.locations[incident.listener] = 'garden';
+    // Fatma's opening invitation remains alongside the concrete daily question.
+    if (day === 0) line(s, 'question', 'Any news this morning, Hatice?', 'fatma');
     s.newsWaiting = true;
-    line(s, 'question', 'Any news this morning, Hatice? You hear everything beside this fountain.', 'fatma');
+    line(s, 'question', incident.question, incident.listener, incident.target);
   }
   if (s.minute === 420) {
     s.locations.kemal = 'fountain';
@@ -578,12 +739,11 @@ function step(s: State) {
   );
   if (visitors.length)
     talk(s, visitors[hash(`${s.seed}:${s.minute}:visitor`) % visitors.length]!.id, 'hatice');
-  if (t === 765) {
+  if (t === 765 && day === 0) {
     // Only people at the fountain actually see the helpful act.
     s.locations.kemal = 'fountain';
     for (const p of present(s)) {
-      confirm(s.people[p.id]!, 'kemal:cruel', false, s.minute);
-      confirm(s.people[p.id]!, 'kemal:kind', true, s.minute);
+      observe(s, p.id, 'kemal', 'kind', true);
     }
     line(
       s,
@@ -594,10 +754,41 @@ function step(s: State) {
   }
   if (t === 510 && day > 0) {
     for (const p of PEOPLE.filter((p) => s.locations[p.id] === 'grocer')) {
-      confirm(s.people[p.id]!, 'kemal:dishonest', true, s.minute);
-      confirm(s.people[p.id]!, 'kemal:honest', false, s.minute);
+      observe(s, p.id, 'kemal', 'dishonest', true);
     }
   }
+  if (t === 1020) {
+    s.locations.emre = 'garden';
+    for (const witness of present(s)) {
+      observe(s, witness.id, 'emre', 'honest', true);
+      observe(s, witness.id, 'emre', 'reliable', true);
+    }
+    if (
+      s.routes.some(
+        (r) => r.target === 'emre' && r.origin === 'hatice' && isUnfavourableTrait(r.trait, r.value),
+      )
+    )
+      line(
+        s,
+        'truth',
+        'Emre arrives at the promised hour, returns the borrowed tools and the unused money, and counts it out in front of the table. Rıza can see him from the fountain.',
+        'emre',
+        'emre',
+      );
+  }
+  const due = s.pendingConfrontations!.filter((p) => p.due <= s.minute);
+  const shown = new Set<string>();
+  for (const pending of due) {
+    const root = s.routes[pending.root - 1]!;
+    if (s.confronted.includes(root.id)) continue;
+    s.confronted.push(root.id);
+    root.confrontedAt = s.minute;
+    if (!shown.has(root.target)) {
+      confrontHatice(s, root, root.to);
+      shown.add(root.target);
+    }
+  }
+  s.pendingConfrontations = s.pendingConfrontations!.filter((p) => p.due > s.minute);
   if (t === 1080) {
     for (const id of ['kemal', 'riza']) {
       const reputation =
@@ -631,14 +822,7 @@ function step(s: State) {
           r.to !== target.id,
       );
       if (!heard) continue;
-      let root = heard;
-      const visited = new Set<number>();
-      while (root.parent && !visited.has(root.id)) {
-        visited.add(root.id);
-        const parent = s.routes.find((r) => r.id === root.parent);
-        if (!parent || parent.to !== root.from || parent.target !== root.target) break;
-        root = parent;
-      }
+      const root = rootOf(s, heard);
       if (s.confronted.includes(root.id)) continue;
       s.confronted.push(root.id);
       root.confrontedAt = s.minute;
@@ -651,28 +835,7 @@ function step(s: State) {
         byMe: false,
         magnitude: 0.6,
       });
-      if (root.from === 'hatice') {
-        s.locations[target.id] = 'garden';
-        s.closedUntil = s.minute + 1440;
-        for (const witness of present(s))
-          s.people[witness.id]!.memory.sourceTrust.hatice = Math.max(
-            0,
-            trustOf(s.people[witness.id]!, 'hatice') - 0.06,
-          );
-        answer(
-          s,
-          target.id,
-          `I met ${PEOPLE.find((p) => p.id === heard.to)?.name} and asked who called me ${heard.trait}. I followed each name back to you. Speak to me before you speak about me.`,
-          'hatice',
-        );
-        line(
-          s,
-          'confrontation',
-          `${target.name} leaves your gate. The neighbours carry their cups away. The benches will stay empty until tomorrow evening.`,
-          target.id,
-          'hatice',
-        );
-      }
+      if (root.from === 'hatice') confrontHatice(s, root, heard.to);
     }
   }
   const fountain = PEOPLE.filter((p) => s.locations[p.id] === 'fountain');
@@ -710,19 +873,33 @@ function step(s: State) {
           : occupancy > 0.4
             ? 'quiet'
             : 'empty';
+  if (incident && t === incident.at) {
+    line(
+      s,
+      'overheard',
+      `${incident.text} You witness this yourself. ${PEOPLE.find((p) => p.id === incident.listener)!.name} would care about this.`,
+      incident.target,
+      incident.target,
+    );
+  }
   if (day >= 12 && t === 1200 && s.engagement === 'waiting') {
     s.locations.riza = 'garden';
     s.locations.emre = 'garden';
     const r = s.people.riza!;
-    const cousin = credence(r, 'kemal:dishonest');
-    const household = credence(r, 'emre:dishonest');
-    s.engagement = trustOf(r, 'hatice') > 0.57 && cousin < 0.82 && household < 0.65 ? 'accepted' : 'refused';
+    const honesty = (credence(r, 'emre:honest') + 1 - credence(r, 'emre:dishonest')) / 2;
+    const reliability = (credence(r, 'emre:reliable') + 1 - credence(r, 'emre:unreliable')) / 2;
+    const trust = trustOf(r, 'hatice');
+    const traced = s.routes.filter(
+      (root) => root.from === 'hatice' && root.contradictedHouseholds?.includes(1),
+    ).length;
+    s.engagement =
+      trust > 0.57 && honesty > 0.45 && reliability > 0.45 && traced === 0 ? 'accepted' : 'refused';
     line(
       s,
       'engagement',
       s.engagement === 'accepted'
         ? 'Rıza sits beside Emre. “Come with your mother on Sunday. Let us talk about the wedding.”'
-        : 'Rıza returns Emre’s cup untouched. “Our families should leave this here.”',
+        : `Rıza returns Emre’s cup untouched. “${traced ? 'An account traced to you reached my household and proved false. I cannot build a family on that.' : trust <= 0.57 ? 'I cannot rely on your word, Hatice.' : 'I still have doubts about Emre keeping his word.'} Our families should leave this here.”`,
       'riza',
     );
   }
@@ -763,6 +940,9 @@ export function load(data: string): Game {
   g.s.silence ??= {};
   g.s.confronted ??= [];
   g.s.greetings ??= {};
+  g.s.groundTruth ??= { 'emre:honest': true, 'emre:reliable': true };
+  g.s.pendingConfrontations ??= [];
+  g.s.heardClaims ??= {};
   return g;
 }
 export function fingerprint(s: State) {

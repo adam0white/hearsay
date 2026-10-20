@@ -1,7 +1,7 @@
 import { act, advance, newGame, view } from '../src/sim/game.ts';
 import type { Game, Input } from '../src/sim/types.ts';
 
-export type Policy = 'quiet' | 'careful' | 'reckless';
+export type Policy = 'quiet' | 'careful' | 'reckless' | 'cunning';
 
 /** Policies use only people and talk visible from the garden. */
 export function policyStep(g: Game, policy: Policy) {
@@ -13,7 +13,14 @@ export function policyStep(g: Game, policy: Policy) {
   let input: Input;
   if (policy === 'quiet') {
     input = g.s.newsWaiting ? { type: 'hold-tongue' } : { type: 'ask', listener, target: 'emre' };
-  } else if (policy === 'careful') {
+  } else if (
+    policy === 'cunning' &&
+    g.s.minute < 1440 &&
+    v.present.includes('murat') &&
+    !g.inputs.some((entry) => entry.input.type === 'tell')
+  ) {
+    input = { type: 'tell', listener: 'murat', target: 'leyla', trait: 'stingy' };
+  } else if (policy === 'careful' || policy === 'cunning') {
     input = { type: 'defend', listener, target: 'emre', trait: 'reliable' };
   } else {
     input = { type: 'tell', listener, target: 'emre', trait: 'dishonest' };

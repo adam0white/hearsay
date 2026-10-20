@@ -68,10 +68,11 @@ it('amends change belief and standing; hold-tongue cannot be farmed', () => {
   expect(trustOf(p, 'hatice')).toBeLessThan(trust);
   expect(act(g, { type: 'hold-tongue' })).toBe(false);
 });
-it('claims change greetings only when the listener heard one', () => {
+it('cold greetings follow a confident damaging belief, including spontaneous testimony', () => {
   const quiet = newGame(8);
   advance(quiet, 420);
-  expect(quiet.s.log.some((l) => l.kind === 'cold-greeting')).toBe(false);
+  for (const greeting of quiet.s.log.filter((l) => l.kind === 'cold-greeting'))
+    expect(credence(quiet.s.people[greeting.speaker!]!, `${greeting.target}:dishonest`)).toBeGreaterThan(0.6);
   const told = newGame(8);
   advance(told, 405);
   act(told, { type: 'tell', listener: 'fatma', target: 'kemal', trait: 'dishonest' });

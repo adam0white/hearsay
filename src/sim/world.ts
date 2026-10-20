@@ -64,9 +64,9 @@ const jobs = [
   'Retired porter',
   'Baker',
   'Student',
-  'Bakery assistant',
-  'Grocer',
   'Grocer’s assistant',
+  'Grocer',
+  'Bakery assistant',
   'Courier',
   'Seamstress',
   'Teacher',
@@ -99,9 +99,9 @@ export const PEOPLE: Neighbor[] = families.flatMap((names, h) =>
     return {
       id: ids[i]!,
       name,
-      household: h,
+      household: ids[i] === 'zehra' ? 2 : ids[i] === 'ayse' ? 1 : h,
       job: jobs[i]!,
-      home: `home-${h}`,
+      home: `home-${ids[i] === 'zehra' ? 2 : ids[i] === 'ayse' ? 1 : h}`,
       norm: ['ayse', 'selma', 'orhan', 'murat'].includes(ids[i] ?? '')
         ? 'permitted'
         : i % 2 === 0 || i === 9
@@ -117,9 +117,9 @@ export const SCHEDULES: Record<string, readonly string[]> = {
   osman: ['bakery', 'coffee', 'garden', 'doorsteps', 'fountain', 'courtyard', 'home'],
   riza: ['bakery', 'bakery', 'garden', 'bakery', 'fountain', 'coffee', 'home'],
   elif: ['bakery', 'doorsteps', 'fountain', 'tailor', 'garden', 'doorsteps', 'home'],
-  zehra: ['bakery', 'grocer', 'bakery', 'bakery', 'garden', 'doorsteps', 'home'],
+  zehra: ['garden', 'grocer', 'grocer', 'tailor', 'fountain', 'doorsteps', 'home'],
   kemal: ['grocer', 'grocer', 'grocer', 'grocer', 'fountain', 'coffee', 'home'],
-  ayse: ['garden', 'grocer', 'grocer', 'tailor', 'fountain', 'doorsteps', 'home'],
+  ayse: ['garden', 'grocer', 'bakery', 'bakery', 'garden', 'doorsteps', 'home'],
   murat: ['bakery', 'grocer', 'garden', 'doorsteps', 'coffee', 'fountain', 'home'],
   fatma: ['garden', 'tailor', 'fountain', 'tailor', 'garden', 'courtyard', 'home'],
   hasan: ['bakery', 'doorsteps', 'garden', 'coffee', 'fountain', 'doorsteps', 'home'],
