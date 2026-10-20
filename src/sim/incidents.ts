@@ -199,3 +199,37 @@ export const DAILY_INCIDENTS: readonly DailyIncident[] = [
     questionAt: 405,
   },
 ];
+
+const TITLES = [
+  'The flour',
+  'Ali’s overpayment',
+  'Meryem’s cart',
+  'The breakfast parcel',
+  'The school bread',
+  'The spare jar',
+  'Selin’s sleeve',
+  'The late bus',
+  'The broken clippers',
+  'Cem’s van',
+  'Ece’s reading',
+  'The memorial flowers',
+  'The missing cups',
+  'Meryem’s bags',
+];
+
+/** IDs stay fixed across saves. The basket is an extra witnessed scene on day one. */
+export function storyScene(id: number) {
+  if (id === 15)
+    return {
+      id,
+      day: 1,
+      at: 765,
+      title: 'Kemal’s basket',
+      target: 'kemal',
+      trait: 'kind' as Trait,
+      value: true,
+      detail: 'Kemal carried Safiye’s heavy basket up the hill and stopped to help her',
+    };
+  const scene = DAILY_INCIDENTS.find((scene) => scene.day === id);
+  return scene ? { ...scene, id, title: TITLES[id - 1]! } : undefined;
+}

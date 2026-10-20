@@ -11,6 +11,7 @@ export class HearsayAdapter {
   speed = 1;
   paceAnswers: string[] = [];
   byInput = new Map<number, string>();
+  replyActions = new Map<number, string>();
   offered = new Map<string, Input | number>();
   constructor(seed: number) {
     this.game = newGame(seed);
@@ -21,8 +22,8 @@ export class HearsayAdapter {
     const events = v.lines
       .filter((line) => line.n >= this.seen)
       .map((line) => {
-        const input = this.byInput.get(line.n);
-        const refused = line.kind === 'refusal' && input !== undefined;
+        const input = line.reply ? this.replyActions.get(line.reply.to) : this.byInput.get(line.n);
+        const refused = (line.reply?.believes === 'refuse' || line.kind === 'refusal') && input !== undefined;
         // Consequences for another neighbour are news, not harm to Hatice.
         const adverse =
           ['confrontation', 'cold-greeting'].includes(line.kind) &&
@@ -35,10 +36,12 @@ export class HearsayAdapter {
           valence: adverse ? -0.55 : refused ? -0.15 : 0,
           salience: adverse || refused ? 0.8 : 0.55,
           answers: input ? [input] : false,
+          ...(line.reply ? { reply: line.reply } : {}),
         };
       });
     for (const line of v.lines) this.seen = Math.max(this.seen, line.n + 1);
     for (const n of this.byInput.keys()) if (n < this.seen) this.byInput.delete(n);
+    for (const line of v.lines) if (line.n < this.seen && line.reply) this.replyActions.delete(line.reply.to);
     for (const id of this.paceAnswers.splice(0))
       events.push({
         kind: 'pace',
@@ -50,27 +53,31 @@ export class HearsayAdapter {
       });
     const day = Math.floor(v.minute / 1440) + 1;
     const clock = `Day ${day} ${Math.floor((v.minute % 1440) / 60)}:${String(v.minute % 60).padStart(2, '0')}`;
+    const closingQuestion = v.days?.at(-1)?.question;
+    const loops: string[] = [];
+    if (!v.ended) {
+      if (v.question) loops.push(v.question);
+      loops.push(
+        v.riza?.line ??
+          (v.engagement === 'waiting'
+            ? 'Emre hopes to marry Elif. Rıza has yet to decide.'
+            : v.engagement === 'accepted'
+              ? 'Rıza agreed to the marriage. The fortnight continues.'
+              : 'Rıza refused the engagement. The fortnight continues.'),
+      );
+      if (closingQuestion) loops.push(closingQuestion);
+    }
     return {
       clock,
       phase: v.ended ? 'review' : 'play',
       goal: v.ended ? '' : 'Keep your word good. See Emre married.',
-      next: v.ended ? '' : (v.question ?? 'Tap a person. Choose what to say.'),
+      next: v.ended ? '' : (v.question ?? closingQuestion ?? 'Tap a person. Choose what to say.'),
       chapter: `day ${day}`,
       events,
       features: { pressure: v.question ? 0.6 : 0.1, openLoop: v.ended ? 0 : 0.65 },
       over: v.ended,
       ...(v.ended ? { outcome: v.engagement === 'accepted' ? ('win' as const) : ('loss' as const) } : {}),
-      loops: v.question
-        ? [v.question]
-        : v.ended
-          ? []
-          : [
-              v.engagement === 'waiting'
-                ? 'Emre hopes to marry Elif. Rıza has yet to decide.'
-                : v.engagement === 'accepted'
-                  ? 'Rıza agreed to the marriage. The fortnight continues.'
-                  : 'Rıza refused the engagement. The fortnight continues.',
-            ],
+      loops,
     };
   }
 
@@ -86,6 +93,7 @@ export class HearsayAdapter {
       mischief?: boolean;
     }[] = [];
     const add = (id: string, label: string, input: Input, promise: number) => {
+      if (this.offered.has(id)) return;
       this.offered.set(id, input);
       actions.push({ id, label, kind: input.type, promise });
     };
@@ -97,9 +105,10 @@ export class HearsayAdapter {
           (input) =>
             'listener' in input &&
             input.listener === listener &&
-            'target' in input &&
-            input.target === target &&
-            ['tell', 'defend', 'make-amends'].includes(input.type),
+            (input.type === 'tell-story'
+              ? v.stories?.find((story) => story.id === input.incident)?.target === target
+              : 'target' in input && input.target === target) &&
+            ['tell', 'tell-story', 'defend', 'make-amends'].includes(input.type),
         );
       return last && last.type !== 'make-amends' ? 0.4 : 0.05;
     };
@@ -141,6 +150,22 @@ export class HearsayAdapter {
     const observedTrait = incident && (incident.value ? incident.trait : opposites[incident.trait]);
     for (const listener of v.present) {
       const name = v.people.find((p) => p.id === listener)?.name ?? listener;
+      for (const story of v.stories ?? []) {
+        if (story.target === listener) continue;
+        add(
+          `tell-story:${listener}:${story.id}`,
+          `Tell ${name}: ${story.title}`,
+          { type: 'tell-story', listener, incident: story.id },
+          0.65,
+        );
+        const subject = v.people.find((person) => person.id === story.target)?.name ?? story.target;
+        add(
+          `amends:${listener}:${story.target}`,
+          `Make amends to ${subject} with ${name}`,
+          { type: 'make-amends', listener, target: story.target },
+          amendsPromise(listener, story.target),
+        );
+      }
       if (listener !== 'kemal') {
         add(
           `ask:${listener}:kemal`,
@@ -239,8 +264,17 @@ export class HearsayAdapter {
       return;
     }
     const n = this.game.s.log.length;
-    act(this.game, input);
-    for (const line of this.game.s.log.slice(n)) this.byInput.set(line.id, id);
+    const inputIndex = this.game.inputs.length;
+    if (!act(this.game, input)) return;
+    const lines = this.game.s.log.slice(n);
+    if (lines.some((line) => line.kind === 'reply' && line.reply?.to === inputIndex))
+      this.replyActions.set(inputIndex, id);
+    else {
+      const answer =
+        lines.find((line) => line.kind === 'answer' && line.speaker !== 'hatice') ??
+        lines.find((line) => line.kind === 'answer');
+      if (answer) this.byInput.set(answer.id, id);
+    }
   }
 
   advance(seconds: number) {

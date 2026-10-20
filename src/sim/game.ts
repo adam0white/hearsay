@@ -17,7 +17,7 @@ import {
   trustOf,
   understandNorm,
 } from '@adam0white/human-framework';
-import type { Game, Input, LoggedInput, Route, State, Trait } from './types.ts';
+import type { Game, Input, Line, LoggedInput, Route, State, Trait } from './types.ts';
 
 export * from './types.ts';
 export { PEOPLE, PLACES } from './world.ts';
@@ -55,7 +55,7 @@ const bad: Record<string, Trait> = {
 };
 
 import { hash } from './hash.ts';
-import { DAILY_INCIDENTS } from './incidents.ts';
+import { DAILY_INCIDENTS, storyScene } from './incidents.ts';
 import { completeClaims, OPPOSITE, receiveTestimony } from './testimony.ts';
 import { claimText, knownIncidentClaim, say } from './voices.ts';
 
@@ -80,20 +80,194 @@ function line(s: State, kind: string, text: string, speaker?: string, target?: s
     ...(target ? { target } : {}),
   });
 }
-function answer(s: State, id: string, detail: string, target?: string) {
-  const spoken = say(s, id, 'reply', detail);
-  if (spoken) line(s, 'answer', spoken, id, target);
-  else {
-    const day = Math.floor(s.minute / 1440);
-    const text = `${PEOPLE.find((p) => p.id === id)?.name} considers your words. ${detail}`;
-    const previous = s.log.findLast((l) => Math.floor(l.at / 1440) === day && l.text.startsWith(text));
-    if (previous) {
-      previous.count = (previous.count ?? 1) + 1;
-      previous.kind = 'echo';
-      previous.who = [id];
-      previous.text = `${text} The same answer was heard again ${previous.count - 1} times today; heard from ${PEOPLE.find((p) => p.id === id)?.name}.`;
-    } else line(s, 'answer', text, undefined, target);
+function answer(s: State, id: string, detail: string, target?: string, reply?: Line['reply']) {
+  // A voice stem is optional. The actual answer is never optional or collapsed into an echo.
+  const spoken = say(s, id, 'reply', detail) ?? detail;
+  line(s, reply ? 'reply' : 'answer', spoken, id, target);
+  if (reply) s.log[s.log.length - 1]!.reply = reply;
+}
+
+function marriageView(s: State) {
+  const r = s.people.riza!;
+  const score = (trait: string) =>
+    (credence(r, prop('emre', trait)) + 1 - credence(r, prop('emre', OPPOSITE[trait]!))) / 2;
+  const honesty = score('honest'),
+    reliability = score('reliable'),
+    kindness = score('kind');
+  const trust = trustOf(r, 'hatice');
+  const household = PEOPLE.find((p) => p.id === 'riza')!.household;
+  const traced = s.routes.some(
+    (root) => root.from === 'hatice' && root.contradictedHouseholds?.includes(household),
+  );
+  const lean =
+    traced || trust <= 0.57 || Math.min(honesty, reliability, kindness) < 0.4
+      ? 'cool'
+      : Math.min(honesty, reliability) > 0.65 && kindness >= 0.5 && trust > 0.65
+        ? 'warm'
+        : 'unsure';
+  const reason = traced
+    ? 'traced'
+    : trust <= 0.57
+      ? 'trust'
+      : honesty < 0.4
+        ? 'honesty'
+        : reliability < 0.4
+          ? 'reliability'
+          : kindness < 0.4
+            ? 'kindness'
+            : trust <= 0.65 && Math.min(honesty, reliability) > 0.65
+              ? 'cautious'
+              : lean;
+  const words: Record<string, string> = {
+    traced:
+      'A false story from you reached our house. I cannot ask Elif to join a household whose word I doubt.',
+    trust: 'I am less sure of your word, Hatice. Elif would have to trust your household too.',
+    honesty:
+      'What I hear about Emre telling the truth troubles me. I need that settled before Elif joins your family.',
+    reliability:
+      'I am worried that Emre will not keep his promises to Elif. I need to see him keep his word.',
+    kindness: 'I am troubled by how Emre treats people. Elif needs kindness at home.',
+    cautious:
+      'Emre is keeping his word. I am still cautious about your word, Hatice, and what that would mean for Elif at home.',
+    warm: 'Emre is keeping his word, and I trust what you tell me. I am leaning toward the marriage.',
+    unsure:
+      'Emre is polite and he works. I still want to see how he keeps his word. I have not decided about the marriage.',
+    cool: 'I have doubts about Emre and your household. I am leaning against the marriage.',
+  };
+  return {
+    lean,
+    reason,
+    line: `${words[reason]} I will answer on Day 13.`,
+    honesty,
+    reliability,
+    kindness,
+    trust,
+    traced,
+  } as const;
+}
+
+function updateRiza(s: State, announce = true) {
+  const next = marriageView(s);
+  const old = s.riza;
+  if (s.engagement !== 'waiting') {
+    const accepted = s.engagement === 'accepted';
+    const resolved = accepted
+      ? 'I have agreed to the marriage. Come with Emre and we will plan the wedding.'
+      : 'I have refused the marriage. Our families should leave this here.';
+    if (s.riza?.line !== resolved)
+      s.riza = { lean: accepted ? 'warm' : 'cool', line: resolved, at: s.minute, answerDay: 13 };
+    return;
   }
+  if (old?.line === next.line) return;
+  const day = Math.floor(s.minute / 1440);
+  const today = s.log.filter((l) => l.kind === 'riza' && Math.floor(l.at / 1440) === day);
+  // Current state remains truthful even when an announcement is suppressed.
+  s.riza = { lean: next.lean, line: next.line, at: s.minute, answerDay: 13 };
+  if (today.length >= 3 || today.some((l) => l.text === next.line)) return;
+  if (announce && present(s).some((p) => p.id === 'riza')) line(s, 'riza', next.line, 'riza', 'emre');
+}
+
+function avoidsShop(s: State, listener: string, target: string) {
+  const workers =
+    target === 'kemal' ? ['kemal', 'zehra', 'murat'] : target === 'riza' ? ['riza', 'elif', 'ayse'] : [];
+  return (
+    workers.length > 0 &&
+    !workers.includes(listener) &&
+    ['dishonest', 'cruel', 'stingy', 'unreliable'].some(
+      (trait) => credence(s.people[listener]!, prop(target, trait)) > 0.6,
+    )
+  );
+}
+
+function reaction(
+  s: State,
+  listener: string,
+  target: string,
+  trait: Trait,
+  value: boolean,
+  to: number,
+  before: number,
+  title?: string,
+  storyDetail?: string,
+) {
+  const p = s.people[listener]!;
+  const c = credence(p, prop(target, trait));
+  const confidence = value ? c : 1 - c;
+  const trust = trustOf(p, 'hatice');
+  const refused =
+    PEOPLE.find((p) => p.id === listener)!.norm === 'forbidden' &&
+    isUnfavourableTrait(trait, value) &&
+    !present(s).some((p) => p.id === target);
+  const believes = refused ? 'refuse' : confidence > 0.6 ? 'yes' : confidence < 0.4 ? 'no' : 'doubt';
+  const assertion = storyDetail ?? claimText(PEOPLE.find((p) => p.id === target)!.name, trait, value);
+  const detail = refused
+    ? `They are not here to answer. Talking about their faults behind their back is wrong. ${confidence > 0.6 ? 'I believe you, but' : 'Whether it is true or not,'} I won’t repeat that.`
+    : believes === 'yes'
+      ? `I believe ${title ? `your account of “${title}”: ` : ''}${assertion}. ${trust > 0.6 ? 'I trust your word on this.' : 'That fits what I have heard, though I have doubts about your word.'}`
+      : believes === 'no'
+        ? `I don’t believe ${title ? `your account of “${title}”: ` : ''}${assertion}. ${trust < 0.6 ? 'Your word has let me down.' : 'It goes against what I have seen and heard.'}`
+        : `I am not sure ${title ? `about “${title}”: ` : ''}${assertion}. ${trust < 0.6 ? 'I cannot take your word alone.' : 'I hear you, but I need more than that.'}`;
+  let will: string | undefined;
+  const damaging = isUnfavourableTrait(trait, value);
+  const changed = Math.abs(c - before) > 0.02;
+  if (refused) will = 'I won’t repeat that.';
+  else if (believes === 'no') will = 'I won’t repeat that.';
+  else if (changed && confidence > 0.6 && damaging && avoidsShop(s, listener, target))
+    will = target === 'kemal' ? 'I’ll buy my flour elsewhere.' : 'I’ll buy my bread elsewhere.';
+  else if (
+    changed &&
+    confidence >= 0.7 &&
+    (!damaging || PEOPLE.find((p) => p.id === listener)?.norm !== 'forbidden')
+  )
+    will = 'I’ll pass on what you told me.';
+  else if (believes === 'doubt') will = 'I won’t repeat that until I have seen more.';
+  updateRiza(s, false);
+  const marriage =
+    listener === 'riza' && ['emre', 'hatice', 'osman'].includes(target) ? ` ${s.riza?.line ?? ''}` : '';
+  answer(s, listener, `${detail}${will && !detail.includes(will) ? ` ${will}` : ''}${marriage}`, target, {
+    to,
+    believes,
+    ...(will ? { will } : {}),
+  });
+  if (will?.includes('elsewhere'))
+    line(
+      s,
+      'shop',
+      `${PEOPLE.find((p) => p.id === listener)!.name} puts away the shopping bag. “${will}”`,
+      listener,
+      target,
+    );
+  if (will?.includes('elsewhere')) s.log[s.log.length - 1]!.witnessed = true;
+}
+
+function closeDay(s: State) {
+  const day = Math.floor(s.minute / 1440) + 1;
+  s.days ??= [];
+  if (s.days.some((d) => d.day === day)) return;
+  const today = s.log.filter((l) => Math.floor(l.at / 1440) + 1 === day);
+  const summary: string[] = [];
+  const reply = today.findLast((l) => l.kind === 'reply' && l.reply);
+  if (reply) summary.push(`${PEOPLE.find((p) => p.id === reply.speaker)!.name} told you: “${reply.text}”`);
+  // Only entries spoken to Hatice or staged in sight of her table are eligible.
+  const seen = today.findLast(
+    (l) =>
+      ['cold-greeting', 'confrontation', 'truth', 'overheard'].includes(l.kind) ||
+      (l.kind === 'shop' && l.witnessed === true),
+  );
+  if (seen) summary.push(seen.text);
+  const riza = today.findLast((l) => l.kind === 'riza' || l.kind === 'engagement');
+  if (riza) summary.push(`Rıza told you: “${riza.text}”`);
+  if (summary.length < 2) summary.push('You have had no further answer at your table today.');
+  const question =
+    s.engagement !== 'waiting'
+      ? 'Who will still sit with you tomorrow?'
+      : day >= 12
+        ? 'What will Rıza say when he gives his answer on Day 13?'
+        : reply?.reply?.believes === 'doubt'
+          ? 'Will someone see enough tomorrow to settle the doubt?'
+          : 'What will Rıza learn about Emre and your household tomorrow?';
+  s.days.push({ day, summary: summary.slice(0, 4), question });
+  line(s, 'day', `${summary.join(' ')} ${question}`);
 }
 function rootOf(s: State, route: Route): Route {
   if (route.root) return s.routes[route.root - 1]!;
@@ -146,6 +320,24 @@ function contradict(s: State, listener: string, proposition: string, truth: bool
 }
 
 function observe(s: State, id: string, target: string, trait: Trait, truth: boolean) {
+  for (const r of s.routes.filter((r) => r.to === id && r.incident && !r.confirmedAt && !r.retractedAt)) {
+    const scene = storyScene(r.incident!);
+    if (
+      scene &&
+      scene.target === target &&
+      ((r.trait === trait && r.value === truth) || (OPPOSITE[r.trait] === trait && r.value !== truth))
+    ) {
+      r.confirmedAt = s.minute;
+      if (['garden', 'fountain'].includes(s.locations[id]!))
+        line(
+          s,
+          'confirmation',
+          `“I have seen it for myself now. Your story, “${r.title}”, was true.”`,
+          id,
+          target,
+        );
+    }
+  }
   confirm(s.people[id]!, prop(target, trait), truth, s.minute);
   contradict(s, id, prop(target, trait), truth);
   const opposite = OPPOSITE[trait];
@@ -204,7 +396,18 @@ function visibleClaim(s: State, from: string, to: string, target: string, trait:
   const heard = s.heardClaims[key];
   heard.count++;
   if (!heard.who.includes(from)) heard.who.push(from);
-  const claim = spokenClaim(s, from, target, spokenTrait, spokenValue);
+  const account = s.routes.findLast(
+    (r) => r.from === from && r.to === to && r.target === target && r.at === s.minute && r.incident,
+  );
+  const scene = account?.incident ? storyScene(account.incident) : undefined;
+  const exactStory =
+    scene &&
+    ((scene.trait === trait && scene.value === value) ||
+      (OPPOSITE[scene.trait] === trait && scene.value !== value));
+  const claim =
+    scene && exactStory
+      ? `“${scene.title}”: ${'detail' in scene ? scene.detail : knownIncidentClaim(scene)}`
+      : spokenClaim(s, from, target, spokenTrait, spokenValue);
   if (heard.count === 1) {
     const text = say(s, from, 'reply', `${claim}.`);
     if (text) line(s, to === 'hatice' ? 'rumour' : 'conversation', text, from, target);
@@ -277,6 +480,8 @@ export function newGame(seed: number): Game {
     groundTruth: { 'emre:honest': true, 'emre:reliable': true },
     pendingConfrontations: [],
     heardClaims: {},
+    stories: [],
+    days: [],
   };
   for (const [i, p] of PEOPLE.entries()) {
     s.people[p.id] = createPerson({
@@ -301,9 +506,45 @@ export function newGame(seed: number): Game {
     understandNorm(s.people[p.id]!, 'lying', p.norm === 'permitted' ? 'disliked' : 'forbidden', 0.8);
     s.people[p.id]!.memory.sourceTrust.hatice = 0.72;
   }
+  // Familiarity is fallible testimony, not invented firsthand evidence. People know
+  // their household, nearby neighbours and the tradespeople in their daily rounds.
+  for (const listener of PEOPLE) {
+    for (const target of PEOPLE) {
+      if (listener.id === target.id) continue;
+      const family = listener.household === target.household;
+      const neighbour = Math.abs(listener.household - target.household) <= 1;
+      const customer = SCHEDULES[listener.id]?.includes(
+        target.id === 'kemal' ? 'grocer' : target.id === 'riza' ? 'bakery' : 'none',
+      );
+      if (!family && !neighbour && !customer) continue;
+      s.people[listener.id]!.memory.sourceTrust[`familiar:${target.id}`] = 0.85;
+      for (const trait of ['reliable'] as const) {
+        believe(
+          s.people[listener.id]!,
+          prop(target.id, trait),
+          true,
+          family ? 0.78 : 0.62,
+          `familiar:${target.id}`,
+          360,
+        );
+        believe(
+          s.people[listener.id]!,
+          prop(target.id, OPPOSITE[trait]!),
+          false,
+          family ? 0.78 : 0.62,
+          `familiar:${target.id}`,
+          360,
+        );
+      }
+    }
+  }
+  believe(s.people.riza!, 'emre:honest', true, 0.6, 'familiar:emre', 360);
+  believe(s.people.riza!, 'emre:dishonest', false, 0.6, 'familiar:emre', 360);
+  confirm(s.people.hatice!, 'emre:kind', true, 360);
   confirm(s.people.hatice!, 'emre:honest', true, 360);
   confirm(s.people.hatice!, 'emre:reliable', true, 360);
   place(s);
+  updateRiza(s, false);
   line(
     s,
     'arrival',
@@ -319,23 +560,9 @@ function place(s: State) {
     if (location === 'home') location = p.home;
     if (p.id === 'hatice') location = 'garden';
     else if (s.called[p.id] === s.minute) location = 'garden';
-    if (s.minute === 720 && p.id === 'riza') location = 'garden';
-    if (
-      location === 'grocer' &&
-      !['kemal', 'zehra', 'murat'].includes(p.id) &&
-      ['dishonest', 'cruel', 'stingy', 'unreliable'].some(
-        (t) => credence(s.people[p.id]!, prop('kemal', t)) > 0.7,
-      )
-    )
-      location = 'bakery';
-    if (
-      location === 'bakery' &&
-      !['riza', 'elif', 'ayse'].includes(p.id) &&
-      ['dishonest', 'cruel', 'stingy', 'unreliable'].some(
-        (t) => credence(s.people[p.id]!, prop('riza', t)) > 0.7,
-      )
-    )
-      location = 'grocer';
+    if (t >= 720 && t < 780 && p.id === 'riza') location = 'garden';
+    if (location === 'grocer' && avoidsShop(s, p.id, 'kemal')) location = 'bakery';
+    if (location === 'bakery' && avoidsShop(s, p.id, 'riza')) location = 'grocer';
     s.locations[p.id] = location;
   }
 }
@@ -393,6 +620,10 @@ function route(s: State, from: string, to: string, target: string, trait: Trait,
     r.trait = ladder[bendTrait]!;
     r.value = true;
     r.steps++;
+  }
+  if (prior?.incident) {
+    r.incident = prior.incident;
+    r.title = prior.title;
   }
   s.routes.push(r);
   return r;
@@ -460,13 +691,17 @@ export function act(g: Game, input: Input): boolean {
   if ('target' in input && !s.people[input.target]) return false;
   if ('trait' in input && !REPUTATION_TRAITS[input.trait]) return false;
   if (
-    (input.type === 'tell' || input.type === 'defend') &&
+    (input.type === 'tell' || input.type === 'defend' || input.type === 'ask') &&
     (input.target === input.listener || input.target === 'hatice')
   )
     return false;
+  const story = input.type === 'tell-story' ? storyScene(input.incident) : undefined;
   if (
-    (input.type === 'tell' || input.type === 'defend') &&
-    (input.target === input.listener || input.target === 'hatice')
+    input.type === 'tell-story' &&
+    (!story ||
+      !s.stories?.some((s) => s.id === input.incident) ||
+      story.target === input.listener ||
+      story.target === 'hatice')
   )
     return false;
   const idsHere = present(s).map((p) => p.id);
@@ -503,14 +738,33 @@ export function act(g: Game, input: Input): boolean {
         Math.abs(credence(p, prop(input.target, a)) - 0.5),
     )[0]!;
     const c = credence(p, prop(input.target, best));
+    const believes = c > 0.6 ? 'yes' : c < 0.4 ? 'no' : 'doubt';
+    const ownView =
+      Math.abs(c - 0.5) > 0.1
+        ? `${spokenClaim(s, input.listener, input.target, best, c > 0.5)}. That is what I believe.`
+        : `${PEOPLE.find((p) => p.id === input.target)!.name} lives here with us. I have seen too little to be sure about that.`;
+    const refusal =
+      PEOPLE.find((person) => person.id === input.listener)?.norm === 'forbidden' &&
+      isUnfavourableTrait(best, c > 0.5) &&
+      !idsHere.includes(input.target);
+    const emre = input.listener === 'riza' && input.target === 'emre';
+    const detail = refusal
+      ? 'They are not here to answer. I won’t talk about their faults behind their back. I won’t repeat that.'
+      : emre && !s.routes.some((r) => r.to === 'riza' && r.target === 'emre')
+        ? 'He’s polite, he works. I don’t know his heart.'
+        : ownView;
     answer(
       s,
       input.listener,
-      Math.abs(c - 0.5) > 0.15
-        ? `${spokenClaim(s, input.listener, input.target, best, c > 0.5)}. That’s my view.`
-        : `I don’t know ${PEOPLE.find((p) => p.id === input.target)?.name} well enough to say.`,
+      `${detail}${emre ? ` ${s.riza?.line ?? marriageView(s).line}` : ''}`,
       input.target,
+      {
+        to: g.inputs.length,
+        believes: refusal ? 'refuse' : believes,
+        ...(refusal ? { will: 'I won’t repeat that.' } : {}),
+      },
     );
+    s.newsWaiting = false;
   } else if (input.type === 'make-amends') {
     const p = s.people[input.listener]!;
     s.people[input.listener]!.memory.sourceTrust.hatice = Math.max(0, trustOf(p, 'hatice') - 0.06);
@@ -549,36 +803,58 @@ export function act(g: Game, input: Input): boolean {
       input.target,
     );
   } else {
-    const trait = input.type === 'defend' ? (good[input.trait] ?? input.trait) : input.trait;
+    const target = input.type === 'tell-story' ? story!.target : input.target;
+    const trait =
+      input.type === 'tell-story'
+        ? story!.trait
+        : input.type === 'defend'
+          ? (good[input.trait] ?? input.trait)
+          : input.trait;
     const own = s.people.hatice!;
-    const value = !(input.type === 'defend' && trait === 'owes');
-    const ownConfidence = value
-      ? credence(own, prop(input.target, trait))
-      : 1 - credence(own, prop(input.target, trait));
-    const lie = ownConfidence <= 0.5;
+    const value = input.type === 'tell-story' ? story!.value : !(input.type === 'defend' && trait === 'owes');
+    const ownConfidence = value ? credence(own, prop(target, trait)) : 1 - credence(own, prop(target, trait));
+    const lie = story ? false : ownConfidence <= 0.5;
     const percept = {
       at: s.minute,
       channel: 'told' as const,
       kind: 'testimony',
       actorId: 'hatice',
-      targetId: input.target,
+      targetId: target,
       salience: 1,
       claims: [
         {
-          prop: prop(input.target, trait),
+          prop: prop(target, trait),
           value,
-          confidence: lie ? 0.9 : ownConfidence,
+          confidence: input.type === 'tell-story' ? 1 : lie ? 0.9 : ownConfidence,
         },
       ],
-      summary: `Hatice says ${input.target} is ${trait}`,
+      summary: `Hatice says ${target} is ${trait}`,
       norms: [
-        ...(isUnfavourableTrait(trait, value) && !idsHere.includes(input.target)
+        ...(isUnfavourableTrait(trait, value) && !idsHere.includes(target)
           ? [{ normId: 'backbiting', relation: 'violates' as const }]
           : []),
       ],
     };
-    route(s, 'hatice', input.listener, input.target, trait, lie, value);
+    const heard = route(s, 'hatice', input.listener, target, trait, lie, value);
+    if (story) {
+      heard.incident = story.id;
+      heard.title = story.title;
+    }
+    const before = credence(s.people[input.listener]!, prop(target, trait));
     deliver(s, input.listener, [percept]);
+    if (story && trustOf(s.people[input.listener]!, 'hatice') > 0.1) {
+      const p = s.people[input.listener]!;
+      const witnessed = p.memory.beliefs
+        .find((b) => b.prop === prop(target, trait))
+        ?.sources.some((source) => source.id === p.id || source.id === 'self');
+      if (!witnessed) {
+        // Specific, checkable testimony carries more weight than a character label.
+        const c = credence(p, prop(target, trait));
+        const stronger = Math.min(0.98, (value ? c : 1 - c) + 0.12 * trustOf(p, 'hatice'));
+        believe(p, prop(target, trait), value, stronger, 'hatice', s.minute);
+        if (OPPOSITE[trait]) believe(p, prop(target, OPPOSITE[trait]!), !value, stronger, 'hatice', s.minute);
+      }
+    }
     recordDeed(
       own,
       {
@@ -597,25 +873,26 @@ export function act(g: Game, input: Input): boolean {
     line(
       s,
       'answer',
-      `You tell ${PEOPLE.find((p) => p.id === input.listener)?.name}: “${spokenClaim(s, 'hatice', input.target, trait, value)}.”${lie ? ' You do not believe this yourself.' : ''}`,
+      `You tell ${PEOPLE.find((p) => p.id === input.listener)?.name}: “${story ? ('detail' in story ? story.detail : knownIncidentClaim(story)) : spokenClaim(s, 'hatice', target, trait, value)}.”${lie ? ' You do not believe this yourself.' : ''}`,
       'hatice',
-      input.target,
+      target,
     );
-    answer(s, input.listener, '');
+    reaction(
+      s,
+      input.listener,
+      target,
+      trait,
+      value,
+      g.inputs.length,
+      before,
+      story?.title,
+      story ? ('detail' in story ? story.detail : knownIncidentClaim(story)) : undefined,
+    );
     s.newsWaiting = false;
-    if (input.target === 'kemal' && bad[trait] === undefined && s.locations.kemal === 'grocer') {
-      // The listener is choosing where to shop, based on the testimony just received.
-      if (credence(s.people[input.listener]!, 'kemal:dishonest') > 0.6)
-        line(
-          s,
-          'shop',
-          `${PEOPLE.find((p) => p.id === input.listener)?.name} looks toward Kemal’s shutter and puts away the shopping bag. “I will get my flour elsewhere.”`,
-          input.listener,
-          'kemal',
-        );
-      if (input.listener === 'fatma') talk(s, 'fatma', 'emre');
-    }
+    if (target === 'kemal' && bad[trait] === undefined && input.listener === 'fatma')
+      talk(s, 'fatma', 'emre');
   }
+  updateRiza(s);
   g.inputs.push({ at: s.minute, input: structuredClone(input) });
   return true;
 }
@@ -694,6 +971,15 @@ function step(s: State) {
   if (incident && t === incident.at) {
     s.incidentWitnesses ??= {};
     s.incidentWitnesses[incident.day] = ['hatice', incident.target, ...(day === 0 ? ['zehra'] : [])];
+    s.stories ??= [];
+    if (!s.stories.some((story) => story.id === incident.day))
+      s.stories.push({
+        id: incident.day,
+        day: incident.day,
+        title: storyScene(incident.day)!.title,
+        target: incident.target,
+        truth: true,
+      });
     s.locations[incident.target] = incident.place;
     if (day === 0) s.locations.zehra = incident.place;
     s.groundTruth![prop(incident.target, incident.trait)] = incident.value;
@@ -724,6 +1010,15 @@ function step(s: State) {
         break;
       }
     }
+  }
+  if (t === 720) {
+    updateRiza(s);
+    if (
+      s.engagement === 'waiting' &&
+      s.riza &&
+      !s.log.some((l) => l.kind === 'riza' && Math.floor(l.at / 1440) === day)
+    )
+      line(s, 'riza', s.riza.line, 'riza', 'emre');
   }
   if (s.minute === 720) {
     s.newsWaiting = true;
@@ -768,6 +1063,8 @@ function step(s: State) {
   if (t === 765 && day === 0) {
     // Only people at the fountain actually see the helpful act.
     s.locations.kemal = 'fountain';
+    s.stories ??= [];
+    s.stories.push({ id: 15, day: 1, title: storyScene(15)!.title, target: 'kemal', truth: true });
     for (const p of present(s)) {
       observe(s, p.id, 'kemal', 'kind', true);
     }
@@ -782,6 +1079,17 @@ function step(s: State) {
     for (const p of PEOPLE.filter((p) => s.locations[p.id] === 'grocer')) {
       observe(s, p.id, 'kemal', 'dishonest', true);
     }
+  }
+  if (day === 1 && t === 1020) {
+    s.locations.zehra = 'garden';
+    line(
+      s,
+      'truth',
+      'Zehra opens a returned sack at your table. The new-flour label covers old flour. “Kemal mixed it, as you heard,” she says.',
+      'zehra',
+      'kemal',
+    );
+    for (const witness of present(s)) observe(s, witness.id, 'kemal', 'dishonest', true);
   }
   if (t === 1020) {
     s.locations.emre = 'garden';
@@ -829,13 +1137,15 @@ function step(s: State) {
           0,
         ) / 32;
       s.custom[id] = Math.max(0.1, 1 - (reputation - 0.5) * 2);
-      if (s.custom[id]! < 0.8)
+      if (s.custom[id]! < 0.8 && ['garden', 'fountain'].includes(s.locations[id]!)) {
         line(
           s,
           'shop',
-          `${PEOPLE.find((p) => p.id === id)?.name} closes the shutters early. Fewer customers came today.`,
+          `${PEOPLE.find((p) => p.id === id)?.name} tells you: “I closed the shutters early. Fewer customers came today.”`,
           id,
         );
+        s.log[s.log.length - 1]!.witnessed = true;
+      }
     }
     for (const target of PEOPLE.filter((p) => p.id !== 'hatice')) {
       const heard = s.routes.find(
@@ -905,24 +1215,22 @@ function step(s: State) {
   if (day >= 12 && t === 1200 && s.engagement === 'waiting') {
     s.locations.riza = 'garden';
     s.locations.emre = 'garden';
-    const r = s.people.riza!;
-    const honesty = (credence(r, 'emre:honest') + 1 - credence(r, 'emre:dishonest')) / 2;
-    const reliability = (credence(r, 'emre:reliable') + 1 - credence(r, 'emre:unreliable')) / 2;
-    const trust = trustOf(r, 'hatice');
-    const traced = s.routes.filter(
-      (root) => root.from === 'hatice' && root.contradictedHouseholds?.includes(1),
-    ).length;
+    const { honesty, reliability, kindness, trust, traced } = marriageView(s);
     s.engagement =
-      trust > 0.57 && honesty > 0.45 && reliability > 0.45 && traced === 0 ? 'accepted' : 'refused';
+      trust > 0.57 && honesty > 0.45 && reliability > 0.45 && kindness > 0.4 && !traced
+        ? 'accepted'
+        : 'refused';
     line(
       s,
       'engagement',
       s.engagement === 'accepted'
         ? 'Rıza sits beside Emre. “Come with your mother on Sunday. Let us talk about the wedding.”'
-        : `Rıza returns Emre’s cup untouched. “${traced ? 'An account traced to you reached my household and proved false. I cannot build a family on that.' : trust <= 0.57 ? 'I cannot rely on your word, Hatice.' : 'I still have doubts about Emre keeping his word.'} Our families should leave this here.”`,
+        : `Rıza returns Emre’s cup untouched. “${traced ? 'An account traced to you reached my household and proved false. I cannot build a family on that.' : trust <= 0.57 ? 'I cannot rely on your word, Hatice.' : kindness <= 0.4 ? 'I am troubled by how Emre treats people. Elif needs kindness at home.' : honesty <= 0.45 ? 'I still have doubts about Emre telling the truth.' : 'I still have doubts about Emre keeping his word.'} Our families should leave this here.”`,
       'riza',
     );
   }
+  updateRiza(s);
+  if (t === 1380) closeDay(s);
   if (s.minute >= 14 * 1440) {
     s.ended = true;
     line(
@@ -963,6 +1271,21 @@ export function load(data: string): Game {
   g.s.groundTruth ??= { 'emre:honest': true, 'emre:reliable': true };
   g.s.pendingConfrontations ??= [];
   g.s.heardClaims ??= {};
+  if (!g.s.stories) {
+    g.s.stories = DAILY_INCIDENTS.filter((scene) =>
+      g.s.incidentWitnesses?.[scene.day]?.includes('hatice'),
+    ).map((scene) => ({
+      id: scene.day,
+      day: scene.day,
+      title: storyScene(scene.day)!.title,
+      target: scene.target,
+      truth: true,
+    }));
+    if (g.s.log.some((l) => l.kind === 'truth' && /heavy basket/.test(l.text)))
+      g.s.stories.push({ id: 15, day: 1, title: storyScene(15)!.title, target: 'kemal', truth: true });
+  }
+  g.s.days ??= [];
+  if (!g.s.riza) updateRiza(g.s, false);
   return g;
 }
 export function fingerprint(s: State) {
@@ -981,12 +1304,16 @@ export function view(s: State) {
       who: l.speaker ?? 'narrator',
       text: l.text,
       kind: l.kind,
+      reply: l.reply,
     })),
     question: s.newsWaiting ? 'A neighbour is waiting for your answer.' : undefined,
     benches: s.garden,
     shutters: Object.entries(s.custom)
       .filter(([id, v]) => id !== 'hatice' && v < 0.8)
       .map(([id]) => id),
+    riza: s.riza,
+    stories: s.stories,
+    days: s.days,
     engagement: s.engagement,
     ended: s.ended,
   };

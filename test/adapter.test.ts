@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { HearsayAdapter } from '../scripts/hf-playtest/adapter.ts';
+import { advance } from '../src/sim/game.ts';
 
 describe('HF playtester boundary', () => {
   it('reports witnessed information without hidden state', () => {
@@ -121,4 +122,51 @@ it('slows when an incident arrives before the daily question', () => {
   adapter.advance(0.1);
   expect(adapter.speed).toBe(1);
   expect(adapter.game.s.minute).toBe(390);
+});
+
+it('offers witnessed story actions including the basket without future stories', () => {
+  const a = new HearsayAdapter(7);
+  expect(a.actions().some((action) => action.kind === 'tell-story')).toBe(false);
+  advance(a.game, 765);
+  const actions = a.actions().filter((action) => action.kind === 'tell-story');
+  expect(actions.length).toBeGreaterThan(0);
+  expect(actions.some((action) => action.label.includes('basket'))).toBe(true);
+  for (const action of actions) {
+    const input = a.offered.get(action.id);
+    expect(typeof input).toBe('object');
+    if (typeof input !== 'object' || input.type !== 'tell-story') throw new Error('Missing story input');
+    expect(a.game.s.stories?.some((story) => story.id === input.incident)).toBe(true);
+  }
+});
+
+it('attributes only the immediate reply to a story and remembers it for amends', () => {
+  const a = new HearsayAdapter(7);
+  advance(a.game, 405);
+  a.observe();
+  const action = a.actions().find((action) => {
+    const input = a.offered.get(action.id);
+    return typeof input === 'object' && input.type === 'tell-story' && input.listener === 'aylin';
+  });
+  if (!action) throw new Error('Missing witnessed story action');
+  a.apply(action.id);
+  const events = a.observe().events;
+  const answers = events.filter((event) => Array.isArray(event.answers) && event.answers.includes(action.id));
+  expect(answers).toHaveLength(1);
+  expect(answers[0]?.kind).toBe('reply');
+  expect(answers[0]?.reply?.to).toBe(0);
+  expect(answers[0]?.reply?.believes).toBeDefined();
+  expect(events.filter((event) => event.kind !== 'reply').every((event) => event.answers === false)).toBe(
+    true,
+  );
+  expect(a.actions().find((action) => action.id === 'amends:aylin:kemal')?.promise).toBeGreaterThan(0.2);
+});
+
+it('reports the current public marriage position and the closing question', () => {
+  const a = new HearsayAdapter(7);
+  advance(a.game, 1380);
+  const shown = a.observe();
+  expect(shown.loops).toContain(a.game.s.riza?.line);
+  expect(shown.loops).toContain(a.game.s.days?.at(-1)?.question);
+  for (const key of ['sourceTrust', 'routes', 'credence', 'rng'])
+    expect(JSON.stringify(shown)).not.toContain(key);
 });

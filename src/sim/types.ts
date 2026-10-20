@@ -14,6 +14,7 @@ export type Trait =
 export type Input =
   | { type: 'tell' | 'defend'; listener: string; target: string; trait: Trait }
   | { type: 'ask'; listener: string; target: string }
+  | { type: 'tell-story'; listener: string; incident: number }
   | { type: 'hold-tongue' }
   | { type: 'make-amends'; listener: string; target: string }
   | { type: 'call-over'; person: string; buySilence?: boolean };
@@ -37,7 +38,9 @@ export interface Line {
   text: string;
   target?: string;
   count?: number;
+  witnessed?: boolean;
   who?: string[];
+  reply?: { to: number; believes: 'yes' | 'doubt' | 'no' | 'refuse'; will?: string };
 }
 export interface Route {
   id: number;
@@ -57,6 +60,9 @@ export interface Route {
   origin: string;
   steps: number;
   lie: boolean;
+  incident?: number;
+  title?: string;
+  confirmedAt?: number;
 }
 export interface State {
   version: 1;
@@ -81,6 +87,9 @@ export interface State {
   groundTruth?: Record<string, boolean>;
   pendingConfrontations?: { root: number; due: number }[];
   heardClaims?: Record<string, { count: number; who: string[]; echo?: number }>;
+  riza?: { lean: 'warm' | 'unsure' | 'cool'; line: string; at: number; answerDay: number };
+  stories?: { id: number; day: number; title: string; target: string; truth: boolean }[];
+  days?: { day: number; summary: string[]; question: string }[];
 }
 export interface Game {
   s: State;
