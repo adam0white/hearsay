@@ -15,6 +15,7 @@ export type Input =
   | { type: 'tell' | 'defend'; listener: string; target: string; trait: Trait }
   | { type: 'ask'; listener: string; target: string }
   | { type: 'tell-story'; listener: string; incident: number }
+  | { type: 'choose'; scene: string; choice: string }
   | { type: 'hold-tongue' }
   | { type: 'sit'; listener: string }
   | { type: 'release' }
@@ -66,8 +67,33 @@ export interface Route {
   title?: string;
   confirmedAt?: number;
 }
+export interface Scene {
+  id: string;
+  kind: 'confrontation' | 'coffee' | 'coffee-missed' | 'word' | 'word-missed';
+  who: string[];
+  text: string;
+  choices: { id: string; label: string; says: string; risk?: string }[];
+  since: number;
+  until: number;
+  fallback: string;
+}
+export interface Thread {
+  id: number;
+  who: string;
+  to: string;
+  about: string;
+  status: 'on its way' | 'arrived' | 'stalled';
+  where?: string;
+  at: number;
+}
+export interface QuickReply {
+  listener: string;
+  options: { label: string; says: string; input: Input }[];
+}
 export interface State {
   version: 1;
+  scene?: Scene;
+  threads?: Thread[];
   seed: number;
   minute: number;
   people: Record<string, Person>;
@@ -93,6 +119,12 @@ export interface State {
   deferredScenes?: Record<string, number>;
   errands?: Record<string, { target: string; until: number }>;
   riza?: {
+    word?: {
+      status: 'open' | 'settled' | 'worse' | 'mending';
+      words: string;
+      because?: string;
+      mend?: string;
+    };
     lean: 'warm' | 'unsure' | 'cool';
     line: string;
     at: number;

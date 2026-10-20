@@ -862,7 +862,7 @@ export function act(g: Game, input: Input): boolean {
   const s = g.s;
   if (s.ended) return false;
   if ('target' in input && !s.people[input.target]) return false;
-  if ('trait' in input && !REPUTATION_TRAITS[input.trait]) return false;
+  if ('trait' in input && input.trait && !REPUTATION_TRAITS[input.trait]) return false;
   if (
     (input.type === 'tell' || input.type === 'defend' || input.type === 'ask') &&
     (input.target === input.listener || input.target === 'hatice')
@@ -879,7 +879,9 @@ export function act(g: Game, input: Input): boolean {
     return false;
   const idsHere = present(s).map((p) => p.id);
   if ('listener' in input && (input.listener === 'hatice' || !idsHere.includes(input.listener))) return false;
-  if (input.type === 'release') {
+  if (input.type === 'choose') {
+    return false; // Contract first: scene resolution follows in the sim implementation.
+  } else if (input.type === 'release') {
     release(s);
   } else if (input.type === 'sit') {
     if (s.held?.id !== input.listener) release(s);
@@ -1574,6 +1576,9 @@ export function fingerprint(s: State) {
 export function view(s: State) {
   return {
     minute: s.minute,
+    scene: s.scene,
+    threads: s.threads,
+    quick: undefined as import('./types.ts').QuickReply | undefined,
     people: PEOPLE.map((p) => ({ id: p.id, name: p.name, job: p.job, place: s.locations[p.id]! })),
     present: present(s)
       .filter((p) => p.id !== 'hatice')
