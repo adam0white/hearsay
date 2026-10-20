@@ -159,6 +159,24 @@ a {
   font-size: 33px;
   left: 130px;
 }
+.heard strong {
+  font-weight: normal;
+  color: #8a6451;
+}
+button[aria-pressed="true"] {
+  background: var(--teal);
+  border-color: var(--teal);
+  color: #fff9eb;
+}
+summary {
+  cursor: pointer;
+  padding: 10px 0;
+  font-size: 14px;
+}
+.opening-evidence summary {
+  font-size: 12px;
+  padding: 4px 0;
+}
 .game {
   max-width: 760px;
   margin: auto;
@@ -242,48 +260,6 @@ canvas {
   font-size: 11px;
   font-style: italic;
   color: #6c7864;
-}
-.present {
-  font-size: 12px;
-  min-height: 22px;
-  color: #61705f;
-  margin-top: 4px;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-.question {
-  font-size: 15px;
-  line-height: 1.4;
-  min-height: 42px;
-  margin: 8px 0 10px;
-  color: #89533f;
-}
-.selectors {
-  display: grid;
-  grid-template-columns: 1fr 1fr 1fr;
-  gap: 7px;
-}
-.selectors label {
-  font-family: system-ui, sans-serif;
-  font-size: 9px;
-  text-transform: uppercase;
-  letter-spacing: 0.1em;
-  color: #6a786a;
-}
-.selectors select {
-  display: block;
-  width: 100%;
-  border: 0;
-  border-bottom: 1px solid #a8b4a0;
-  border-radius: 0;
-  background: transparent;
-  min-height: 34px;
-  font-family: Georgia, serif;
-  font-size: 12px;
-  text-transform: none;
-  letter-spacing: 0;
-  padding: 2px;
 }
 .actions {
   display: grid;
@@ -409,11 +385,7 @@ footer {
   .garden {
     padding: 13px 16px 16px;
   }
-  .question {
-    font-size: 14px;
-    margin: 6px 0;
-    min-height: 40px;
-  }
+
   .speeds {
     padding-bottom: 7px;
   }
@@ -455,18 +427,6 @@ footer {
   }
 }
 
-.own-word {
-  font-size: 10px;
-  line-height: 1.4;
-  color: #8a6451;
-  margin-top: 5px;
-  min-height: 14px;
-}
-.heard article strong {
-  font-weight: normal;
-  color: #8a6451;
-}
-
 .journal {
   max-height: 40dvh;
   overflow: auto;
@@ -476,11 +436,6 @@ footer {
 .journal time {
   font-size: 10px;
   color: #7f8676;
-}
-summary {
-  cursor: pointer;
-  padding: 10px 0;
-  font-size: 14px;
 }
 
 .silence-offer {
@@ -512,4 +467,218 @@ summary {
   border-left: 2px solid #b38365;
   padding: 5px 8px;
   margin: 5px 0 8px;
+}
+
+/* The table stays compact; choosing a sentence opens a separate conversation. */
+header {
+  height: 48px;
+  padding: 0 12px;
+  gap: 8px;
+}
+.wordmark {
+  font-size: 25px;
+}
+.clock {
+  font-size: 10px;
+  max-width: 154px;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+.speeds {
+  padding: 0 12px 6px;
+}
+.map-wrap {
+  height: 150px;
+  margin: 0 12px;
+}
+.garden {
+  padding: 10px 14px 12px;
+}
+.section-heading span {
+  font-size: 10px;
+}
+.standing {
+  font-size: 12px;
+  margin: 4px 0 2px;
+}
+.engagement {
+  font-size: 11px;
+  color: #89533f;
+  margin-bottom: 8px;
+}
+.people-chips {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 5px;
+}
+.people-chips button {
+  min-width: 0;
+  min-height: 48px;
+  padding: 4px 2px;
+  line-height: 1.2;
+}
+.people-chips strong {
+  display: block;
+  font-size: 15px;
+  font-weight: normal;
+}
+.people-chips small {
+  display: block;
+  font-family: system-ui, sans-serif;
+  font-size: 9px;
+  margin-top: 3px;
+  color: #67765f;
+}
+.question {
+  font-size: 13px;
+  line-height: 1.4;
+  margin: 8px 0;
+  color: #89533f;
+}
+.actions {
+  margin-top: 8px;
+}
+.actions button {
+  font-size: 12px;
+  min-height: 44px;
+}
+.actions button:first-child {
+  min-width: 0;
+}
+.reply {
+  border-left: 3px solid var(--teal);
+  padding: 7px 10px;
+  margin-top: 10px;
+  font-size: 13px;
+  background: #e5e8d7;
+}
+.first-start {
+  padding: 8px 14px;
+  background: #e5e8d7;
+  border-block: 1px solid #cdd4bf;
+}
+.first-start p {
+  font-size: 11px;
+  line-height: 1.6;
+}
+.first-start button {
+  min-height: 32px;
+  padding: 3px 12px;
+  font-size: 12px;
+  margin-top: 4px;
+}
+.slow-reason {
+  font-size: 11px;
+  color: #89533f;
+  padding: 0 14px 6px;
+  text-align: center;
+}
+.notebook h3 {
+  font-weight: normal;
+  font-size: 15px;
+  margin: 12px 0 6px;
+}
+.dialog-head {
+  margin-bottom: 6px;
+  gap: 8px;
+}
+.dialog-head h2 {
+  font-size: 20px;
+}
+.dialog-head button {
+  font-size: 12px;
+}
+.notebook {
+  padding: 16px;
+  max-height: 94dvh;
+}
+.notebook p {
+  margin: 6px 0 10px;
+}
+.subject-chips,
+.word-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+.subject-chips {
+  max-height: 145px;
+  overflow-y: auto;
+  padding: 3px;
+}
+.subject-chips button,
+.word-chips button {
+  min-height: 36px;
+  padding: 5px 8px;
+  font-size: 12px;
+}
+
+.statement {
+  display: grid;
+  grid-template-columns: 1fr 67px;
+  align-items: center;
+  gap: 8px;
+  border-top: 1px solid var(--line);
+  margin-top: 10px;
+  padding-top: 8px;
+}
+.statement p {
+  font-size: 12px;
+  line-height: 1.4;
+  margin: 0;
+}
+.statement button {
+  font-size: 13px;
+}
+.conversation-actions {
+  display: flex;
+  gap: 8px;
+  margin: 12px 0 6px;
+}
+.conversation-actions button {
+  flex: 1;
+  font-size: 13px;
+}
+.notebook .silence-offer {
+  display: block;
+  padding: 10px 0;
+  font-size: 12px;
+}
+.heard article.incident {
+  background: #e5e8d7;
+  border-left: 3px solid #7c8b68;
+  padding: 10px 8px;
+}
+.heard article.incident p::before {
+  content: "Witnessed · ";
+  color: #52664b;
+  font-size: 11px;
+}
+.heard article.echo {
+  font-size: 12px;
+  color: #67765f;
+  padding-block: 7px;
+}
+
+.download-status {
+  color: var(--teal);
+}
+@media (min-width: 700px) {
+  header {
+    height: 60px;
+    padding-inline: 24px;
+  }
+  .clock {
+    max-width: none;
+    font-size: 13px;
+  }
+  .map-wrap {
+    height: 290px;
+  }
+  .garden {
+    padding: 16px 24px;
+  }
+  .people-chips {
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+  }
 }

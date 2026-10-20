@@ -1,5 +1,5 @@
-import { fingerprint, PEOPLE, REPUTATION_TRAITS, replay } from '../sim/engine';
-import type { Game, LoggedInput, State } from '../sim/types';
+import { fingerprint, PEOPLE, REPUTATION_TRAITS, replay } from '../sim/engine.ts';
+import type { Game, LoggedInput, State } from '../sim/types.ts';
 
 export interface NotebookExport {
   game: 'hearsay';

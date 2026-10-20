@@ -1,11 +1,66 @@
 import type { State } from '../sim/types';
 import { PLACES } from '../sim/world';
 
-const positions = new Map<string, { x: number; y: number }>();
-export function drawMap(canvas: HTMLCanvasElement, state: State, elapsed: number): void {
+interface Rect {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+interface MapPerson extends Rect {
+  id: string;
+  location: string;
+}
+interface Witness {
+  id: number;
+  at: number;
+  a: { x: number; y: number };
+  b: { x: number; y: number };
+}
+const layouts = new WeakMap<HTMLCanvasElement, { people: MapPerson[]; state: State; signature: string }>();
+// A main-panel render replaces its canvas. Keep observed talk with the run instead.
+const witnessHistory = new WeakMap<State, { witnesses: Witness[]; seed: number; minute: number }>();
+const overlaps = (a: Rect, b: Rect, gap = 2) =>
+  a.x < b.x + b.width + gap &&
+  a.x + a.width + gap > b.x &&
+  a.y < b.y + b.height + gap &&
+  a.y + a.height + gap > b.y;
+const hash = (text: string) => {
+  let value = 2166136261;
+  for (const char of text) value = Math.imul(value ^ char.charCodeAt(0), 16777619);
+  return value >>> 0;
+};
+
+/** Coordinates are CSS pixels, matching pointer events even on Retina displays. */
+export function mapPersonAt(canvas: HTMLCanvasElement, clientX: number, clientY: number): string | undefined {
+  const bounds = canvas.getBoundingClientRect();
+  const x = ((clientX - bounds.left) * canvas.clientWidth) / bounds.width;
+  const y = ((clientY - bounds.top) * canvas.clientHeight) / bounds.height;
+  return layouts
+    .get(canvas)
+    ?.people.filter((p) => ['garden', 'fountain'].includes(p.location))
+    .map((p) => ({ id: p.id, distance: Math.hypot(x - p.x - p.width / 2, y - p.y - p.height / 2) }))
+    .filter((p) => p.distance <= 12)
+    .sort((a, b) => a.distance - b.distance)[0]?.id;
+}
+export function drawMap(canvas: HTMLCanvasElement, state: State, _elapsed: number): void {
   const width = canvas.clientWidth;
   const height = canvas.clientHeight;
   const ratio = window.devicePixelRatio || 1;
+  const signature = JSON.stringify([
+    width,
+    height,
+    ratio,
+    state.seed,
+    state.minute,
+    state.garden,
+    state.locations,
+    state.custom,
+    state.routes.length,
+    state.log.length,
+  ]);
+  const cached = layouts.get(canvas);
+  if (cached?.state === state && cached.signature === signature) return;
   if (canvas.width !== width * ratio || canvas.height !== height * ratio) {
     canvas.width = width * ratio;
     canvas.height = height * ratio;
@@ -66,25 +121,46 @@ export function drawMap(canvas: HTMLCanvasElement, state: State, elapsed: number
       ctx.fillStyle = '#576a60';
       ctx.fillRect(p.x - 2, p.y + 2, 5, 9);
     }
-    if (!place.id.startsWith('home')) {
-      ctx.font = '8px Georgia';
-      ctx.textAlign = 'center';
-      ctx.fillStyle = '#364b45';
-      const labels: Record<string, [string, number, number]> = {
-        garden: ['Tea garden', 0, 39],
-        fountain: ['Fountain', 20, -12],
-        bakery: ['Bakery', 8, 25],
-        grocer: ['Grocer', -8, 25],
-        courtyard: ['Courtyard', 0, -19],
-        coffee: ['Coffee house', 0, -18],
-        tailor: ['Tailor', 0, -18],
-        barber: ['Barber', 14, 25],
-        doorsteps: ['Doorsteps', -10, 24],
-      };
-      const label = labels[place.id] ?? [place.name, 0, 24];
-      ctx.fillText(label[0], p.x + label[1], p.y + label[2]);
-    }
   }
+  // Reserve readable labels first. People use the remaining space around each place.
+  const labels: (Rect & { id: string; text: string })[] = [];
+  ctx.font = '9px Georgia';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  const names: Record<string, string> = {
+    garden: 'Tea garden',
+    fountain: 'Fountain',
+    bakery: 'Bakery',
+    grocer: 'Grocer',
+    courtyard: 'Courtyard',
+    coffee: 'Coffee house',
+    tailor: 'Tailor',
+    barber: 'Barber',
+    doorsteps: 'Doorsteps',
+  };
+  for (const place of PLACES) {
+    const p = point(place.x, place.y);
+    const text = names[place.id] ?? place.name;
+    const w = Math.ceil(ctx.measureText(text).width) + 6;
+    const preferredY = place.id === 'garden' ? 40 : -22;
+    const candidates = [preferredY, -22, 25, 40, -36, 52].flatMap((dy) =>
+      [0, -22, 22, -44, 44].map((dx) => ({
+        x: Math.max(3, Math.min(width - w - 3, p.x + dx - w / 2)),
+        y: Math.max(7, Math.min(height - 28, p.y + dy - 6)),
+        width: w,
+        height: 12,
+      })),
+    );
+    const box =
+      candidates.find((candidate) => !labels.some((label) => overlaps(candidate, label, 3))) ?? candidates[0];
+    if (!box) continue;
+    labels.push({ ...box, id: place.id, text });
+    ctx.fillStyle = '#e5e8d7';
+    ctx.fillRect(box.x, box.y, box.width, box.height);
+    ctx.fillStyle = '#364b45';
+    ctx.fillText(text, box.x + box.width / 2, box.y + box.height / 2);
+  }
+  const benches: Rect[] = [];
   const garden = PLACES.find((p) => p.id === 'garden');
   if (garden) {
     const p = point(garden.x, garden.y);
@@ -92,6 +168,7 @@ export function drawMap(canvas: HTMLCanvasElement, state: State, elapsed: number
     for (let i = 0; i < 4; i++) {
       const x = p.x - 21 + (i % 2) * 28,
         y = p.y + 10 + Math.floor(i / 2) * 10;
+      benches.push({ x: x - 1, y: y - 8, width: 16, height: 10 });
       ctx.strokeStyle = '#76684d';
       ctx.lineWidth = 2;
       ctx.beginPath();
@@ -115,41 +192,83 @@ export function drawMap(canvas: HTMLCanvasElement, state: State, elapsed: number
       ctx.fillRect(p.x - 8, p.y, 16, 8);
     }
   }
-  for (const [id, location] of Object.entries(state.locations)) {
+  const people: MapPerson[] = [];
+  // A fixed grid guarantees that neighbours never cover labels or each other.
+  // Rank slots by distance to a seeded offset at each person's place.
+  const slots: { x: number; y: number }[] = [];
+  for (let y = 14; y < height - 25; y += 12) {
+    for (let x = 9; x < width - 8; x += 11) slots.push({ x, y });
+  }
+  for (const [id, location] of Object.entries(state.locations).sort(([a], [b]) => a.localeCompare(b))) {
     if (id === 'hatice') continue;
     const place = places.find((p) => p.id === location);
     if (!place) continue;
-    const n = Object.keys(state.locations).indexOf(id);
     const target = point(place.x, place.y);
-    target.x += Math.sin(n * 2.4) * 14;
-    target.y += Math.cos(n * 2.4) * 10;
-    const previous = positions.get(id) ?? target;
-    const f = Math.min(1, elapsed / 180);
-    const p = { x: previous.x + (target.x - previous.x) * f, y: previous.y + (target.y - previous.y) * f };
-    positions.set(id, p);
-    ctx.fillStyle = ['#335f60', '#a45f4b', '#6e7551', '#9a854f'][n % 4] ?? '#335f60';
-    ctx.beginPath();
-    ctx.arc(p.x, p.y - 3, 2.5, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.fillRect(p.x - 2, p.y, 4, 6);
+    const phase = (hash(`${state.seed}:${id}`) / 0xffffffff) * Math.PI * 2;
+    target.x += Math.cos(phase) * 15;
+    target.y += Math.sin(phase) * 12;
+    const available = slots.filter((slot) => {
+      const box = { x: slot.x - 4, y: slot.y - 5, width: 8, height: 11 };
+      return ![...labels, ...benches, ...people].some((other) => overlaps(box, other, 1));
+    });
+    available.sort(
+      (a, b) => (a.x - target.x) ** 2 + (a.y - target.y) ** 2 - (b.x - target.x) ** 2 - (b.y - target.y) ** 2,
+    );
+    const p = available[0];
+    if (p) people.push({ id, location, x: p.x - 4, y: p.y - 5, width: 8, height: 11 });
   }
-  const visible = state.routes.filter(
-    (r) =>
-      r.at >= state.minute - 15 &&
-      state.log.some((l) => l.at === r.at && l.speaker === r.from && l.kind === 'conversation') &&
-      ['garden', 'fountain'].includes(state.locations[r.from] ?? '') &&
-      ['garden', 'fountain'].includes(state.locations[r.to] ?? ''),
-  );
-  ctx.strokeStyle = '#b38365';
+  const previous = witnessHistory.get(state);
+  const witnesses =
+    previous && previous.seed === state.seed && previous.minute <= state.minute
+      ? previous.witnesses.filter((w) => state.minute - w.at < 15)
+      : [];
+  // Capture only a conversation witnessed now. Never infer old locations from routes.
+  for (let i = state.routes.length - 1; i >= 0; i--) {
+    const route = state.routes[i];
+    if (!route || route.at < state.minute) break;
+    if (route.at !== state.minute || witnesses.some((w) => w.id === route.id)) continue;
+    if (
+      !state.log.some(
+        (line) =>
+          line.at === route.at &&
+          line.speaker === route.from &&
+          line.target === route.target &&
+          line.kind === 'conversation',
+      )
+    )
+      continue;
+    const a = people.find((p) => p.id === route.from);
+    const b = people.find((p) => p.id === route.to);
+    if (!a || !b || a.location !== b.location || !['garden', 'fountain'].includes(a.location)) continue;
+    witnesses.push({
+      id: route.id,
+      at: route.at,
+      a: { x: a.x + 4, y: a.y + 5 },
+      b: { x: b.x + 4, y: b.y + 5 },
+    });
+  }
+  const fadedWitnesses = witnesses.map((witness) => ({
+    ...witness,
+    alpha: 0.65 * (1 - (state.minute - witness.at) / 15),
+  }));
   ctx.lineWidth = 0.7;
-  for (const route of visible) {
-    const a = positions.get(route.from),
-      b = positions.get(route.to);
-    if (a && b) {
-      ctx.beginPath();
-      ctx.moveTo(a.x, a.y);
-      ctx.lineTo(b.x, b.y);
-      ctx.stroke();
-    }
+  for (const witness of fadedWitnesses) {
+    ctx.strokeStyle = `rgba(156, 111, 79, ${witness.alpha})`;
+    ctx.beginPath();
+    ctx.moveTo(witness.a.x, witness.a.y);
+    ctx.lineTo(witness.b.x, witness.b.y);
+    ctx.stroke();
   }
+  for (const p of people) {
+    ctx.fillStyle = ['#335f60', '#a45f4b', '#6e7551', '#9a854f'][hash(p.id) % 4] ?? '#335f60';
+    ctx.beginPath();
+    ctx.arc(p.x + 4, p.y + 2.5, 2.5, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillRect(p.x + 2, p.y + 5, 4, 6);
+  }
+  layouts.set(canvas, { people, state, signature });
+  witnessHistory.set(state, { witnesses, seed: state.seed, minute: state.minute });
+  // Browser checks can inspect the exact CSS-pixel bounds used by the drawing.
+  const debug = JSON.stringify({ labels, people, benches, witnessed: fadedWitnesses });
+  if (canvas.dataset.mapLayout !== debug) canvas.dataset.mapLayout = debug;
 }

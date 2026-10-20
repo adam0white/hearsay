@@ -13,14 +13,19 @@
  *   node scripts/browser-drive.ts <port> export <file>             save the playtest export from the notebook
  *   node scripts/browser-drive.ts <port> quit                      close the browser
  */
-import { mkdirSync } from 'node:fs';
+import assert from 'node:assert/strict';
+import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { createServer } from 'node:http';
 import { join, resolve } from 'node:path';
 import { chromium, type Page } from 'playwright-core';
+import { newGame, view } from '../src/sim/engine.ts';
+import { verifyImport } from '../src/ui/export.ts';
 
 const [a0, a1, a2, a3] = process.argv.slice(2);
 
-if (a0 === 'serve') {
+if (a0 === 'verify-polish') {
+  await verifyPolish(a1 ?? 'http://127.0.0.1:5173/');
+} else if (a0 === 'serve') {
   const port = Number(a1);
   const url = a2 ?? 'http://127.0.0.1:5173/';
   const shots = a3 ?? join(process.cwd(), 'scratch', `shots-${port}`);
@@ -174,7 +179,8 @@ async function look(page: Page, path: string): Promise<string> {
     const out: string[] = [];
     const t = (sel: string) => (document.querySelector(sel) as HTMLElement | null)?.innerText.trim() ?? '';
     out.push(t('body'));
-    const buttons = [...document.querySelectorAll<HTMLButtonElement>('button')].filter(
+    const surface = document.querySelector('dialog[open]') ?? document;
+    const buttons = [...surface.querySelectorAll<HTMLButtonElement>('button')].filter(
       (b) => b.offsetParent !== null,
     );
     out.push(
@@ -188,7 +194,8 @@ async function look(page: Page, path: string): Promise<string> {
 async function tap(page: Page, arg: string): Promise<string | null> {
   const found = await page.evaluate((arg) => {
     for (const b of document.querySelectorAll('[data-drive]')) b.removeAttribute('data-drive');
-    const all = [...document.querySelectorAll<HTMLButtonElement>('button')].filter(
+    const surface = document.querySelector('dialog[open]') ?? document;
+    const all = [...surface.querySelectorAll<HTMLButtonElement>('button')].filter(
       (x) => x.offsetParent !== null,
     );
     const label = (x: HTMLButtonElement) =>
@@ -210,4 +217,226 @@ async function tap(page: Page, arg: string): Promise<string | null> {
   await page.locator('[data-drive]').click();
   await page.clock.runFor(400);
   return null;
+}
+
+/** Phone acceptance for the UI polish; run against the local Vite server. */
+async function verifyPolish(url: string): Promise<void> {
+  mkdirSync('scratch/ui-shots', { recursive: true });
+  const browser = await chromium.launch();
+  try {
+    const page = await browser.newPage({ viewport: { width: 360, height: 780 }, acceptDownloads: true });
+    const errors: string[] = [];
+    page.on('pageerror', (error) => errors.push(error.message));
+    await page.clock.install({ time: new Date('2026-10-20T12:00:00Z') });
+    await page.clock.pauseAt(new Date('2026-10-20T12:00:00Z'));
+    await page.goto(url);
+    await page.getByRole('button', { name: 'Start', exact: true }).click();
+    assert.equal(await page.locator('[data-speed="5"]').getAttribute('aria-pressed'), 'true');
+    assert.equal(await page.locator('.first-start p').count(), 5);
+    const firstBounds = await page
+      .locator('.actions button')
+      .evaluateAll((buttons) => buttons.map((b) => b.getBoundingClientRect().bottom));
+    assert.ok(
+      firstBounds.every((y) => y <= 780),
+      JSON.stringify(firstBounds),
+    );
+    assert.match(await page.locator('.clock').innerText(), /Day 1, Monday 06:00/);
+    await page.screenshot({ path: 'scratch/ui-shots/01-first-start.png' });
+    await page.getByRole('button', { name: 'Got it', exact: true }).click();
+    assert.equal(await page.locator('select').count(), 0);
+    await page.locator('[data-person="fatma"]').click();
+    await page.locator('[data-target="emre"]').click();
+    await page.locator('[data-trait="dishonest"]').focus();
+    await page.keyboard.press('Enter');
+    assert.equal(
+      await page.evaluate(() => (document.activeElement as HTMLElement)?.dataset.trait),
+      'dishonest',
+    );
+    await page.screenshot({ path: 'scratch/ui-shots/02-chooser.png' });
+    await page.getByRole('button', { name: 'Someone else…', exact: true }).click();
+    assert.equal(await page.locator('[data-target]').count(), 31);
+    await page.getByRole('button', { name: 'Show today’s people', exact: true }).click();
+    await page.locator('[data-trait="owes"]').click();
+    assert.match(await page.locator('.defend-preview').innerText(), /Emre does not owe money/);
+    await page.locator('[data-trait="dishonest"]').click();
+    assert.match(await page.locator('.tell-preview').innerText(), /Emre is dishonest.*It would be a lie/);
+    assert.match(await page.locator('.defend-preview').innerText(), /Emre is honest.*You believe it/);
+    await page.getByRole('dialog').getByRole('button', { name: 'Tell', exact: true }).click();
+    await page.getByRole('dialog').waitFor({ state: 'hidden' });
+    assert.match(await page.locator('.reply').innerText(), /Fatma/);
+    await page.screenshot({ path: 'scratch/ui-shots/02-answer.png' });
+    await page.getByRole('button', { name: 'Notebook', exact: true }).click();
+    const [download] = await Promise.all([
+      page.waitForEvent('download'),
+      page.getByRole('button', { name: 'Download this run', exact: true }).click(),
+    ]);
+    assert.match(await page.locator('.download-status').innerText(), /Saved hearsay-day1.json/);
+    await download.saveAs('scratch/ui-shots/run.json');
+    verifyImport(readFileSync('scratch/ui-shots/run.json', 'utf8'));
+    await page.getByRole('button', { name: 'Close notebook', exact: true }).click();
+    // A layout-only fixture: keep eleven neighbours nearby, without claiming this
+    // altered location snapshot is a replayable simulation outcome.
+    const fixture = newGame(1);
+    fixture.s.newsWaiting = true;
+    for (const id of view(fixture.s).present.slice(11)) fixture.s.locations[id] = 'home-0';
+    assert.equal(view(fixture.s).present.length, 11);
+    fixture.s.log.push({
+      id: fixture.s.log.length + 1,
+      at: 360,
+      kind: 'echo',
+      target: 'kemal',
+      count: 7,
+      who: ['ayse', 'can', 'emre', 'fatma', 'safiye'],
+      text: 'Kemal is dishonest: heard again 7 times today; heard from Ayşe, Can, Emre, Fatma, Safiye.',
+    });
+    fixture.s.log.push({
+      id: fixture.s.log.length + 1,
+      at: 360,
+      kind: 'overheard',
+      target: 'kemal',
+      text: 'A witnessed incident for the layout check.',
+    });
+    fixture.s.log.push({
+      id: fixture.s.log.length + 1,
+      at: 360,
+      kind: 'conversation',
+      speaker: 'fatma',
+      target: 'kemal',
+      text: 'Kemal is dishonest.',
+    });
+    fixture.s.routes.push({
+      id: 1,
+      at: 360,
+      from: 'fatma',
+      to: 'emre',
+      target: 'kemal',
+      trait: 'dishonest',
+      value: true,
+      origin: 'fatma',
+      steps: 0,
+      lie: false,
+    });
+    fixture.s.routes.push({
+      id: 2,
+      at: 360,
+      from: 'riza',
+      to: 'elif',
+      target: 'kemal',
+      trait: 'dishonest',
+      value: true,
+      origin: 'riza',
+      steps: 0,
+      lie: false,
+    });
+    writeFileSync('scratch/ui-shots/crowd.json', JSON.stringify(fixture));
+    await page.evaluate(async (fixture) => {
+      const path = '/src/ui/store.ts';
+      const store = await import(path);
+      await store.putImmediate('run-log', null);
+      await store.putImmediate('run', fixture);
+    }, fixture);
+    await page.reload();
+    await page.getByRole('button', { name: 'Resume', exact: true }).click();
+    await page.locator('.people-chips').waitFor();
+    assert.equal(await page.locator('[data-person]').count(), 11);
+    await page.screenshot({ path: 'scratch/ui-shots/03-eleven-people.png' });
+    const crowdBounds = await page
+      .locator('.actions button')
+      .evaluateAll((buttons) =>
+        buttons.map((b) => ({ label: b.textContent, bottom: b.getBoundingClientRect().bottom })),
+      );
+    assert.equal(crowdBounds.length, 6);
+    assert.ok(
+      crowdBounds.every((b) => b.bottom <= 780),
+      JSON.stringify(crowdBounds),
+    );
+    assert.match(await page.locator('.echo').innerText(), /heard again from Ayşe, Can and 3 others/);
+    assert.equal(((await page.locator('.echo').innerText()).match(/heard again/g) ?? []).length, 1);
+    assert.ok(!(await page.locator('.echo').innerText()).includes('Safiye'));
+    assert.equal(await page.locator('.heard article.incident').count(), 1);
+    const layout = await page
+      .locator('#map')
+      .evaluate((canvas) => JSON.parse((canvas as HTMLCanvasElement).dataset.mapLayout ?? '{}'));
+    assert.equal(layout.witnessed.length, 1, 'Only the visible conversation draws a line');
+    const originalAlpha = layout.witnessed[0].alpha;
+    const overlaps = (a: { x: number; y: number; width: number; height: number }, b: typeof a) =>
+      a.x < b.x + b.width && a.x + a.width > b.x && a.y < b.y + b.height && a.y + a.height > b.y;
+    for (const label of layout.labels) {
+      assert.ok(
+        !layout.people.some((p: typeof label) => overlaps(label, p)),
+        `Label covers person: ${label.text}`,
+      );
+      assert.ok(
+        !layout.labels.some((p: typeof label) => p !== label && overlaps(label, p)),
+        `Labels overlap: ${label.text}`,
+      );
+    }
+    const passer = layout.people.find((p: { location: string }) => p.location === 'fountain');
+    const mapBounds = await page.locator('#map').boundingBox();
+    assert.ok(passer && mapBounds);
+    await page.mouse.click(
+      mapBounds.x + passer.x + passer.width / 2,
+      mapBounds.y + passer.y + passer.height / 2,
+    );
+    const caller = page.getByRole('dialog').getByRole('button', { name: /^Call over / });
+    assert.equal(await caller.count(), 1);
+    const expectedPerson = view(fixture.s).people.find((p) => p.id === passer.id)?.name;
+    assert.equal(await caller.innerText(), `Call over ${expectedPerson}`);
+    await caller.click();
+    await page.getByRole('dialog').waitFor({ state: 'hidden' });
+    assert.match(await page.locator('.reply').innerText(), /moment|What is it/);
+    assert.equal(await page.locator('[data-speed="1"]').getAttribute('aria-pressed'), 'true');
+    assert.match(await page.locator('.slow-reason').innerText(), /arrived/);
+    await page.getByRole('button', { name: 'Hold your tongue', exact: true }).click();
+    await page.locator('.reply').filter({ hasText: 'Nothing I need to pass on' }).waitFor();
+    await page.clock.runFor(5000);
+    const faded = await page
+      .locator('#map')
+      .evaluate((c) => JSON.parse((c as HTMLCanvasElement).dataset.mapLayout ?? '{}').witnessed);
+    assert.ok(
+      faded.some((w: { id: number; alpha: number }) => w.id === 1 && w.alpha < originalAlpha),
+      'Witness line survives render and fades',
+    );
+    await page.locator('[data-person="fatma"]').click();
+    await page.locator('[data-target="emre"]').click();
+    await page.getByRole('dialog').getByRole('button', { name: 'Ask', exact: true }).click();
+    await page.getByRole('dialog').waitFor({ state: 'hidden' });
+    assert.match(await page.locator('.reply').innerText(), /Fatma/);
+    await page.locator('[data-person="fatma"]').click();
+    await page.getByRole('dialog').getByRole('button', { name: 'Make amends', exact: true }).click();
+    await page.getByRole('dialog').waitFor({ state: 'hidden' });
+    assert.match(await page.locator('.reply').innerText(), /Fatma/);
+    await page.locator('[data-person="fatma"]').click();
+    await page.locator('[data-target="emre"]').click();
+    await page.getByRole('dialog').getByRole('button', { name: 'Defend', exact: true }).click();
+    await page.getByRole('dialog').waitFor({ state: 'hidden' });
+    assert.match(await page.locator('.reply').innerText(), /Fatma/);
+    await page.locator('[data-speed="80"]').click();
+    await page.clock.runFor(2500);
+    assert.equal(await page.locator('[data-speed="1"]').getAttribute('aria-pressed'), 'true');
+    assert.match(await page.locator('.slow-reason').innerText(), /waiting|arrived/);
+    if (await page.getByRole('button', { name: 'Hold your tongue', exact: true }).isEnabled()) {
+      await page.getByRole('button', { name: 'Hold your tongue', exact: true }).click();
+      assert.match(await page.locator('.reply').innerText(), /Hatice|Nothing/);
+    }
+    await page.screenshot({ path: 'scratch/ui-shots/04-slowed.png' });
+    assert.deepEqual(errors, []);
+    const bounds = await page
+      .locator('.actions button')
+      .evaluateAll((buttons) =>
+        buttons.map((b) => ({ label: b.textContent, bottom: b.getBoundingClientRect().bottom })),
+      );
+    assert.ok(
+      bounds.every((b) => b.bottom <= 780),
+      JSON.stringify(bounds),
+    );
+    assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
+    writeFileSync(
+      'scratch/ui-shots/acceptance.json',
+      JSON.stringify({ phone: [360, 780], crowd: 11, crowdBounds, bounds, errors }, null, 2),
+    );
+    console.log('UI polish phone acceptance passed. Evidence: scratch/ui-shots/');
+  } finally {
+    await browser.close();
+  }
 }
