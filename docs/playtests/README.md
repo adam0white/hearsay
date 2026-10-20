@@ -29,3 +29,12 @@ The HF personas use bounded, authored action promises and valences. Five of the 
 Source-unread testers `2026-10-20-r2-tester-a.md` (Deniz, quit at 8:07: "I liked the flour dilemma, but I wouldn't keep playing tonight.") and `-b.md` (Murat, quit at 3:59: "I still don't know whether I'm getting the wedding any closer."). HF cohort `2026-10-20-hf-r3.md`: 30 sittings, no quits and no classified boredom; read as a different signal from people (lab lesson L16).
 
 Polish round from them (commits 8bb4a03, 9f4a613, c53c5b2): Rıza's lean and his own words are always on screen with the named answer day; every reply says whether the listener believes you and what they will do; the answer sits above the verbs on a phone; presence is live; the word resets to Hatice's own view when the subject changes; witnessed incidents can be retold as stories; quiet stretches hurry; each day ends with a card and one question for tomorrow. Not yet retested by a fresh player.
+
+## Round 3 (2026-10-20): two fresh source-unread testers on the live build (34bad4c)
+
+Both quit and neither would return tomorrow.
+
+- `2026-10-20-r3-tester-c.md` (Selin, narrative-game player, quit at 8:54, Day 2): "Now I feel punished for a sensible answer without understanding the alternative. I wouldn't open it tomorrow on my own. I'd come back for a conversation where Meryem reacts to the missing cart and Osman can answer for himself."
+- `2026-10-20-r3-tester-d.md` (Hakan, strategy player, quit at 4:54, Day 3): "The wedding is progressing, but I don't feel that I'm directing it. I would not open this tomorrow on my own. I would come back for a clear plan I could try, and a visible sign that my particular choice helped or hurt it."
+
+Diagnosis (designer, 2026-10-20). Both quits share one trigger: the game marks Meryem "would want to know", she asks about her own cart, the truthful answer draws a backbiting refusal and then emptier benches (DL-19, a cue that means the opposite of what happens). All four round 2 and 3 testers lost a listener while the talk panel was open (DL-15). Rıza leaned warm on Day 1 without any plan by the player, so the wedding had no stakes and its changes could not be attributed (Hakan). The day card's question worked as a reason to press on (Selin pressed Sleep for it).
