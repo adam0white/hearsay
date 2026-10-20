@@ -856,3 +856,120 @@ button[aria-disabled="true"] {
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 }
+
+/* Round 4: hold the sentence and its controls in view while choices scroll. */
+.talk-sheet {
+  height: min(650px, 96dvh);
+  max-height: 96dvh;
+  overflow: hidden;
+  padding: 12px;
+}
+.talk-sheet[open] {
+  display: flex;
+  flex-direction: column;
+}
+.talk-sheet .dialog-head {
+  position: static;
+  flex: 0 0 auto;
+}
+.talk-sheet .conversation-body {
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+}
+.talk-sheet .presence {
+  flex: 0 0 auto;
+  font-size: 0.8235rem;
+  line-height: 1.3;
+}
+.talk-choices {
+  min-height: 0;
+  flex: 1;
+  overflow-y: auto;
+  padding: 0 3px 8px;
+}
+.talk-sheet .subject-chips {
+  overflow: visible;
+  max-height: none;
+}
+.talk-bar {
+  flex: 0 0 auto;
+  background: #f5efe3;
+  border-top: 2px solid var(--line);
+  padding-top: 6px;
+}
+.talk-bar .statement {
+  grid-template-columns: 1fr 78px;
+  margin-top: 0;
+  padding-block: 4px;
+  border: 0;
+}
+.talk-bar .statement p {
+  font-size: 0.8235rem;
+  line-height: 1.3;
+}
+.talk-bar .conversation-actions {
+  margin: 4px 0;
+}
+.talk-bar > .fine {
+  display: none;
+}
+.talk-sheet .talk-bar button,
+.sheet .dialog-head button,
+.riza-mind .doubt-chips button {
+  min-height: 44px;
+}
+.actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+}
+.actions > [data-open-talk] {
+  grid-column: 1 / -1;
+}
+.actions .action-option button {
+  width: 100%;
+}
+.action-limit {
+  display: block;
+  font-size: 0.7059rem;
+  line-height: 1.25;
+  margin-top: 3px;
+  color: #6b5144;
+}
+.doubt-chips {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 5px;
+  margin-top: 4px;
+}
+.riza-mind .doubt-chips button {
+  min-width: 0;
+  padding: 3px;
+  font-size: 0.7647rem;
+  line-height: 1.2;
+}
+.doubt-chips small {
+  display: block;
+  font-size: 0.7059rem;
+}
+.doubt-changed {
+  outline: 2px solid var(--teal);
+}
+.next-step,
+.riza-cause,
+.doubt-detail {
+  font-size: 0.7647rem;
+  line-height: 1.25;
+  margin-top: 4px;
+}
+.continue-line {
+  margin-top: 10px;
+}
+
+.talk-sheet .talk-bar button {
+  padding-inline: 6px;
+  font-size: 0.8824rem;
+  overflow-wrap: normal;
+}

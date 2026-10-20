@@ -21,6 +21,13 @@ export function exportRun(game: Game): RunExport {
     fingerprint: fingerprint(game.s),
   };
 }
+export type CompactRunExport = Omit<RunExport, 'state'>;
+
+export function compactRun(run: RunExport): CompactRunExport {
+  const { game, version, seed, minute, inputs, fingerprint } = run;
+  return { game, version, seed, minute, inputs: structuredClone(inputs), fingerprint };
+}
+
 export function verifyImport(text: string): Game {
   const data: unknown = JSON.parse(text);
   if (!data || typeof data !== 'object') throw new Error('This is not a Hearsay run.');
@@ -31,7 +38,6 @@ export function verifyImport(text: string): Game {
     !Number.isSafeInteger(d.seed) ||
     !Number.isSafeInteger(d.minute) ||
     !Array.isArray(d.inputs) ||
-    !d.state ||
     typeof d.fingerprint !== 'string'
   )
     throw new Error('The run is incomplete.');
@@ -53,7 +59,17 @@ export function verifyImport(text: string): Game {
     previous = entry.at;
     const input = entry.input;
     if (
-      !['tell', 'defend', 'ask', 'hold-tongue', 'make-amends', 'call-over', 'tell-story'].includes(input.type)
+      ![
+        'tell',
+        'defend',
+        'ask',
+        'hold-tongue',
+        'make-amends',
+        'call-over',
+        'tell-story',
+        'sit',
+        'release',
+      ].includes(input.type)
     )
       throw new Error('Unknown choice in run.');
     if (('listener' in input && !ids.has(input.listener)) || ('target' in input && !ids.has(input.target)))
@@ -65,7 +81,10 @@ export function verifyImport(text: string): Game {
     if (input.type === 'call-over' && !ids.has(input.person)) throw new Error('Unknown passer-by in run.');
   }
   const game = replay(d.seed as number, d.inputs, d.minute as number);
-  if (fingerprint(game.s) !== d.fingerprint || fingerprint(d.state) !== d.fingerprint)
+  if (
+    fingerprint(game.s) !== d.fingerprint ||
+    (Object.hasOwn(d, 'state') && (!d.state || fingerprint(d.state) !== d.fingerprint))
+  )
     throw new Error('Replay did not match this run. Your current garden is unchanged.');
   return game;
 }

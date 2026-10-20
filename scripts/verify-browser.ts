@@ -42,7 +42,7 @@ try {
     .evaluateAll((buttons) =>
       buttons.map((button) => ({ label: button.textContent, bottom: button.getBoundingClientRect().bottom })),
     );
-  assert.equal(bounds.length, 6);
+  assert.equal(bounds.length, 3);
   assert.ok(
     bounds.every((b) => b.bottom <= 780),
     JSON.stringify(bounds),

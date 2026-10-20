@@ -23,7 +23,9 @@ import { verifyImport } from '../src/ui/export.ts';
 
 const [a0, a1, a2, a3] = process.argv.slice(2);
 
-if (a0 === 'verify-p3') {
+if (a0 === 'verify-r4') {
+  await verifyR4(a1 ?? 'http://127.0.0.1:4184/');
+} else if (a0 === 'verify-p3') {
   await verifyP3(a1 ?? 'http://127.0.0.1:4183/');
 } else if (a0 === 'verify-p2') {
   await verifyP2(a1 ?? 'http://127.0.0.1:5173/');
@@ -818,6 +820,135 @@ async function verifyP3(url: string): Promise<void> {
       JSON.stringify({ viewport: [360, 690], seed: 1, bounds, errors }, null, 2),
     );
     console.log(`Round 3 phone acceptance passed. Evidence: ${shots}/`);
+  } finally {
+    await browser.close();
+  }
+}
+
+/** Round 4 acceptance against the built preview, using the public save format. */
+async function verifyR4(url: string): Promise<void> {
+  const shots = 'scratch/ui-shots-r4';
+  mkdirSync(shots, { recursive: true });
+  const browser = await chromium.launch();
+  try {
+    const page = await browser.newPage({ viewport: { width: 360, height: 690 }, acceptDownloads: true });
+    const errors: string[] = [];
+    page.on('pageerror', (error) => errors.push(error.message));
+    await page.clock.install();
+    await page.clock.pauseAt(new Date());
+    const load = async (minute: number) => {
+      await page.goto('about:blank');
+      await page.goto(url);
+      await page.locator('.title-page').waitFor();
+      const fixture = newGame(1);
+      advance(fixture, minute);
+      await page.evaluate(async (fixture) => {
+        const db = await new Promise<IDBDatabase>((resolve) => {
+          const request = indexedDB.open('hearsay', 1);
+          request.onsuccess = () => resolve(request.result);
+        });
+        await new Promise<void>((resolve) => {
+          const tx = db.transaction('pages', 'readwrite');
+          const store = tx.objectStore('pages');
+          for (const [key, value] of [
+            ['run-ui', null],
+            ['run-log', null],
+            ['run', fixture],
+          ])
+            store.put({ plain: JSON.stringify(value), at: Date.now() }, key as string);
+          tx.oncomplete = () => resolve();
+        });
+        db.close();
+      }, fixture);
+      await page.reload();
+      await page.getByRole('button', { name: 'Resume', exact: true }).click();
+      await page.locator('.riza-mind').waitFor();
+    };
+    const inViewport = async (selector: string) => {
+      const bounds = await page.locator(selector).evaluateAll((elements) =>
+        elements.map((el) => ({
+          text: el.textContent,
+          top: el.getBoundingClientRect().top,
+          bottom: el.getBoundingClientRect().bottom,
+        })),
+      );
+      assert.ok(bounds.length, selector);
+      assert.ok(
+        bounds.every((b) => b.top >= 0 && b.bottom <= 690),
+        JSON.stringify(bounds),
+      );
+      return bounds;
+    };
+    // Fatma leaves at 08:00 unless Hatice has poured tea for her.
+    const unheld = newGame(1);
+    advance(unheld, 480);
+    assert.ok(!view(unheld.s).present.includes('fatma'));
+    await load(479);
+    await page.getByRole('button', { name: 'Gallop', exact: true }).click();
+    await page.locator('[data-person="fatma"]').click();
+    assert.match(await page.locator('.presence').innerText(), /Fatma sits with you/);
+    await page.clock.runFor(2600);
+    assert.match(await page.locator('#clock').innerText(), /08:0[1-9]/);
+    assert.equal(await page.locator('[data-person="fatma"]').count(), 1);
+    assert.equal(await page.locator('[data-speed="1"]').getAttribute('aria-pressed'), 'true');
+    const talkBounds = await inViewport('.talk-bar .tell-preview, .talk-bar [data-verb]');
+    assert.equal(talkBounds.length, 5);
+    const targets = await page
+      .locator('.talk-bar [data-verb]')
+      .evaluateAll((els) => els.map((el) => el.getBoundingClientRect().height));
+    assert.ok(targets.every((height) => height >= 44));
+    await page.screenshot({ path: `${shots}/01-held-past-departure.png` });
+    await page.locator('[data-trait="dishonest"]').click();
+    await page.getByRole('dialog').getByRole('button', { name: 'Tell', exact: true }).click();
+    await page.getByRole('dialog').waitFor({ state: 'hidden' });
+    await page.locator('.reply').waitFor();
+    const answerBounds = await inViewport('.riza-mind, .reply');
+    assert.doesNotMatch(await page.locator('.reply').innerText(), /moved on/);
+    assert.equal(await page.locator('.actions button').count(), 3);
+    assert.equal(await page.locator('[data-doubt]').count(), 3);
+    assert.match(
+      await page.locator('.next-step').innerText(),
+      /Next: Coffee with Elif's family · Day 4, Thursday/,
+    );
+    await page.screenshot({ path: `${shots}/02-answer-and-wedding.png` });
+    await page.locator('[data-doubt="reliable"]').click();
+    assert.match(await page.locator('.doubt-detail').innerText(), /promises/);
+    await page.screenshot({ path: `${shots}/03-doubt-words.png` });
+    await load(479);
+    await page.locator('[data-person="fatma"]').click();
+    for (
+      let i = 0;
+      i < 130 && !(await page.locator('.presence').innerText()).includes('tea is finished');
+      i++
+    )
+      await page.clock.runFor(1000);
+    assert.equal(await page.getByRole('dialog').isVisible(), true);
+    assert.match(
+      await page.locator('.presence').innerText(),
+      /tea is finished/,
+      await page.locator('#clock').innerText(),
+    );
+    await page.screenshot({ path: `${shots}/04-hold-ended.png` });
+    // The nightly concrete tomorrow line also appears on Continue.
+    await load(1379);
+    await page.getByRole('button', { name: 'Gallop', exact: true }).click();
+    await page.clock.runFor(1000);
+    await page.locator('[data-day-card]').waitFor();
+    const tomorrow = await page.locator('.tomorrow').innerText();
+    assert.ok(tomorrow);
+    await page.screenshot({ path: `${shots}/05-tomorrow.png` });
+    await page.goto('about:blank');
+    await page.goto(url);
+    await page.locator('.continue-line').waitFor();
+    assert.match(await page.locator('.continue-line').innerText(), /Continue · Day 1, Monday/);
+    assert.ok((await page.locator('.continue-line').innerText()).includes(tomorrow));
+    await page.screenshot({ path: `${shots}/06-continue.png` });
+    assert.deepEqual(errors, []);
+    writeFileSync(
+      `${shots}/acceptance.json`,
+      JSON.stringify({ viewport: [360, 690], talkBounds, answerBounds, errors }, null, 2),
+    );
+    console.log(`Round 4 phone acceptance passed. Evidence: ${shots}/`);
   } finally {
     await browser.close();
   }
