@@ -137,7 +137,7 @@ function marriageView(s: State) {
   return {
     lean,
     reason,
-    line: `${words[reason]} I will answer on Day 13.`,
+    line: words[reason] ?? 'I have not decided about the marriage.',
     honesty,
     reliability,
     kindness,
@@ -221,9 +221,13 @@ function reaction(
   )
     will = 'I’ll pass on what you told me.';
   else if (believes === 'doubt') will = 'I won’t repeat that until I have seen more.';
+  const rizaBefore = s.riza?.line;
   updateRiza(s, false);
+  // Rıza's standing line is always on screen; repeat it in his answer only when this input changed it (L2).
   const marriage =
-    listener === 'riza' && ['emre', 'hatice', 'osman'].includes(target) ? ` ${s.riza?.line ?? ''}` : '';
+    listener === 'riza' && ['emre', 'hatice', 'osman'].includes(target) && s.riza?.line !== rizaBefore
+      ? ` ${s.riza?.line ?? ''}`
+      : '';
   answer(s, listener, `${detail}${will && !detail.includes(will) ? ` ${will}` : ''}${marriage}`, target, {
     to,
     believes,
@@ -753,17 +757,11 @@ export function act(g: Game, input: Input): boolean {
       : emre && !s.routes.some((r) => r.to === 'riza' && r.target === 'emre')
         ? 'He’s polite, he works. I don’t know his heart.'
         : ownView;
-    answer(
-      s,
-      input.listener,
-      `${detail}${emre ? ` ${s.riza?.line ?? marriageView(s).line}` : ''}`,
-      input.target,
-      {
-        to: g.inputs.length,
-        believes: refusal ? 'refuse' : believes,
-        ...(refusal ? { will: 'I won’t repeat that.' } : {}),
-      },
-    );
+    answer(s, input.listener, `${detail}${emre && !s.riza ? ` ${marriageView(s).line}` : ''}`, input.target, {
+      to: g.inputs.length,
+      believes: refusal ? 'refuse' : believes,
+      ...(refusal ? { will: 'I won’t repeat that.' } : {}),
+    });
     s.newsWaiting = false;
   } else if (input.type === 'make-amends') {
     const p = s.people[input.listener]!;
