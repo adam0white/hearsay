@@ -75,7 +75,8 @@ Actions stay above the fold at 360×780 (L9). The map is a Canvas 2D drawing of 
 
 ## Deferred
 
-- **2026-10-20 — Public build and domain activation.** Prepared the static-assets configuration for `hearsay.adamwhite.work`; did not push, create a GitHub repository or deploy, as Adam explicitly requested local review first.
-- **2026-10-20 — Games-page and lab-dashboard listing.** These are external publication changes and would require edits outside this repository. Adam prohibited edits to human-framework and will handle publication after review. The local client is configured with game id `hearsay`.
-- **2026-10-20 — Adam’s play acceptance.** The owner accepts this increment by playing it. That personal review remains outstanding; automated and source-unread playtests do not substitute for it.
+- **Done 2026-10-20 — Public build, games page and lab dashboard.** Live at https://hearsay.adamwhite.work from commit `34bad4c` (HF 2.9.0, lab client 0.1.1); listed on https://human.adamwhite.work/games/ and the lab dashboard. Later docs-only commits do not change the deployed app; `/release.json` names the deployed source.
+- **2026-10-22 — Fresh-player retest of the round 3 polish.** Both round 2 source-unread testers quit (at 8 and 4 minutes). Nobody has played the fixes yet.
+- **Open, owner's call — Adam’s play acceptance.** The owner accepts this increment by playing it. That personal review remains outstanding; automated and source-unread playtests do not substitute for it.
 - **2026-10-27 — Later-fortnight player acceptance.** Round 1 supplies daily scenes and six lines per voice pool, but the nine bounded HF sessions stop at their twelve-minute caps on days 4–8. Human play through days 9–14 and the ending remains to be assessed. The 135-second rules-oriented lull and the limited adapter topic menu need review after that play evidence.
+- **2026-10-27 — Longer authored dialogue.** Six lines per voice pool; when a pool runs out, the game narrates the facts instead. Later days can still repeat.
