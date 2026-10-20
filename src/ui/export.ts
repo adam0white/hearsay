@@ -28,6 +28,16 @@ export function compactRun(run: RunExport): CompactRunExport {
   return { game, version, seed, minute, inputs: structuredClone(inputs), fingerprint };
 }
 
+function matchesReplay(state: State, expected: string): boolean {
+  if (fingerprint(state) === expected) return true;
+  // HF 2.10.0 is behaviour-identical here. Accept old exports by changing only
+  // Person.engine on a copy; new exports and live persons keep their real stamp.
+  if (!Object.values(state.people).every((person) => person.engine === '2.10.0')) return false;
+  const legacy = structuredClone(state);
+  for (const person of Object.values(legacy.people)) person.engine = '2.9.0';
+  return fingerprint(legacy) === expected;
+}
+
 export function verifyImport(text: string): Game {
   const data: unknown = JSON.parse(text);
   if (!data || typeof data !== 'object') throw new Error('This is not a Hearsay run.');
@@ -85,7 +95,7 @@ export function verifyImport(text: string): Game {
   }
   const game = replay(d.seed as number, d.inputs, d.minute as number, d.version);
   if (
-    fingerprint(game.s) !== d.fingerprint ||
+    !matchesReplay(game.s, d.fingerprint) ||
     (Object.hasOwn(d, 'state') && (!d.state || fingerprint(d.state) !== d.fingerprint))
   )
     throw new Error('Replay did not match this run. Your current garden is unchanged.');

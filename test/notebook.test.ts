@@ -48,3 +48,28 @@ describe('run import', () => {
     expect(() => verifyImport(JSON.stringify(run))).toThrow('Replay did not match');
   });
 });
+
+it.each([1, 2] as const)(
+  'imports HF 2.9.0 full and compact version %i runs without hiding other changes',
+  (version) => {
+    const game = newGame(72, version);
+    advance(game, 405);
+    const run = exportRun(game);
+    // HF 2.10.0 changes only this stamp for hosts that do not opt into new fields.
+    for (const person of Object.values(run.state.people)) person.engine = '2.9.0';
+    run.fingerprint = fingerprint(run.state);
+    for (const candidate of [run, compactRun(run)]) {
+      const imported = verifyImport(JSON.stringify(candidate));
+      expect(imported.s).toEqual(game.s);
+      expect(Object.values(imported.s.people).every((person) => person.engine === '2.10.0')).toBe(true);
+    }
+    const altered = structuredClone(run);
+    altered.state.custom.hatice = 0.123;
+    altered.fingerprint = fingerprint(altered.state);
+    for (const candidate of [altered, compactRun(altered)])
+      expect(() => verifyImport(JSON.stringify(candidate))).toThrow('Replay did not match');
+    const corrupt = structuredClone(run);
+    corrupt.state.garden = 'full';
+    expect(() => verifyImport(JSON.stringify(corrupt))).toThrow('Replay did not match');
+  },
+);

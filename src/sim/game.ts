@@ -12,6 +12,7 @@ import {
   isUnfavourableTrait,
   REPUTATION_TRAITS,
   recordDeed,
+  seedSourceTrust,
   socialEvent,
   tick,
   trustOf,
@@ -732,7 +733,9 @@ export function newGame(seed: number, version: State['version'] = 2): Game {
     });
     understandNorm(s.people[p.id]!, 'backbiting', p.norm, p.norm === 'forbidden' ? 1 : 0.65);
     understandNorm(s.people[p.id]!, 'lying', p.norm === 'permitted' ? 'disliked' : 'forbidden', 0.8);
-    s.people[p.id]!.memory.sourceTrust.hatice = 0.72;
+    // Preserve the historical serialized self entry; HF correctly refuses to seed self trust.
+    if (p.id === 'hatice') s.people[p.id]!.memory.sourceTrust.hatice = 0.72;
+    else seedSourceTrust(s.people[p.id]!, 'hatice', 0.72);
   }
   // Familiarity is fallible testimony, not invented firsthand evidence. People know
   // their household, nearby neighbours and the tradespeople in their daily rounds.
@@ -745,7 +748,7 @@ export function newGame(seed: number, version: State['version'] = 2): Game {
         target.id === 'kemal' ? 'grocer' : target.id === 'riza' ? 'bakery' : 'none',
       );
       if (!family && !neighbour && !customer) continue;
-      s.people[listener.id]!.memory.sourceTrust[`familiar:${target.id}`] = 0.85;
+      seedSourceTrust(s.people[listener.id]!, `familiar:${target.id}`, 0.85);
       for (const trait of ['reliable'] as const) {
         believe(
           s.people[listener.id]!,
@@ -771,8 +774,8 @@ export function newGame(seed: number, version: State['version'] = 2): Game {
   confirm(s.people.hatice!, 'emre:kind', true, 360);
   confirm(s.people.hatice!, 'emre:honest', true, 360);
   confirm(s.people.hatice!, 'emre:reliable', true, 360);
-  s.people.riza!.memory.sourceTrust.kemal = 0.88;
-  s.people.riza!.memory.sourceTrust.cem = 0.85;
+  seedSourceTrust(s.people.riza!, 'kemal', 0.88);
+  seedSourceTrust(s.people.riza!, 'cem', 0.85);
   place(s);
   ensureRiza(s);
   s.riza!.line = marriageView(s).line;

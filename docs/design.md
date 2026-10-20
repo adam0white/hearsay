@@ -10,7 +10,7 @@ You live on being the person whose word is good: people sit in your garden becau
 
 On the first morning you overhear something true and damaging about someone. What you do with it is the game. Nobody tells you to gossip. The verbs simply allow it.
 
-Every neighbour is a full HF `Person` (exact pin `@adam0white/human-framework` 2.9.0). Talk between neighbours is HF `converse`: what they tell comes from their own confident beliefs, an unfavourable claim about an absent person costs a speaker who holds that backbiting is wrong (so some refuse to pass it on), and low-honesty speakers may lie when the host offers a temptation. Reputation is beliefs spreading belief by belief; HF turns a changed character belief into a changed relationship.
+Every neighbour is a full HF `Person` (exact pin `@adam0white/human-framework` 2.10.0). Talk between neighbours is HF `converse`: what they tell comes from their own confident beliefs, an unfavourable claim about an absent person costs a speaker who holds that backbiting is wrong (so some refuse to pass it on), and low-honesty speakers may lie when the host offers a temptation. Reputation is beliefs spreading belief by belief; HF turns a changed character belief into a changed relationship.
 
 ## The fortnight
 
@@ -59,6 +59,12 @@ Lying about a rival; ruining someone for sport; playing two households against e
 ## Determinism, saves and export
 
 One seed; all randomness from seeded RNG held in state or from hashes of (seed, event). Inputs are logged at the minute they apply. Save in IndexedDB. Game menu offers the playtest export (seed, input log, state JSON, fingerprint); `replay(seed, inputs, minute)` reproduces the fingerprint (tested). Lab client 0.1.1 sends regular anonymous telemetry and opt-in runs with notes, as in The Warren.
+
+## HF 2.10.0 upgrade (2026-10-20)
+
+Simulation versions 1 and 2 keep their rules. Authored nonself source trust uses HF's `seedSourceTrust`; familiarity still uses trust-weighted testimony and reputation updates. The new provenance and same-source contradiction APIs are not enabled: their semantics differ from this game's current route and independent-disagreement rules (see [HF requests](hf-requests.md)). No play change is intended.
+
+Before migration edits, full-state comparisons against npm HF 2.9.0 covered the pinned version 1 duplicate history at minute 390, its withdrawal history through day 7 (minute 9240), and a quiet version 2 fortnight. Each differed at exactly the 32 `Person.engine` fields, `2.9.0` → `2.10.0`; normalizing only those stamps made serialized states byte-identical. Pinned hashes `53cbae48` and `30000cb5` remain unchanged in tests, with only that stamp normalized on copies. Import accepts either the current replay hash or the old hash after the same narrow stamp normalization; it still verifies any supplied full state against its declared hash. Imported runs replay into current persons. New exports retain the current engine stamp and fingerprint. Other state changes remain mismatches.
 
 ## Owner fixes, phase 1 (2026-10-20)
 
