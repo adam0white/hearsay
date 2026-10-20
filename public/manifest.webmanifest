@@ -1,0 +1,16 @@
+{
+  "name": "Hearsay",
+  "short_name": "Hearsay",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#F3ECDD",
+  "theme_color": "#F3ECDD",
+  "icons": [
+    {
+      "src": "/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
+}
