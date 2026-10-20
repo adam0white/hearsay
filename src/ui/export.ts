@@ -69,6 +69,7 @@ export function verifyImport(text: string): Game {
         'tell-story',
         'sit',
         'release',
+        'choose',
       ].includes(input.type)
     )
       throw new Error('Unknown choice in run.');
@@ -76,8 +77,10 @@ export function verifyImport(text: string): Game {
       throw new Error('Unknown neighbour in run.');
     if (input.type === 'tell-story' && (!Number.isSafeInteger(input.incident) || input.incident < 1))
       throw new Error('Unknown witnessed story in run.');
-    if ('trait' in input && !Object.hasOwn(REPUTATION_TRAITS, input.trait))
+    if ('trait' in input && input.trait !== undefined && !Object.hasOwn(REPUTATION_TRAITS, input.trait))
       throw new Error('Unknown claim in run.');
+    if (input.type === 'choose' && (typeof input.scene !== 'string' || typeof input.choice !== 'string'))
+      throw new Error('Invalid scene choice in run.');
     if (input.type === 'call-over' && !ids.has(input.person)) throw new Error('Unknown passer-by in run.');
   }
   const game = replay(d.seed as number, d.inputs, d.minute as number);

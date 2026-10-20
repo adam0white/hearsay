@@ -8,7 +8,7 @@ mkdirSync('scratch/acceptance', { recursive: true });
 const browser = await chromium.launch();
 try {
   const context = await browser.newContext({
-    viewport: { width: 360, height: 780 },
+    viewport: { width: 360, height: 690 },
     isMobile: true,
     hasTouch: true,
     acceptDownloads: true,
@@ -33,7 +33,7 @@ try {
       await page
         .locator('.actions button')
         .evaluateAll((bs) => bs.map((b) => b.getBoundingClientRect().bottom))
-    ).every((y) => y <= 780),
+    ).every((y) => y <= 690),
   );
   await page.getByRole('dialog').getByRole('button', { name: 'Tell', exact: true }).click();
   await page.getByRole('dialog').waitFor({ state: 'hidden' });
@@ -44,7 +44,7 @@ try {
     );
   assert.equal(bounds.length, 3);
   assert.ok(
-    bounds.every((b) => b.bottom <= 780),
+    bounds.every((b) => b.bottom <= 690),
     JSON.stringify(bounds),
   );
   await page.screenshot({ path: 'scratch/acceptance/phone.png', fullPage: true });
@@ -82,7 +82,7 @@ try {
   console.log(
     JSON.stringify(
       {
-        phone: [360, 780],
+        phone: [360, 690],
         actions: bounds,
         exportReplay: true,
         importReplay: true,

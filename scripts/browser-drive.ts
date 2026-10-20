@@ -23,7 +23,9 @@ import { verifyImport } from '../src/ui/export.ts';
 
 const [a0, a1, a2, a3] = process.argv.slice(2);
 
-if (a0 === 'verify-r4') {
+if (a0 === 'verify-r5') {
+  await verifyR5(a1 ?? 'http://127.0.0.1:4185/');
+} else if (a0 === 'verify-r4') {
   await verifyR4(a1 ?? 'http://127.0.0.1:4184/');
 } else if (a0 === 'verify-p3') {
   await verifyP3(a1 ?? 'http://127.0.0.1:4183/');
@@ -949,6 +951,172 @@ async function verifyR4(url: string): Promise<void> {
       JSON.stringify({ viewport: [360, 690], talkBounds, answerBounds, errors }, null, 2),
     );
     console.log(`Round 4 phone acceptance passed. Evidence: ${shots}/`);
+  } finally {
+    await browser.close();
+  }
+}
+
+/** Round 5 phone acceptance against a built preview. Tester commands above stay unchanged. */
+async function verifyR5(url: string): Promise<void> {
+  const shots = 'scratch/ui-shots-r5';
+  mkdirSync(shots, { recursive: true });
+  const browser = await chromium.launch();
+  try {
+    const page = await browser.newPage({ viewport: { width: 360, height: 690 }, acceptDownloads: true });
+    const errors: string[] = [];
+    page.on('pageerror', (error) => errors.push(error.message));
+    await page.clock.install();
+    await page.clock.pauseAt(new Date());
+    const load = async (fixture: ReturnType<typeof newGame>) => {
+      await page.goto('about:blank');
+      await page.goto(url);
+      await page.locator('.title-page').waitFor();
+      await page.evaluate(async (fixture) => {
+        const db = await new Promise<IDBDatabase>((resolve) => {
+          const request = indexedDB.open('hearsay', 1);
+          request.onsuccess = () => resolve(request.result);
+        });
+        await new Promise<void>((resolve) => {
+          const tx = db.transaction('pages', 'readwrite');
+          const store = tx.objectStore('pages');
+          for (const [key, value] of [
+            ['run-ui', null],
+            ['run-log', null],
+            ['run', fixture],
+          ])
+            store.put({ plain: JSON.stringify(value), at: Date.now() }, key as string);
+          tx.oncomplete = () => resolve();
+        });
+        db.close();
+      }, fixture);
+      await page.reload();
+      await page.getByRole('button', { name: 'Resume', exact: true }).click();
+      await page.locator('.riza-mind').waitFor();
+    };
+    const inViewport = async (selector: string) => {
+      const bounds = await page.locator(selector).evaluateAll((els) =>
+        els.map((el) => {
+          const r = el.getBoundingClientRect();
+          return { text: el.textContent, top: r.top, bottom: r.bottom, height: r.height, right: r.right };
+        }),
+      );
+      assert.ok(bounds.length, selector);
+      assert.ok(
+        bounds.every((r) => r.top >= 0 && r.bottom <= 690 && r.right <= 360),
+        JSON.stringify(bounds),
+      );
+      return bounds;
+    };
+    const coffee = newGame(1);
+    advance(coffee, 3 * 1440 + 1080);
+    assert.ok(coffee.s.scene, 'Day 4 presents a family scene');
+    await load(coffee);
+    await page.getByRole('button', { name: 'Gallop', exact: true }).click();
+    assert.equal(await page.locator('[data-speed="1"]').getAttribute('aria-pressed'), 'true');
+    const sceneBounds = await inViewport('[data-scene], [data-choice]');
+    assert.ok(sceneBounds.slice(1).every((r) => r.height >= 44));
+    await page.screenshot({ path: `${shots}/01-scene.png` });
+    await page.locator('[data-choice]').first().click();
+    await page.locator('[data-scene]').waitFor({ state: 'hidden' });
+    assert.equal(await page.locator('[data-speed="80"]').getAttribute('aria-pressed'), 'true');
+    const outcome = await page.locator('.reply').innerText();
+    assert.ok(outcome.trim());
+    await page.clock.runFor(1000);
+    assert.equal(await page.locator('.reply').innerText(), outcome, 'The scene outcome stays visible');
+    await page.screenshot({ path: `${shots}/02-scene-outcome.png` });
+    await page.locator('#game-menu').click();
+    const [download] = await Promise.all([
+      page.waitForEvent('download'),
+      page.getByRole('button', { name: 'Download this run', exact: true }).click(),
+    ]);
+    await download.saveAs(`${shots}/scene-run.json`);
+    const imported = verifyImport(readFileSync(`${shots}/scene-run.json`, 'utf8'));
+    assert.ok(imported.inputs.some(({ input }) => input.type === 'choose'));
+    await page.getByRole('button', { name: 'Close Game menu', exact: true }).click();
+
+    const waiting = newGame(1);
+    advance(waiting, 405);
+    await load(waiting);
+    assert.equal(await page.locator('.question + .quick-replies').count(), 1);
+    const quickBounds = await inViewport('.question, .quick-replies button');
+    assert.ok(quickBounds.slice(1).every((r) => r.height >= 44));
+    await page.screenshot({ path: `${shots}/03-quick-replies.png` });
+    await page.locator('[data-quick]').first().click();
+    await page.locator('.reply').waitFor();
+    assert.equal(await page.getByRole('dialog').count(), 0);
+    await inViewport('.riza-mind, .reply');
+    await page.screenshot({ path: `${shots}/04-quick-answer.png` });
+
+    const telling = newGame(1);
+    advance(telling, 479);
+    telling.s.newsWaiting = false;
+    telling.s.riza!.word = {
+      status: 'mending',
+      words: 'Let them hear you take it back. Then we can speak again.',
+      mend: 'Take it back to Cem and Osman, the people you told.',
+    };
+    telling.s.locations.cem = 'garden';
+    telling.s.threads = [
+      {
+        id: 1,
+        who: 'cem',
+        to: 'riza',
+        about: "Ali's money",
+        status: 'on its way',
+        where: 'at dusk, coffee house',
+        at: 470,
+      },
+      { id: 2, who: 'osman', to: 'riza', about: 'Emre keeps his word', status: 'stalled', at: 471 },
+    ];
+    await load(telling);
+    await page.locator('[data-person="cem"]').click();
+    await page.locator('[data-target="emre"]').click();
+    await page.locator('[data-trait="reliable"]').click();
+    assert.equal(await page.locator('[data-verb="defend"]').count(), 0);
+    await page.locator('[data-verb="tell"]').click();
+    await page.getByRole('dialog').waitFor({ state: 'hidden' });
+    const answerBounds = await inViewport('.riza-mind, .reply');
+    assert.equal(await page.locator('.message-thread').count(), 2);
+    await page.getByRole('button', { name: /Your word/ }).click();
+    await inViewport('.riza-mind, .reply');
+    await page.screenshot({ path: `${shots}/05-tell-threads-word.png` });
+
+    const evening = newGame(1);
+    advance(evening, 1380);
+    evening.s.days![0]!.summary = Array.from(
+      { length: 16 },
+      () => 'Today your neighbours have a great deal to say about the words they heard.',
+    );
+    await load(evening);
+    const dayBounds = await inViewport('[data-day-card] button, [data-day-card] .tomorrow');
+    await page.screenshot({ path: `${shots}/06-day-end.png` });
+    await page.locator('[data-day-card]').evaluate((el) => {
+      el.scrollTop = el.scrollHeight;
+    });
+    await inViewport('[data-day-card] button, [data-day-card] .tomorrow');
+    await page.screenshot({ path: `${shots}/07-day-end-scrolled.png` });
+    await page.getByRole('button', { name: 'Sleep', exact: true }).click();
+    await page.locator('[data-day-card]').waitFor({ state: 'hidden' });
+    assert.match(await page.locator('#clock').innerText(), /Day 2, Tuesday 06:00/);
+    assert.deepEqual(errors, []);
+    assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
+    writeFileSync(
+      `${shots}/acceptance.json`,
+      JSON.stringify(
+        {
+          viewport: [360, 690],
+          sceneBounds,
+          quickBounds,
+          answerBounds,
+          dayBounds,
+          chooseReplay: true,
+          errors,
+        },
+        null,
+        2,
+      ),
+    );
+    console.log(`Round 5 phone acceptance passed. Evidence: ${shots}/`);
   } finally {
     await browser.close();
   }

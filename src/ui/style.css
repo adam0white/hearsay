@@ -973,3 +973,92 @@ button[aria-disabled="true"] {
   font-size: 0.8824rem;
   overflow-wrap: normal;
 }
+
+/* Round 5: the waiting decision comes before the wedding and the composer. */
+.scene-card {
+  border: 1px solid #9ba98b;
+  border-left: 3px solid var(--teal);
+  border-radius: 6px;
+  background: #e5e8d7;
+  padding: 10px;
+  margin-bottom: 8px;
+}
+.scene-card h2 {
+  font-size: 1rem;
+}
+.scene-card > p {
+  font-size: 0.8824rem;
+  line-height: 1.3;
+  margin: 5px 0 8px;
+}
+.scene-choices,
+.quick-replies {
+  display: grid;
+  gap: 5px;
+}
+.scene-choices button,
+.quick-replies button {
+  text-align: left;
+  min-height: 44px;
+  padding: 6px 8px;
+  line-height: 1.25;
+}
+.scene-choices strong,
+.quick-replies strong {
+  display: block;
+  font-size: 0.8824rem;
+  font-weight: 600;
+}
+.scene-choices small,
+.quick-replies small {
+  display: block;
+  font-size: 0.7647rem;
+  margin-top: 2px;
+}
+.choice-risk {
+  color: #89533f;
+  font-style: italic;
+}
+.doubt-chips.has-word {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+.message-thread {
+  font-size: 0.7059rem;
+  line-height: 1.25;
+  margin-top: 4px;
+}
+.message-thread span {
+  color: #89533f;
+  font-style: italic;
+}
+.talk-bar .ask-preview {
+  font-size: 0.8235rem;
+  line-height: 1.25;
+  margin: 5px 0;
+}
+.day-action {
+  position: sticky;
+  top: 24px;
+  z-index: 2;
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  background: #f5efe3;
+  padding-block: 8px;
+  border-bottom: 1px solid var(--line);
+}
+.day-action .primary {
+  flex: 0 0 auto;
+  min-width: 80px;
+  white-space: nowrap;
+  padding: 8px 14px;
+}
+.sheet .day-action .tomorrow {
+  margin: 0;
+  font-size: 0.8235rem;
+  line-height: 1.3;
+}
+[data-day-card] .dialog-head {
+  top: -16px;
+  margin-bottom: 0;
+}
