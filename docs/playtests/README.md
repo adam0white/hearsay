@@ -23,3 +23,9 @@ Independent code review found hidden lying tags leaking into listener judgements
 ## What the tests do not establish
 
 The HF personas use bounded, authored action promises and valences. Five of the six later sessions quit on day 1; none completed a fortnight. Their output reports no classified bored/frustrated sessions, but that is not evidence that later days are engaging. The default Slow pace and finite dialogue pools remain visible weaknesses. Browser acceptance checks round-trip exports and the exact resumed clock; it does not establish persistence through an operating-system crash or forced browser termination.
+
+## Round 2 (2026-10-20) and the polish round from it
+
+Source-unread testers `2026-10-20-r2-tester-a.md` (Deniz, quit at 8:07: "I liked the flour dilemma, but I wouldn't keep playing tonight.") and `-b.md` (Murat, quit at 3:59: "I still don't know whether I'm getting the wedding any closer."). HF cohort `2026-10-20-hf-r3.md`: 30 sittings, no quits and no classified boredom; read as a different signal from people (lab lesson L16).
+
+Polish round from them (commits 8bb4a03, 9f4a613, c53c5b2): Rıza's lean and his own words are always on screen with the named answer day; every reply says whether the listener believes you and what they will do; the answer sits above the verbs on a phone; presence is live; the word resets to Hatice's own view when the subject changes; witnessed incidents can be retold as stories; quiet stretches hurry; each day ends with a card and one question for tomorrow. Not yet retested by a fresh player.
