@@ -90,6 +90,8 @@ export interface State {
   pendingConfrontations?: { root: number; due: number }[];
   heardClaims?: Record<string, { count: number; who: string[]; echo?: number }>;
   held?: { id: string; until: number };
+  deferredScenes?: Record<string, number>;
+  errands?: Record<string, { target: string; until: number }>;
   riza?: {
     lean: 'warm' | 'unsure' | 'cool';
     line: string;

@@ -145,7 +145,7 @@ it('attributes only the immediate reply to a story and remembers it for amends',
   a.observe();
   const action = a.actions().find((action) => {
     const input = a.offered.get(action.id);
-    return typeof input === 'object' && input.type === 'tell-story' && input.listener === 'aylin';
+    return typeof input === 'object' && input.type === 'tell-story' && input.listener === 'ayse';
   });
   if (!action) throw new Error('Missing witnessed story action');
   a.apply(action.id);
@@ -158,7 +158,7 @@ it('attributes only the immediate reply to a story and remembers it for amends',
   expect(events.filter((event) => event.kind !== 'reply').every((event) => event.answers === false)).toBe(
     true,
   );
-  expect(a.actions().find((action) => action.id === 'amends:aylin:kemal')?.promise).toBeGreaterThan(0.2);
+  expect(a.actions().find((action) => action.id === 'amends:ayse:kemal')?.promise).toBeGreaterThan(0.2);
 });
 
 it('reports the current public marriage position and the closing question', () => {

@@ -37,7 +37,8 @@ it('confirmation reduces source trust after a lie', () => {
   expect(credence(p, 'kemal:cruel')).toBeLessThan(0.1);
 });
 it('both engagement outcomes arise from visible policies', () => {
-  expect(runPolicy(42, 'quiet').s.engagement).toBe('accepted');
+  expect(runPolicy(42, 'careful-relay').s.engagement).toBe('accepted');
+  expect(runPolicy(42, 'quiet').s.engagement).toBe('refused');
   expect(runPolicy(42, 'reckless').s.engagement).toBe('refused');
 });
 it('minute-sized advances reach scripted events and replay', () => {

@@ -217,8 +217,36 @@ const TITLES = [
   'Meryem’s bags',
 ];
 
+/** Extra Emre scenes keep the original daily story ids stable in old saves. */
+export const EMRE_INCIDENTS = [
+  {
+    id: 16,
+    day: 4,
+    at: 840,
+    title: 'The promised repair',
+    target: 'emre',
+    trait: 'reliable' as Trait,
+    value: true,
+    place: 'garden' as const,
+    detail: 'Emre brought Ali’s repaired stool at the promised hour, before Ali left for work',
+  },
+  {
+    id: 17,
+    day: 6,
+    at: 840,
+    title: 'Safiye’s spilled shopping',
+    target: 'emre',
+    trait: 'kind' as Trait,
+    value: true,
+    place: 'garden' as const,
+    detail: 'Emre stopped his work to gather Safiye’s spilled shopping, then carried her bag home',
+  },
+];
+
 /** IDs stay fixed across saves. The basket is an extra witnessed scene on day one. */
 export function storyScene(id: number) {
+  const extra = EMRE_INCIDENTS.find((scene) => scene.id === id);
+  if (extra) return extra;
   if (id === 15)
     return {
       id,
