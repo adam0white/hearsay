@@ -57,3 +57,7 @@ Round 5 changes: confrontation and the Day 4 / Day 8 family steps are scenes wit
 - `2026-10-20-r5-tester-g.md` (Joanna, tired mystery player, stopped at 5:50, Day 2): "I would not open it tomorrow on my own. … A clearer reason for Cem's refusal and a new dilemma involving Elif would have made me more likely to return."
 
 First fresh persona who would return on their own (Tom). Both hit the same defect: the story chosen under "Tell what you saw" changed while they read (flour became basket). Tom could not tell why a thread "didn't reach him" when the day card said the two men met. Both tuned out the repeated "keeps promises" chatter.
+
+## Owner run (2026-10-20): live build 9900c64
+
+- `owner-2026-10-20.md` (owner, on a phone, reached Day 6): "This has good potential. … Too little time to understand and react to events and things. Too many people to keep track of. The goals are not apparent after the intro. Too much scrolling." He also asked the game to refuse repeated useless acts, and noted the clock ran while he typed the note and the Game menu stayed open under the send dialog.
