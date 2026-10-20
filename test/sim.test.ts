@@ -117,7 +117,7 @@ it('defending a debt negates it and amends record the withdrawn claim', () => {
   act(g, { type: 'defend', listener: 'ayse', target: 'emre', trait: 'owes' });
   expect(g.s.routes.at(-1)?.value).toBe(false);
   act(g, { type: 'make-amends', listener: 'ayse', target: 'emre' });
-  expect(g.s.log.at(-1)?.text).toContain('owes');
+  expect(g.s.log.at(-1)?.text).toMatch(/debt|money/);
   expect(g.s.routes.some((r) => r.retractionOf)).toBe(true);
 });
 it('targets trace a real co-present recipient and confront the source only once', () => {
@@ -218,5 +218,5 @@ it('Ask reports a confident negative belief rather than claiming ignorance', () 
   advance(g, 405);
   confirm(g.s.people.fatma!, 'kemal:cruel', false, 405);
   act(g, { type: 'ask', listener: 'fatma', target: 'kemal' });
-  expect(g.s.log.at(-1)?.text).toContain('does not seem cruel');
+  expect(g.s.log.at(-1)?.text).toMatch(/treats people well|doesn’t go out of their way to hurt people/);
 });

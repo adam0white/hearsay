@@ -57,7 +57,7 @@ const bad: Record<string, Trait> = {
 import { hash } from './hash.ts';
 import { DAILY_INCIDENTS } from './incidents.ts';
 import { completeClaims, OPPOSITE, receiveTestimony } from './testimony.ts';
-import { say } from './voices.ts';
+import { claimText, knownIncidentClaim, say } from './voices.ts';
 
 const prop = (target: string, trait: string) => `${target}:${trait}`;
 export function clockOf(minute: number) {
@@ -175,6 +175,26 @@ function deliver(s: State, listener: string, percepts: Percept[]) {
   }
 }
 
+/** Concrete speech requires first-hand knowledge of this exact witnessed act. */
+export function spokenClaim(
+  s: State,
+  speaker: string,
+  target: string,
+  trait: string,
+  value: boolean,
+): string {
+  const scene = DAILY_INCIDENTS.findLast(
+    (scene) =>
+      scene.target === target &&
+      (scene.day - 1) * 1440 + scene.at <= s.minute &&
+      ((scene.trait === trait && scene.value === value) ||
+        (OPPOSITE[scene.trait] === trait && scene.value !== value)),
+  );
+  return scene && s.incidentWitnesses?.[scene.day]?.includes(speaker)
+    ? knownIncidentClaim(scene)
+    : claimText(PEOPLE.find((p) => p.id === target)?.name ?? 'Our neighbour', trait, value);
+}
+
 function visibleClaim(s: State, from: string, to: string, target: string, trait: string, value: boolean) {
   s.heardClaims ??= {};
   const spokenTrait = !value && OPPOSITE[trait] ? OPPOSITE[trait]! : trait;
@@ -184,11 +204,11 @@ function visibleClaim(s: State, from: string, to: string, target: string, trait:
   const heard = s.heardClaims[key];
   heard.count++;
   if (!heard.who.includes(from)) heard.who.push(from);
-  const claim = `${PEOPLE.find((p) => p.id === target)?.name ?? 'Our neighbour'} ${spokenValue ? 'is' : 'is not'} ${spokenTrait}`;
+  const claim = spokenClaim(s, from, target, spokenTrait, spokenValue);
   if (heard.count === 1) {
-    const text = say(s, from, 'reply', `${claim}. That is what I am telling you.`);
+    const text = say(s, from, 'reply', `${claim}.`);
     if (text) line(s, to === 'hatice' ? 'rumour' : 'conversation', text, from, target);
-    else line(s, 'conversation', `${PEOPLE.find((p) => p.id === from)!.name} says ${claim}.`, from, target);
+    else line(s, 'conversation', `${claim}.`, from, target);
   } else {
     if (!heard.echo) {
       line(s, 'echo', '', undefined, target);
@@ -253,6 +273,7 @@ export function newGame(seed: number): Game {
     silence: {},
     confronted: [],
     greetings: {},
+    incidentWitnesses: {},
     groundTruth: { 'emre:honest': true, 'emre:reliable': true },
     pendingConfrontations: [],
     heardClaims: {},
@@ -377,7 +398,8 @@ function route(s: State, from: string, to: string, target: string, trait: Trait,
   return r;
 }
 function talk(s: State, from: string, to: string) {
-  if ((s.silence[from] ?? 0) > s.minute) return;
+  // Let the first witnessed incident open the morning's talk.
+  if (s.minute < 390 || (s.silence[from] ?? 0) > s.minute) return;
   const a = s.people[from]!,
     b = s.people[to]!;
   const result = converse(a, b, {
@@ -485,8 +507,8 @@ export function act(g: Game, input: Input): boolean {
       s,
       input.listener,
       Math.abs(c - 0.5) > 0.15
-        ? `${PEOPLE.find((p) => p.id === input.target)?.name} ${c > 0.5 ? 'seems' : 'does not seem'} ${best}, from what I know. I could be wrong.`
-        : `I do not know enough about ${PEOPLE.find((p) => p.id === input.target)?.name} to judge.`,
+        ? `${spokenClaim(s, input.listener, input.target, best, c > 0.5)}. That’s my view.`
+        : `I don’t know ${PEOPLE.find((p) => p.id === input.target)?.name} well enough to say.`,
       input.target,
     );
   } else if (input.type === 'make-amends') {
@@ -522,8 +544,8 @@ export function act(g: Game, input: Input): boolean {
       s,
       input.listener,
       wrongs.length
-        ? `You have withdrawn these claims about ${PEOPLE.find((p) => p.id === input.target)?.name}: ${[...new Set(wrongs.map((r) => `${r.value ? '' : 'not '}${r.trait}`))].join(', ')}. I will reconsider them.`
-        : `You have not given me a claim about ${PEOPLE.find((p) => p.id === input.target)?.name} to withdraw.`,
+        ? `You take back ${[...new Set(wrongs.map((r) => `“${claimText(PEOPLE.find((p) => p.id === r.target)!.name, r.trait, r.value)}”`))].join(' and ')}? All right. I’ll think again.`
+        : `You haven’t told me anything about ${PEOPLE.find((p) => p.id === input.target)?.name} to withdraw.`,
       input.target,
     );
   } else {
@@ -575,18 +597,18 @@ export function act(g: Game, input: Input): boolean {
     line(
       s,
       'answer',
-      `You tell ${PEOPLE.find((p) => p.id === input.listener)?.name}: “${PEOPLE.find((p) => p.id === input.target)?.name} ${value ? 'is' : 'is not'} ${trait}.”${lie ? ' You do not believe this yourself.' : ''}`,
+      `You tell ${PEOPLE.find((p) => p.id === input.listener)?.name}: “${spokenClaim(s, 'hatice', input.target, trait, value)}.”${lie ? ' You do not believe this yourself.' : ''}`,
       'hatice',
       input.target,
     );
-    answer(s, input.listener, 'I have heard what you said.');
+    answer(s, input.listener, '');
     s.newsWaiting = false;
     if (input.target === 'kemal' && bad[trait] === undefined && s.locations.kemal === 'grocer') {
       // The listener is choosing where to shop, based on the testimony just received.
       if (credence(s.people[input.listener]!, 'kemal:dishonest') > 0.6)
         line(
           s,
-          'cold-greeting',
+          'shop',
           `${PEOPLE.find((p) => p.id === input.listener)?.name} looks toward Kemal’s shutter and puts away the shopping bag. “I will get my flour elsewhere.”`,
           input.listener,
           'kemal',
@@ -670,6 +692,8 @@ function step(s: State) {
     day = Math.floor(s.minute / 1440);
   const incident = DAILY_INCIDENTS[day];
   if (incident && t === incident.at) {
+    s.incidentWitnesses ??= {};
+    s.incidentWitnesses[incident.day] = ['hatice', incident.target, ...(day === 0 ? ['zehra'] : [])];
     s.locations[incident.target] = incident.place;
     if (day === 0) s.locations.zehra = incident.place;
     s.groundTruth![prop(incident.target, incident.trait)] = incident.value;
@@ -686,7 +710,9 @@ function step(s: State) {
   }
   if (s.minute === 420) {
     s.locations.kemal = 'fountain';
-    for (const neighbour of present(s).filter((p) => p.id !== 'kemal' && p.id !== 'hatice')) {
+    for (const neighbour of present(s).filter(
+      (p) => p.id !== 'hatice' && p.household !== PEOPLE.find((p) => p.id === 'kemal')!.household,
+    )) {
       if (credence(s.people[neighbour.id]!, 'kemal:dishonest') > 0.6) {
         line(
           s,
@@ -842,7 +868,7 @@ function step(s: State) {
   let greetingsShown = 0;
   for (const observer of fountain)
     for (const target of fountain) {
-      if (observer.id === target.id) continue;
+      if (observer.household === target.household) continue;
       const key = `${day}:${observer.id}:${target.id}`;
       const cold = ['dishonest', 'cruel', 'unreliable', 'stingy', 'lazy'].some(
         (t) => credence(s.people[observer.id]!, prop(target.id, t)) > 0.7,
@@ -874,13 +900,7 @@ function step(s: State) {
             ? 'quiet'
             : 'empty';
   if (incident && t === incident.at) {
-    line(
-      s,
-      'overheard',
-      `${incident.text} You witness this yourself. ${PEOPLE.find((p) => p.id === incident.listener)!.name} would care about this.`,
-      incident.target,
-      incident.target,
-    );
+    line(s, 'overheard', `${incident.text} You witness this yourself.`, undefined, incident.target);
   }
   if (day >= 12 && t === 1200 && s.engagement === 'waiting') {
     s.locations.riza = 'garden';
@@ -908,7 +928,7 @@ function step(s: State) {
     line(
       s,
       'ending',
-      'The fortnight is over. Open the notebook to follow the words you could not see travelling.',
+      'The fortnight is over. Open Game menu to follow the words you could not see travelling.',
     );
   }
 }

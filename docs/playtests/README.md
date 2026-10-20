@@ -6,8 +6,7 @@
 - `2026-10-20-llm-b.md`: source-unread player B, provocative policy, through the fortnight and reload/resume; all six verbs.
 - `2026-10-20-browser-acceptance.json`: phone bounds and export/import/close-resume evidence from the last of three consecutive passing trials.
 - `2026-10-20-browser-review.json`: completed fortnight import and full review route count.
-- `2026-10-20-hf-before.json`: raw HF playtester output, two personas × one seed, four-minute cap, early build.
-- `2026-10-20-hf-after.json`: raw output, three personas × two seeds, twelve-minute cap, polished build. The default Slow clock and day/night boundary integration were corrected between these files. They are run records, not a controlled before/after comparison.
+- `2026-10-20-hf-before.json.gz`, `2026-10-20-hf-after.json.gz`, and `2026-10-20-hf-r2.json.gz`: losslessly compressed raw HF playtester output. The adjacent `.md` files list persona, seed, quit/boredom signals, and final day per session. The default Slow clock and day/night boundary integration were corrected between the before and after files. They are run records, not a controlled before/after comparison.
 
 The LLM files preserve exact browser command output, including the long initial ending. Neither tester read source or design notes. Neither sent a run. Their screenshots were local scratch artifacts; the textual record is retained here verbatim.
 
@@ -15,7 +14,7 @@ The LLM files preserve exact browser command output, including the long initial 
 
 Both players accidentally lied through Defend. The UI now previews the exact Tell and Defend statements separately, including debt negation and each lie warning. Hatice begins with first-hand knowledge of Emre’s honesty and reliability. Amends names the claims withdrawn and marks the retractions in the route graph; it does not delete copies already passed on.
 
-Player A lost access to the opening evidence after it left the five-line feed. The notebook now includes the full witnessed journal. Map labels are shorter and displaced away from the central figures. Hold your tongue is disabled unless someone has asked for news; third-person testimony is disabled when its subject is the listener.
+Player A lost access to the opening evidence after it left the five-line feed. Game menu now includes the full witnessed journal under What you heard. Map labels are shorter and displaced away from the central figures. Hold your tongue is disabled unless someone has asked for news; third-person testimony is disabled when its subject is the listener.
 
 Player B found thousands of route rows overwhelming and the consequences unclear. The review now leads with Hatice’s statements and their descendants; the complete village route remains available in a separate disclosure. It names who actually confronted Hatice and marks withdrawals, bends and lies. Tracing now produces a real confrontation at a co-present recipient, including social consequences when another neighbour started the story. Cold greetings respond to later reputational damage, and shopping appointments change with the shopper’s beliefs.
 

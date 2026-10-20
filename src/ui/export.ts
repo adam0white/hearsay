@@ -1,7 +1,7 @@
 import { fingerprint, PEOPLE, REPUTATION_TRAITS, replay } from '../sim/engine.ts';
 import type { Game, LoggedInput, State } from '../sim/types.ts';
 
-export interface NotebookExport {
+export interface RunExport {
   game: 'hearsay';
   version: 1;
   seed: number;
@@ -10,7 +10,7 @@ export interface NotebookExport {
   state: State;
   fingerprint: string;
 }
-export function exportRun(game: Game): NotebookExport {
+export function exportRun(game: Game): RunExport {
   return {
     game: 'hearsay',
     version: 1,
@@ -23,8 +23,8 @@ export function exportRun(game: Game): NotebookExport {
 }
 export function verifyImport(text: string): Game {
   const data: unknown = JSON.parse(text);
-  if (!data || typeof data !== 'object') throw new Error('This is not a Hearsay notebook.');
-  const d = data as Partial<NotebookExport>;
+  if (!data || typeof data !== 'object') throw new Error('This is not a Hearsay run.');
+  const d = data as Partial<RunExport>;
   if (
     d.game !== 'hearsay' ||
     d.version !== 1 ||
@@ -34,10 +34,10 @@ export function verifyImport(text: string): Game {
     !d.state ||
     typeof d.fingerprint !== 'string'
   )
-    throw new Error('The notebook is incomplete.');
+    throw new Error('The run is incomplete.');
   if ((d.minute as number) < 360 || (d.minute as number) > 14 * 1440)
-    throw new Error('The notebook clock is outside the fortnight.');
-  if (d.inputs.length > 20000) throw new Error('The notebook has too many inputs.');
+    throw new Error('The run clock is outside the fortnight.');
+  if (d.inputs.length > 20000) throw new Error('The run has too many inputs.');
   let previous = 360;
   const ids = new Set(PEOPLE.map((p) => p.id));
   for (const entry of d.inputs) {
@@ -53,16 +53,15 @@ export function verifyImport(text: string): Game {
     previous = entry.at;
     const input = entry.input;
     if (!['tell', 'defend', 'ask', 'hold-tongue', 'make-amends', 'call-over'].includes(input.type))
-      throw new Error('Unknown choice in notebook.');
+      throw new Error('Unknown choice in run.');
     if ('listener' in input && (!ids.has(input.listener) || !ids.has(input.target)))
-      throw new Error('Unknown neighbour in notebook.');
+      throw new Error('Unknown neighbour in run.');
     if ('trait' in input && !Object.hasOwn(REPUTATION_TRAITS, input.trait))
-      throw new Error('Unknown claim in notebook.');
-    if (input.type === 'call-over' && !ids.has(input.person))
-      throw new Error('Unknown passer-by in notebook.');
+      throw new Error('Unknown claim in run.');
+    if (input.type === 'call-over' && !ids.has(input.person)) throw new Error('Unknown passer-by in run.');
   }
   const game = replay(d.seed as number, d.inputs, d.minute as number);
   if (fingerprint(game.s) !== d.fingerprint || fingerprint(d.state) !== d.fingerprint)
-    throw new Error('Replay did not match this notebook. Your current garden is unchanged.');
+    throw new Error('Replay did not match this run. Your current garden is unchanged.');
   return game;
 }

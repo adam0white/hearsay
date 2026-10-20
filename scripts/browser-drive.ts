@@ -10,7 +10,7 @@
  *   node scripts/browser-drive.ts <port> pan <dx> <dy>             two fingers move the page by dx,dy screen pixels
  *   node scripts/browser-drive.ts <port> zoom <in|out>             pinch
  *   node scripts/browser-drive.ts <port> wait <seconds>            let real play time pass at the current speed (max 600)
- *   node scripts/browser-drive.ts <port> export <file>             save the playtest export from the notebook
+ *   node scripts/browser-drive.ts <port> export <file>             save the playtest export from Game menu
  *   node scripts/browser-drive.ts <port> quit                      close the browser
  */
 import assert from 'node:assert/strict';
@@ -18,12 +18,14 @@ import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { createServer } from 'node:http';
 import { join, resolve } from 'node:path';
 import { chromium, type Page } from 'playwright-core';
-import { newGame, view } from '../src/sim/engine.ts';
+import { advance, newGame, view } from '../src/sim/engine.ts';
 import { verifyImport } from '../src/ui/export.ts';
 
 const [a0, a1, a2, a3] = process.argv.slice(2);
 
-if (a0 === 'verify-polish') {
+if (a0 === 'verify-p2') {
+  await verifyP2(a1 ?? 'http://127.0.0.1:5173/');
+} else if (a0 === 'verify-polish') {
   await verifyPolish(a1 ?? 'http://127.0.0.1:5173/');
 } else if (a0 === 'serve') {
   const port = Number(a1);
@@ -116,23 +118,20 @@ if (a0 === 'verify-polish') {
     }
     if (cmd === 'export') {
       if (!(await page.getByRole('button', { name: 'Download this run', exact: true }).isVisible())) {
-        await page.getByRole('button', { name: 'Notebook', exact: true }).click();
+        await page.getByRole('button', { name: 'Game menu', exact: true }).click();
       }
       const [dl] = await Promise.all([
         page.waitForEvent('download'),
         page.getByRole('button', { name: 'Download this run', exact: true }).click(),
       ]);
       await dl.saveAs(args.join(' '));
-      await page.getByRole('button', { name: 'Close notebook', exact: true }).click();
+      await page.getByRole('button', { name: 'Close Game menu', exact: true }).click();
       return `Saved ${dl.suggestedFilename()} to ${args.join(' ')}`;
     }
     if (cmd === 'import') {
       const [chooser] = await Promise.all([
         page.waitForEvent('filechooser'),
-        ((await page.getByRole('button', { name: 'Import a notebook', exact: true }).isVisible())
-          ? page.getByRole('button', { name: 'Import a notebook', exact: true })
-          : page.getByRole('button', { name: 'Open a notebook', exact: true })
-        ).click(),
+        page.getByRole('button', { name: 'Import a run', exact: true }).click(),
       ]);
       await chooser.setFiles(args.join(' '));
       await page.clock.runFor(1000);
@@ -257,15 +256,18 @@ async function verifyPolish(url: string): Promise<void> {
     assert.equal(await page.locator('[data-target]').count(), 31);
     await page.getByRole('button', { name: 'Show today’s people', exact: true }).click();
     await page.locator('[data-trait="owes"]').click();
-    assert.match(await page.locator('.defend-preview').innerText(), /Emre does not owe money/);
+    assert.match(await page.locator('.defend-preview').innerText(), /Emre has no debt left to pay/);
     await page.locator('[data-trait="dishonest"]').click();
-    assert.match(await page.locator('.tell-preview').innerText(), /Emre is dishonest.*It would be a lie/);
-    assert.match(await page.locator('.defend-preview').innerText(), /Emre is honest.*You believe it/);
+    assert.match(
+      await page.locator('.tell-preview').innerText(),
+      /Emre doesn’t always tell the truth.*It would be a lie/,
+    );
+    assert.match(await page.locator('.defend-preview').innerText(), /Emre tells the truth.*You believe it/);
     await page.getByRole('dialog').getByRole('button', { name: 'Tell', exact: true }).click();
     await page.getByRole('dialog').waitFor({ state: 'hidden' });
     assert.match(await page.locator('.reply').innerText(), /Fatma/);
     await page.screenshot({ path: 'scratch/ui-shots/02-answer.png' });
-    await page.getByRole('button', { name: 'Notebook', exact: true }).click();
+    await page.getByRole('button', { name: 'Game menu', exact: true }).click();
     const [download] = await Promise.all([
       page.waitForEvent('download'),
       page.getByRole('button', { name: 'Download this run', exact: true }).click(),
@@ -273,7 +275,7 @@ async function verifyPolish(url: string): Promise<void> {
     assert.match(await page.locator('.download-status').innerText(), /Saved hearsay-day1.json/);
     await download.saveAs('scratch/ui-shots/run.json');
     verifyImport(readFileSync('scratch/ui-shots/run.json', 'utf8'));
-    await page.getByRole('button', { name: 'Close notebook', exact: true }).click();
+    await page.getByRole('button', { name: 'Close Game menu', exact: true }).click();
     // A layout-only fixture: keep eleven neighbours nearby, without claiming this
     // altered location snapshot is a replayable simulation outcome.
     const fixture = newGame(1);
@@ -329,9 +331,12 @@ async function verifyPolish(url: string): Promise<void> {
       lie: false,
     });
     writeFileSync('scratch/ui-shots/crowd.json', JSON.stringify(fixture));
+    await page.goto('about:blank');
+    await page.goto(url);
     await page.evaluate(async (fixture) => {
       const path = '/src/ui/store.ts';
       const store = await import(path);
+      await store.putImmediate('run-ui', null);
       await store.putImmediate('run-log', null);
       await store.putImmediate('run', fixture);
     }, fixture);
@@ -389,7 +394,7 @@ async function verifyPolish(url: string): Promise<void> {
     assert.match(await page.locator('.slow-reason').innerText(), /arrived/);
     await page.getByRole('button', { name: 'Hold your tongue', exact: true }).click();
     await page.locator('.reply').filter({ hasText: 'Nothing I need to pass on' }).waitFor();
-    await page.clock.runFor(5000);
+    await page.clock.runFor(1200);
     const faded = await page
       .locator('#map')
       .evaluate((c) => JSON.parse((c as HTMLCanvasElement).dataset.mapLayout ?? '{}').witnessed);
@@ -414,7 +419,7 @@ async function verifyPolish(url: string): Promise<void> {
     await page.locator('[data-speed="80"]').click();
     await page.clock.runFor(2500);
     assert.equal(await page.locator('[data-speed="1"]').getAttribute('aria-pressed'), 'true');
-    assert.match(await page.locator('.slow-reason').innerText(), /waiting|arrived/);
+    assert.match(await page.locator('.slow-reason').innerText(), /waiting|arrived|overheard/);
     if (await page.getByRole('button', { name: 'Hold your tongue', exact: true }).isEnabled()) {
       await page.getByRole('button', { name: 'Hold your tongue', exact: true }).click();
       assert.match(await page.locator('.reply').innerText(), /Hatice|Nothing/);
@@ -436,6 +441,160 @@ async function verifyPolish(url: string): Promise<void> {
       JSON.stringify({ phone: [360, 780], crowd: 11, crowdBounds, bounds, errors }, null, 2),
     );
     console.log('UI polish phone acceptance passed. Evidence: scratch/ui-shots/');
+  } finally {
+    await browser.close();
+  }
+}
+
+/** Round 2: the actual seeded opening, with a phone crowd and live slowdown. */
+async function verifyP2(url: string): Promise<void> {
+  const shots = 'scratch/ui-shots-p2';
+  mkdirSync(shots, { recursive: true });
+  const browser = await chromium.launch();
+  try {
+    const page = await browser.newPage({ viewport: { width: 360, height: 780 }, acceptDownloads: true });
+    const errors: string[] = [];
+    page.on('pageerror', (error) => errors.push(error.message));
+    await page.clock.install({ time: new Date('2026-10-20T12:00:00Z') });
+    await page.clock.pauseAt(new Date('2026-10-20T12:00:00Z'));
+    await page.goto(url);
+    const fixture = newGame(1);
+    advance(fixture, 389);
+    await page.evaluate(async (fixture) => {
+      const path = '/src/ui/store.ts';
+      const store = await import(path);
+      await store.putImmediate('run-ui', null);
+      await store.putImmediate('run-log', null);
+      await store.putImmediate('run', fixture);
+    }, fixture);
+    await page.reload();
+    await page.getByRole('button', { name: 'Resume', exact: true }).click();
+    await page.getByRole('button', { name: 'Gallop', exact: true }).click();
+    await page.clock.runFor(250);
+    const card = page.locator('.table-incident');
+    await card.waitFor();
+    assert.equal(await page.locator('[data-speed="1"]').getAttribute('aria-pressed'), 'true');
+    assert.match(await page.locator('.slow-reason').innerText(), /overheard.*Slow/i);
+    assert.match(await card.innerText(), /Kemal.*old flour/);
+    assert.ok(!(await card.innerText()).includes('would care'));
+    const crowd = await page.locator('[data-person]').count();
+    assert.ok(crowd >= 11, `Crowd: ${crowd}`);
+    const cardBox = await card.boundingBox();
+    const headingBox = await page.locator('.section-heading').boundingBox();
+    const chipsBox = await page.locator('.people-chips').boundingBox();
+    assert.ok(cardBox && headingBox && chipsBox);
+    assert.ok(cardBox.y >= headingBox.y + headingBox.height && cardBox.y + cardBox.height <= chipsBox.y);
+    assert.ok(cardBox.y + cardBox.height <= 780);
+    assert.equal(await page.locator('.would-want').count(), 0, 'Absent listeners are not marked');
+    const bounds = await page
+      .locator('.actions button')
+      .evaluateAll((buttons) =>
+        buttons.map((b) => ({ label: b.textContent, bottom: b.getBoundingClientRect().bottom })),
+      );
+    assert.ok(
+      bounds.every((b) => b.bottom <= 780),
+      JSON.stringify(bounds),
+    );
+    await page.screenshot({ path: `${shots}/01-incident-crowd.png` });
+    await page.getByRole('button', { name: 'Game menu', exact: true }).click();
+    assert.equal(await page.getByRole('heading', { name: 'Game menu', exact: true }).count(), 1);
+    assert.equal(await page.getByText('What you heard', { exact: true }).count(), 1);
+    for (const label of ['Download this run', 'Import a run', 'Send this run to the notebook'])
+      assert.equal(await page.getByRole('button', { name: label, exact: true }).count(), 1);
+    await page.screenshot({ path: `${shots}/02-game-menu.png` });
+    const [download] = await Promise.all([
+      page.waitForEvent('download'),
+      page.getByRole('button', { name: 'Download this run', exact: true }).click(),
+    ]);
+    await download.saveAs(`${shots}/run.json`);
+    verifyImport(readFileSync(`${shots}/run.json`, 'utf8'));
+    await page.getByRole('button', { name: 'Close Game menu', exact: true }).click();
+    // A layout fixture adds the interested listener to the real 13-person scene.
+    await page.goto('about:blank');
+    await page.goto(url);
+    const withListener = newGame(1);
+    advance(withListener, 390);
+    withListener.s.locations.aylin = 'garden';
+    await page.evaluate(async (fixture) => {
+      const path = '/src/ui/store.ts';
+      const store = await import(path);
+      await store.putImmediate('run-ui', null);
+      await store.putImmediate('run-log', null);
+      await store.putImmediate('run', fixture);
+    }, withListener);
+    await page.reload();
+    await page.getByRole('button', { name: 'Resume', exact: true }).click();
+    await page.locator('[data-person="aylin"] .would-want').waitFor();
+    assert.equal(await page.locator('[data-person="aylin"] .would-want').count(), 1);
+    assert.equal(await page.locator('.would-want').count(), 1);
+    const listenerBounds = await page
+      .locator('.actions button')
+      .evaluateAll((buttons) => buttons.map((b) => b.getBoundingClientRect().bottom));
+    assert.ok(
+      listenerBounds.every((bottom) => bottom <= 780),
+      JSON.stringify(listenerBounds),
+    );
+    await page.screenshot({ path: `${shots}/03-listener-present.png` });
+    await page.locator('[data-person="aylin"]').click();
+    assert.equal(await card.count(), 0, 'A person tap dismisses the incident');
+    assert.equal(await page.locator('.would-want').count(), 0);
+    await page.getByRole('button', { name: 'Close Talk to Aylin', exact: true }).click();
+    await page.screenshot({ path: `${shots}/04-after-person-tap.png` });
+    await page.getByRole('link', { name: 'Hearsay', exact: true }).click();
+    await page.getByRole('button', { name: 'Resume', exact: true }).click();
+    await page.locator('.people-chips').waitFor();
+    assert.equal(await card.count(), 0, 'Dismissal survives title and resume');
+    await page.reload();
+    await page.getByRole('button', { name: 'Resume', exact: true }).click();
+    await page.locator('.people-chips').waitFor();
+    assert.equal(await card.count(), 0, 'Dismissal survives reload');
+    // A waiting question keeps Slow until answered, then restores the prior pace.
+    await page.goto('about:blank');
+    await page.goto(url);
+    const waiting = newGame(1);
+    advance(waiting, 405);
+    await page.evaluate(async (fixture) => {
+      const path = '/src/ui/store.ts';
+      const store = await import(path);
+      await store.putImmediate('run-ui', null);
+      await store.putImmediate('run-log', null);
+      await store.putImmediate('run', fixture);
+    }, waiting);
+    await page.reload();
+    await page.getByRole('button', { name: 'Resume', exact: true }).click();
+    await page.locator('[data-person="aylin"]').click();
+    assert.equal(await page.locator('[data-speed="1"]').getAttribute('aria-pressed'), 'true');
+    await page.getByRole('dialog').getByRole('button', { name: 'Tell', exact: true }).click();
+    await page.getByRole('dialog').waitFor({ state: 'hidden' });
+    assert.equal(await page.locator('[data-speed="5"]').getAttribute('aria-pressed'), 'true');
+    assert.equal(await page.locator('.slow-reason').count(), 0);
+    // Resume the incident just before its two-hour boundary to test expiry.
+    await page.goto('about:blank');
+    await page.goto(url);
+    const expiring = newGame(1);
+    advance(expiring, 509);
+    expiring.s.newsWaiting = false;
+    await page.evaluate(async (fixture) => {
+      const path = '/src/ui/store.ts';
+      const store = await import(path);
+      await store.putImmediate('run-ui', null);
+      await store.putImmediate('run-log', null);
+      await store.putImmediate('run', fixture);
+    }, expiring);
+    await page.reload();
+    await page.getByRole('button', { name: 'Resume', exact: true }).click();
+    await card.waitFor();
+    assert.equal(await card.count(), 1);
+    await page.clock.runFor(1200);
+    assert.equal(await card.count(), 0, 'Incident expires after two game hours');
+    await page.screenshot({ path: `${shots}/05-after-two-hours.png` });
+    assert.deepEqual(errors, []);
+    assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
+    writeFileSync(
+      `${shots}/acceptance.json`,
+      JSON.stringify({ viewport: [360, 780], seed: 1, crowd, cardBox, bounds, errors }, null, 2),
+    );
+    console.log(`Round 2 phone acceptance passed. Evidence: ${shots}/`);
   } finally {
     await browser.close();
   }

@@ -19,14 +19,15 @@ try {
   await page.clock.install();
   await page.goto(process.env.GAME_URL ?? 'http://127.0.0.1:4173/');
   await page.getByRole('button', { name: 'Start', exact: true }).click();
+  await page.getByRole('button', { name: 'Got it', exact: true }).click();
   await page.getByRole('button', { name: 'Trot', exact: true }).click();
   await page.clock.runFor(2450);
   assert.match(await page.locator('.clock').innerText(), /06:/);
-  await page.locator('#listener').selectOption('fatma');
-  await page.locator('#target').selectOption('kemal');
-  await page.locator('#trait').selectOption('dishonest');
-  assert.match(await page.locator('.own-word').innerText(), /Defend: honest \(a lie\)/);
-  assert.match(await page.locator('.opening-evidence').innerText(), /old flour/);
+  assert.match(await page.locator('.table-incident').innerText(), /old flour/);
+  await page.locator('[data-person="fatma"]').click();
+  await page.locator('[data-target="kemal"]').click();
+  await page.locator('[data-trait="dishonest"]').click();
+  assert.match(await page.locator('.defend-preview').innerText(), /Kemal tells the truth.*lie/);
   assert.ok(
     (
       await page
@@ -34,7 +35,8 @@ try {
         .evaluateAll((bs) => bs.map((b) => b.getBoundingClientRect().bottom))
     ).every((y) => y <= 780),
   );
-  await page.getByRole('button', { name: 'Tell', exact: true }).click();
+  await page.getByRole('dialog').getByRole('button', { name: 'Tell', exact: true }).click();
+  await page.getByRole('dialog').waitFor({ state: 'hidden' });
   const bounds = await page
     .locator('.actions button')
     .evaluateAll((buttons) =>
@@ -47,13 +49,13 @@ try {
   );
   await page.screenshot({ path: 'scratch/acceptance/phone.png', fullPage: true });
   const download = async (path: string) => {
-    await page.locator('#notebook').click();
+    await page.locator('#game-menu').click();
     const [file] = await Promise.all([
       page.waitForEvent('download'),
       page.getByRole('button', { name: 'Download this run', exact: true }).click(),
     ]);
     await file.saveAs(path);
-    await page.getByRole('button', { name: 'Close notebook', exact: true }).click();
+    await page.getByRole('button', { name: 'Close Game menu', exact: true }).click();
     return JSON.parse(readFileSync(path, 'utf8'));
   };
   const run = await download('scratch/acceptance/run.json');
@@ -61,10 +63,10 @@ try {
   await page.getByRole('link', { name: 'Hearsay', exact: true }).click();
   const [chooser] = await Promise.all([
     page.waitForEvent('filechooser'),
-    page.getByRole('button', { name: 'Open a notebook', exact: true }).click(),
+    page.getByRole('button', { name: 'Import a run', exact: true }).click(),
   ]);
   await chooser.setFiles('scratch/acceptance/run.json');
-  await page.locator('#notebook').waitFor();
+  await page.locator('#game-menu').waitFor();
   const imported = await download('scratch/acceptance/imported.json');
   assert.equal(imported.fingerprint, run.fingerprint);
   // Leave after unsaved clock motion. pagehide must preserve that latest clock.

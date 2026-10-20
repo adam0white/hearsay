@@ -1,7 +1,7 @@
 import { credence, trustOf } from '@adam0white/human-framework';
 import { expect, it } from 'vitest';
 import { runPolicy } from '../scripts/policy.ts';
-import { act, advance, newGame } from '../src/sim/game.ts';
+import { act, advance, newGame, PEOPLE, spokenClaim } from '../src/sim/game.ts';
 import { DAILY_INCIDENTS } from '../src/sim/incidents.ts';
 
 it('witnesses the promised scene in plain words at 06:30', () => {
@@ -97,4 +97,54 @@ it('keeps equivalent opposite-form testimony attached to Hatice’s route', () =
       (r) => r.trait === 'hardworking' && r.value === false && r.origin === 'hatice' && r.root === root.id,
     ),
   ).toBe(true);
+});
+
+it('keeps spontaneous starting rumours out of the garden before the first incident', () => {
+  for (const seed of [1, 3, 8, 42]) {
+    const g = newGame(seed);
+    advance(g, 389);
+    expect(g.s.routes.filter((r) => r.to === 'hatice')).toHaveLength(0);
+    expect(g.s.log.filter((l) => ['rumour', 'conversation', 'echo'].includes(l.kind))).toHaveLength(0);
+    advance(g, 450);
+    expect(g.s.routes.length).toBeGreaterThan(0);
+  }
+});
+
+it('never shows a changed greeting between members of the same household', () => {
+  const g = newGame(1);
+  advance(g, 390);
+  const household = new Map(PEOPLE.map((p) => [p.id, p.household]));
+  const first = g.s.log.filter((l) => l.kind === 'cold-greeting');
+  expect(first.some((l) => l.speaker === 'zehra' && l.target === 'kemal')).toBe(false);
+  advance(g, 14 * 1440);
+  const greetings = g.s.log.filter((l) => l.kind === 'cold-greeting');
+  expect(greetings.length).toBeGreaterThan(0);
+  for (const l of greetings) expect(household.get(l.speaker!)).not.toBe(household.get(l.target!));
+});
+
+it('records incidents without a redundant speaker or a suggested recipient in the prose', () => {
+  const g = newGame(1);
+  advance(g, 390);
+  const scene = g.s.log.find((l) => l.kind === 'overheard');
+  expect(scene?.speaker).toBeUndefined();
+  expect(scene?.text).not.toMatch(/would care/);
+});
+
+it('speaks a known act instead of a trait label and does not invent a scene for a lie', () => {
+  const g = newGame(1);
+  act(g, { type: 'tell', listener: 'fatma', target: 'kemal', trait: 'cruel' });
+  const before = g.s.log.findLast((l) => l.speaker === 'hatice');
+  expect(before?.text).not.toMatch(/Kemal is cruel|old flour/);
+  advance(g, 390);
+  act(g, { type: 'tell', listener: 'fatma', target: 'kemal', trait: 'dishonest' });
+  const spoken = g.s.log.findLast((l) => l.speaker === 'hatice');
+  expect(spoken?.text).toMatch(/old flour/);
+  expect(spoken?.text).not.toContain('Kemal is dishonest');
+});
+
+it('does not turn another witnessed act into knowledge of a later incident', () => {
+  const g = newGame(1);
+  advance(g, 1830);
+  expect(spokenClaim(g.s, 'osman', 'emre', 'honest', true)).not.toMatch(/fifty|Ali/);
+  expect(spokenClaim(g.s, 'hatice', 'emre', 'honest', true)).toMatch(/fifty.*Ali/);
 });

@@ -251,7 +251,7 @@ export class HearsayAdapter {
       const day = Math.floor(minute / 1440) * 1440;
       const tod = minute - day;
       // The browser drops to Slow while a neighbour waits. Step through each
-      // simulation minute so a question reached inside a large batch also slows it.
+      // simulation minute so a question or incident inside a large batch also slows it.
       if (this.game.s.newsWaiting) this.speed = 1;
       const rate = tod < 360 || tod >= 1380 ? 240 : this.speed;
       const boundary = tod < 360 ? day + 360 : tod < 1380 ? day + 1380 : day + 1440 + 360;
@@ -260,7 +260,12 @@ export class HearsayAdapter {
       const next = position + span * rate;
       const whole = Math.floor(next + 1e-8);
       this.carry = Math.max(0, next - whole);
+      const priorIncident = this.game.s.log.findLast((line) => line.kind === 'overheard')?.id;
       advance(this.game, whole);
+      if (this.game.s.log.findLast((line) => line.kind === 'overheard')?.id !== priorIncident) {
+        this.speed = 1;
+        this.carry = 0;
+      }
       remaining -= span;
     }
   }

@@ -70,6 +70,7 @@ it('slows for a question reached inside a Gallop batch', () => {
   const a = new HearsayAdapter(9),
     b = new HearsayAdapter(9);
   for (const adapter of [a, b]) {
+    adapter.game.s.minute = 404;
     adapter.actions();
     adapter.apply('pace:80');
   }
@@ -93,7 +94,7 @@ it('offers a daily claim only after its scene is witnessed', async () => {
     id: a.game.s.log.length + 1,
     at,
     kind: 'overheard',
-    text: `${incident.text} You witness this yourself. Ali would care about this.`,
+    text: `${incident.text} You witness this yourself.`,
     target: incident.target,
   });
   expect(a.actions().some((action) => action.id.includes(':emre:honest'))).toBe(true);
@@ -110,4 +111,14 @@ it('does not treat another neighbour’s cold greeting or moral refusal as a set
     a.game.s.log.push({ id: a.game.s.log.length + 1, at: 405, kind, text, speaker: 'fatma' });
   const events = a.observe().events;
   expect(events.map((event) => event.valence)).toEqual([0, 0, -0.55]);
+});
+
+it('slows when an incident arrives before the daily question', () => {
+  const adapter = new HearsayAdapter(1);
+  adapter.game.s.minute = 389;
+  adapter.actions();
+  adapter.apply('pace:80');
+  adapter.advance(0.1);
+  expect(adapter.speed).toBe(1);
+  expect(adapter.game.s.minute).toBe(390);
 });

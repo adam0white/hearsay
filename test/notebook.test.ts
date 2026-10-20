@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { act, advance, fingerprint, newGame } from '../src/sim/engine';
 import { exportRun, verifyImport } from '../src/ui/export';
 
-describe('notebook import', () => {
+describe('run import', () => {
   it('replays a run with a choice before accepting it', () => {
     const game = newGame(72);
     advance(game, 405);

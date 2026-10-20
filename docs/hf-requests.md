@@ -10,7 +10,7 @@ Space, schedules, economic custom, the engagement decision, bend ladders and rev
 
 ## Round 2 playtester diagnosis
 
-The six sessions in `docs/playtests/2026-10-20-hf-after.json` do not show a game-ending defect. Five personas voluntarily stop after four or five real minutes, at day 1 10:00 or 11:00. Their recorded stopping reason is `emotion:joy:novel`. Mischief seed 2 reaches the twelve-minute cap at day 1 18:00. None reaches the engagement decision or review. The final recorded engagement in the five quit sessions ranges from 0.245 to 0.299. The absence of a classified bored moment does not contradict a voluntary quit: those are different thresholds and decisions in the playtester.
+The six sessions in `docs/playtests/2026-10-20-hf-after.json.gz` do not show a game-ending defect. Five personas voluntarily stop after four or five real minutes, at day 1 10:00 or 11:00. Their recorded stopping reason is `emotion:joy:novel`. Mischief seed 2 reaches the twelve-minute cap at day 1 18:00. None reaches the engagement decision or review. The final recorded engagement in the five quit sessions ranges from 0.245 to 0.299. The absence of a classified bored moment does not contradict a voluntary quit: those are different thresholds and decisions in the playtester.
 
 The run exposes both game and adapter limits. At Slow, one real second advances one game minute. The adapter omitted the visible Walk, Trot and Gallop controls, so its player could never cross a quiet stretch faster. Day 1 lulls reached 144 seconds, and the authored menu repeatedly offered Ask about Kemal, Defend Emre, and even amends when Hatice had made no claim. This is a narrow player policy, not the full UI menu. The game also had finite dialogue and little authored testimony after its opening. These records do not isolate the causal share of each limitation.
 
@@ -20,7 +20,7 @@ No change was made to the human-framework checkout. The HF cohort is a local sim
 
 ### Recorded Round 2 cohort
 
-Command: `node scripts/hf-playtest/run.ts run personas=commuter,mischief,rulesLawyer seeds=3 minutes=12 build=polish-r2 out=docs/playtests/2026-10-20-hf-r2.json`. The file contains all nine raw session traces, persona records and the cohort summary. All sessions hit the twelve-minute cap. None quit voluntarily; none completed the fortnight.
+Command: `node scripts/hf-playtest/run.ts run personas=commuter,mischief,rulesLawyer seeds=3 minutes=12 build=polish-r2 out=docs/playtests/2026-10-20-hf-r2.json`. The original JSON output is archived losslessly as `docs/playtests/2026-10-20-hf-r2.json.gz`; it contains all nine raw session traces, persona records and the cohort summary. See `docs/playtests/2026-10-20-hf-r2.md` for the session index. All sessions hit the twelve-minute cap. None quit voluntarily; none completed the fortnight.
 
 | Persona | Seed | Clock at cap | Pace inputs |
 | --- | --- | --- | --- |

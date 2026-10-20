@@ -308,7 +308,7 @@ footer {
   padding: 15px 10px 30px;
   font-style: italic;
 }
-.notebook {
+.sheet {
   width: calc(100% - 24px);
   max-width: 460px;
   max-height: 85dvh;
@@ -320,7 +320,7 @@ footer {
   color: #263f3b;
   box-shadow: 0 20px 100px #1c302740;
 }
-.notebook::backdrop {
+.sheet::backdrop {
   background: #203c3560;
 }
 .dialog-head {
@@ -334,16 +334,16 @@ footer {
   border: 0;
   background: transparent;
 }
-.notebook p {
+.sheet p {
   font-size: 14px;
   margin: 12px 0 20px;
 }
-.notebook > button {
+.sheet > button {
   display: block;
   width: 100%;
   margin: 9px 0;
 }
-.notebook .fine {
+.sheet .fine {
   font-size: 12px;
 }
 .review {
@@ -573,7 +573,7 @@ header {
   padding: 0 14px 6px;
   text-align: center;
 }
-.notebook h3 {
+.sheet h3 {
   font-weight: normal;
   font-size: 15px;
   margin: 12px 0 6px;
@@ -588,11 +588,11 @@ header {
 .dialog-head button {
   font-size: 12px;
 }
-.notebook {
+.sheet {
   padding: 16px;
   max-height: 94dvh;
 }
-.notebook p {
+.sheet p {
   margin: 6px 0 10px;
 }
 .subject-chips,
@@ -639,7 +639,7 @@ header {
   flex: 1;
   font-size: 13px;
 }
-.notebook .silence-offer {
+.sheet .silence-offer {
   display: block;
   padding: 10px 0;
   font-size: 12px;
@@ -680,5 +680,23 @@ header {
   }
   .people-chips {
     grid-template-columns: repeat(6, minmax(0, 1fr));
+  }
+}
+
+.table-incident {
+  margin: 7px 0;
+  padding: 8px 10px;
+  border-left: 3px solid #7c8b68;
+  background: #e5e8d7;
+  font-size: 13px;
+  line-height: 1.35;
+}
+.people-chips .would-want {
+  color: #89533f;
+  font-size: 10px;
+}
+@media (max-width: 699px) {
+  .has-incident .map-wrap {
+    height: 90px;
   }
 }

@@ -77,6 +77,7 @@ export interface State {
   silence: Record<string, number>;
   confronted: number[];
   greetings: Record<string, boolean>;
+  incidentWitnesses?: Record<number, string[]>;
   groundTruth?: Record<string, boolean>;
   pendingConfrontations?: { root: number; due: number }[];
   heardClaims?: Record<string, { count: number; who: string[]; echo?: number }>;

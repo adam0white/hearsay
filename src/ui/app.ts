@@ -1,6 +1,7 @@
 import { credence } from '@adam0white/human-framework';
-import { act, advance, newGame, REPUTATION_TRAITS, replay, view } from '../sim/engine';
-import type { Game, Input, LoggedInput, Trait } from '../sim/types';
+import { act, advance, newGame, REPUTATION_TRAITS, replay, spokenClaim, view } from '../sim/engine';
+import { DAILY_INCIDENTS } from '../sim/incidents';
+import type { Game, Input, Line, LoggedInput, Trait } from '../sim/types';
 import { PEOPLE } from '../sim/world';
 import { exportRun, verifyImport } from './export';
 import { lab } from './lab';
@@ -23,6 +24,11 @@ let trait: Trait = 'dishonest';
 let buySilence = false;
 let firstStart = false;
 let slowReason = '';
+let dismissedIncident = 0;
+type SceneMemory = { seed: number; dismissedIncident: number };
+let sceneMemory: SceneMemory | null = null;
+let incidentSpeed: number | null = null;
+let seenIncident = 0;
 let reply = '';
 let acting = false;
 let seenGarden = new Set<string>();
@@ -76,7 +82,7 @@ function save(): void {
 function title(): void {
   playing = false;
   lab.screen('title');
-  host.innerHTML = `<main class="title-page"><p class="eyebrow">A fortnight in the neighbourhood</p><h1>Hearsay<span class="subtitle">Someone will hear.</span></h1><div class="title-illustration" aria-hidden="true"><i></i><i></i><i></i><b>☕</b></div><p>You are Hatice. You keep the tea garden.<br>Your son hopes to marry the baker’s daughter.<br>This morning, you overhear something true.</p><div id="start"></div><p class="fine">Fourteen days. Six ways to answer.<br>Your words will find their way home.</p><button type="button" id="import-title" class="text-button">Open a notebook</button></main>`;
+  host.innerHTML = `<main class="title-page"><p class="eyebrow">A fortnight in the neighbourhood</p><h1>Hearsay<span class="subtitle">Someone will hear.</span></h1><div class="title-illustration" aria-hidden="true"><i></i><i></i><i></i><b>☕</b></div><p>You are Hatice. You keep the tea garden.<br>Your son hopes to marry the baker’s daughter.<br>This morning, you overhear something true.</p><div id="start"></div><p class="fine">Fourteen days. Six ways to answer.<br>Your words will find their way home.</p><button type="button" id="import-title" class="text-button">Import a run</button></main>`;
   host.querySelector('#start')?.append(
     button(
       saved ? 'Resume' : 'Start',
@@ -115,8 +121,35 @@ function title(): void {
       ),
     );
 }
+function tableIncident(): Line | undefined {
+  return game.s.log.findLast(
+    (l) => l.kind === 'overheard' && l.id > dismissedIncident && game.s.minute - l.at < 120,
+  );
+}
+function dismissIncident(): void {
+  const incident = tableIncident();
+  if (!incident) return;
+  dismissedIncident = incident.id;
+  sceneMemory = { seed: game.s.seed, dismissedIncident };
+  void putImmediate('run-ui', sceneMemory);
+  finishIncidentSlowdown();
+  render();
+}
+function finishIncidentSlowdown(): void {
+  if (incidentSpeed === null) return;
+  if (!game.s.newsWaiting) {
+    speed = incidentSpeed;
+    slowReason = '';
+    incidentSpeed = null;
+  } else {
+    slowReason = 'A neighbour is waiting for your answer. Slowed to Slow.';
+  }
+}
 function resetScene(): void {
   speed = 5;
+  dismissedIncident = sceneMemory?.seed === game.s.seed ? sceneMemory.dismissedIncident : 0;
+  incidentSpeed = null;
+  seenIncident = 0;
   accumulator = 0;
   slowReason = '';
   reply = '';
@@ -124,7 +157,12 @@ function resetScene(): void {
   seenGarden = new Set(Object.keys(game.s.locations).filter((id) => game.s.locations[id] === 'garden'));
   seenNews = game.s.newsWaiting;
   seenQuestion = game.s.log.at(-1)?.id ?? 0;
-  if (seenNews) {
+  if (tableIncident()) {
+    incidentSpeed = speed;
+    speed = 1;
+    seenIncident = tableIncident()!.id;
+    slowReason = 'You overheard something. Slowed to Slow so you can read and choose whom to tell.';
+  } else if (seenNews) {
     speed = 1;
     slowReason = 'A neighbour is waiting for your answer. Slowed to Slow.';
   }
@@ -139,7 +177,19 @@ function noticeVisitors(): boolean {
   seenGarden = garden;
   seenNews = game.s.newsWaiting;
   seenQuestion = game.s.log.at(-1)?.id ?? seenQuestion;
-  if (!waiting && !question && !arrivals.length) return false;
+  const incident = tableIncident();
+  if (incident && incident.id > seenIncident) {
+    seenIncident = incident.id;
+    incidentSpeed ??= speed;
+    speed = 1;
+    accumulator = 0;
+    slowReason = 'You overheard something. Slowed to Slow so you can read and choose whom to tell.';
+    return true;
+  }
+  const released = incidentSpeed !== null && !incident && !game.s.newsWaiting;
+  if (!incident) finishIncidentSlowdown();
+  if (incident) return false;
+  if (!waiting && !question && !arrivals.length) return released;
   speed = 1;
   accumulator = 0;
   slowReason =
@@ -208,13 +258,11 @@ function preview(kind: 'tell' | 'defend'): string {
   const negative = kind === 'defend' && word === 'owes';
   const belief = game.s.people.hatice ? credence(game.s.people.hatice, `${target}:${word}`) : 0.5;
   const believed = negative ? belief < 0.5 : belief > 0.5;
-  const sentence =
-    word === 'owes'
-      ? `${name(target)} ${negative ? 'does not owe' : 'owes'} money.`
-      : `${name(target)} is ${word}.`;
+  const sentence = `${spokenClaim(game.s, 'hatice', target, word, !negative)}.`;
   return `You'll say: ${sentence} ${believed ? 'You believe it.' : "You don't believe this. It would be a lie."}`;
 }
 function chooseTalk(id: string): void {
+  dismissIncident();
   listener = id;
   const talkTo = id;
   const d = dialog(`Talk to ${name(id)}`);
@@ -289,6 +337,7 @@ function chooseTalk(id: string): void {
   update();
 }
 function choosePasser(id?: string): void {
+  if (id) dismissIncident();
   const d = dialog(id ? `${name(id)} is passing` : 'Call someone over');
   conversation = d;
   const nearby = view(game.s).present.filter((p) => p !== 'hatice');
@@ -331,28 +380,28 @@ function render(): void {
   shownMinute = game.s.minute;
   const present = v.present.filter((id) => id !== 'hatice');
   if (!present.includes(listener)) listener = '';
-  const day = Math.floor(game.s.minute / 1440) + 1;
-  const opening = game.s.log.findLast((l) => l.kind === 'overheard');
+  const incident = tableIncident();
+  const concerned = incident ? DAILY_INCIDENTS[Math.floor(incident.at / 1440)]?.listener : undefined;
   const introduction = firstStart
     ? `<aside class="first-start" aria-label="How to play"><p>Keep your word good. See Emre married.</p><p>Tap people at the table or passing on the map.</p><p>Your standing fills benches. Watch Rıza’s mind.</p><p>Speak only to people here. Hear only nearby talk.</p><p>Someone will ask you for news soon.</p><button type="button" id="dismiss-intro">Got it</button></aside>`
     : '';
-  host.innerHTML = `<main class="game"><header><a class="wordmark" href="#" id="home">Hearsay</a><div class="clock" id="clock">${dateLabel(game.s.minute)}</div><button type="button" id="notebook" class="text-button">Notebook</button></header>${introduction}<div class="speeds" role="group" aria-label="Time speed">${speeds.map((s) => `<button type="button" data-speed="${s.rate}" aria-pressed="${speed === s.rate}">${s.label}</button>`).join('')}</div>${slowReason ? `<p class="slow-reason" role="status">${html(slowReason)}</p>` : ''}<div class="map-wrap"><canvas id="map" aria-label="The neighbourhood. Tap a person near the tea garden or fountain to call them over."></canvas><span class="map-caption">HATICE’S TEA GARDEN · TAP A PASSER-BY</span></div><section class="garden" aria-label="Your tea garden"><div class="section-heading"><h2>At your table</h2><span>and by the fountain</span></div><p class="standing">${standing()}</p><p class="engagement">${game.s.engagement === 'waiting' ? 'Rıza is still considering Emre and Elif’s marriage.' : game.s.engagement === 'accepted' ? 'Rıza has agreed to the marriage.' : 'Rıza has refused the marriage.'}</p><div class="people-chips" aria-label="People close enough to talk">${present.map((id) => `<button type="button" data-person="${id}" aria-label="Talk to ${html(name(id))}"><strong>${html(name(id))}</strong><small>${outwardLook(id)}</small></button>`).join('') || '<p class="fine">No one is close enough. Watch for people passing.</p>'}</div><p class="question">${html(v.question ?? 'Tap a person. Choose what to say.')}</p><div class="actions"><button type="button" data-open-talk ${present.length ? '' : 'disabled'}>Tell</button><button type="button" data-open-talk ${present.length ? '' : 'disabled'}>Defend</button><button type="button" data-open-talk ${present.length ? '' : 'disabled'}>Ask</button><button type="button" id="hold" ${game.s.newsWaiting ? '' : 'disabled'}>Hold your tongue</button><button type="button" data-open-talk ${present.length ? '' : 'disabled'}>Make amends</button><button type="button" id="call">Call over</button></div>${reply ? `<p class="reply" role="status">${html(reply)}</p>` : ''}</section><section class="heard" aria-label="What you witnessed"><h2>What reaches your ears</h2>${opening && Math.floor(opening.at / 1440) + 1 === day ? `<details class="opening-evidence"><summary>Today’s overheard incident</summary>${html(opening.text)}</details>` : ''}<div role="log" aria-live="polite">${
+  host.innerHTML = `<main class="game${incident ? ' has-incident' : ''}"><header><a class="wordmark" href="#" id="home">Hearsay</a><div class="clock" id="clock">${dateLabel(game.s.minute)}</div><button type="button" id="game-menu" class="text-button">Game menu</button></header>${introduction}<div class="speeds" role="group" aria-label="Time speed">${speeds.map((s) => `<button type="button" data-speed="${s.rate}" aria-pressed="${speed === s.rate}">${s.label}</button>`).join('')}</div>${slowReason ? `<p class="slow-reason" role="status">${html(slowReason)}</p>` : ''}<div class="map-wrap"><canvas id="map" aria-label="The neighbourhood. Tap a person near the tea garden or fountain to call them over."></canvas><span class="map-caption">HATICE’S TEA GARDEN · TAP A PASSER-BY</span></div><section class="garden" aria-label="Your tea garden"><div class="section-heading"><h2>At your table</h2><span>and by the fountain</span></div>${incident ? `<aside class="table-incident" aria-label="What you overheard"><p>${html(incident.text)}</p></aside>` : ''}<p class="standing">${standing()}</p><p class="engagement">${game.s.engagement === 'waiting' ? 'Rıza is still considering Emre and Elif’s marriage.' : game.s.engagement === 'accepted' ? 'Rıza has agreed to the marriage.' : 'Rıza has refused the marriage.'}</p><div class="people-chips" aria-label="People close enough to talk">${present.map((id) => `<button type="button" data-person="${id}" aria-label="Talk to ${html(name(id))}"><strong>${html(name(id))}</strong><small>${outwardLook(id)}</small>${id === concerned ? '<small class="would-want">would want to know</small>' : ''}</button>`).join('') || '<p class="fine">No one is close enough. Watch for people passing.</p>'}</div><p class="question">${html(v.question ?? 'Tap a person. Choose what to say.')}</p><div class="actions"><button type="button" data-open-talk ${present.length ? '' : 'disabled'}>Tell</button><button type="button" data-open-talk ${present.length ? '' : 'disabled'}>Defend</button><button type="button" data-open-talk ${present.length ? '' : 'disabled'}>Ask</button><button type="button" id="hold" ${game.s.newsWaiting ? '' : 'disabled'}>Hold your tongue</button><button type="button" data-open-talk ${present.length ? '' : 'disabled'}>Make amends</button><button type="button" id="call">Call over</button></div>${reply ? `<p class="reply" role="status">${html(reply)}</p>` : ''}</section><section class="heard" aria-label="What you witnessed"><h2>What reaches your ears</h2><div role="log" aria-live="polite">${
     game.s.log
       .slice(-5)
       .reverse()
       .map(
         (l) =>
-          `<article class="${l.kind === 'echo' ? 'echo' : ['overheard', 'witness', 'incident', 'witnessed'].includes(l.kind) ? 'incident' : ''}"><time>${clock(l.at)}</time><p>${l.kind !== 'echo' && l.speaker && l.speaker !== 'hatice' ? `<strong>${html(name(l.speaker))}</strong> · ` : ''}${html(feedText(l))}</p></article>`,
+          `<article class="${l.kind === 'echo' ? 'echo' : ['overheard', 'witness', 'incident', 'witnessed'].includes(l.kind) ? 'incident' : ''}"><time>${clock(l.at)}</time><p>${!['echo', 'overheard', 'witness', 'incident', 'witnessed'].includes(l.kind) && l.speaker && l.speaker !== 'hatice' ? `<strong>${html(name(l.speaker))}</strong> · ` : ''}${html(feedText(l))}</p></article>`,
       )
       .join('') || '<p class="fine">The hill is waking.</p>'
-  }</div></section><footer>Only what you witness, and what people tell you. The full journal is in your notebook.</footer></main>`;
+  }</div></section><footer>Only what you witness, and what people tell you. Open Game menu for What you heard.</footer></main>`;
   host.querySelector('#home')?.addEventListener('click', (e) => {
     e.preventDefault();
     save();
     saved = game;
     title();
   });
-  host.querySelector('#notebook')?.addEventListener('click', notebook);
+  host.querySelector('#game-menu')?.addEventListener('click', gameMenu);
   host.querySelector('#dismiss-intro')?.addEventListener('click', () => {
     firstStart = false;
     render();
@@ -360,6 +409,7 @@ function render(): void {
   host.querySelectorAll<HTMLButtonElement>('[data-speed]').forEach((b) => {
     b.onclick = () => {
       speed = Number(b.dataset.speed);
+      incidentSpeed = null;
       slowReason = '';
       render();
     };
@@ -399,8 +449,8 @@ function render(): void {
 }
 function dialog(titleText: string): HTMLDialogElement {
   const d = document.createElement('dialog');
-  d.className = 'notebook';
-  d.innerHTML = `<div class="dialog-head"><h2>${titleText}</h2><button type="button" aria-label="Close notebook">Close</button></div>`;
+  d.className = 'sheet';
+  d.innerHTML = `<div class="dialog-head"><h2>${titleText}</h2><button type="button" aria-label="Close ${html(titleText)}">Close</button></div>`;
   d.querySelector('button')?.addEventListener('click', () => {
     d.close();
     d.remove();
@@ -418,15 +468,16 @@ function dialog(titleText: string): HTMLDialogElement {
   d.showModal();
   return d;
 }
-function notebook(): void {
-  lab.screen('notebook');
-  const d = dialog('Your notebook');
+function gameMenu(): void {
+  lab.screen('game-menu');
+  const d = dialog('Game menu');
+  d.dataset.systemMenu = 'true';
   const p = document.createElement('p');
   p.textContent =
-    'Save the whole run: your seed, choices, state and a replay fingerprint. An imported notebook must replay exactly before it replaces your garden.';
+    'Save the whole run: your seed, choices, state and a replay fingerprint. An imported run must replay exactly before it replaces your garden.';
   d.append(p);
   const journal = document.createElement('details');
-  journal.innerHTML = `<summary>What I heard</summary><div class="journal">${game.s.log.map((l) => `<p><time>Day ${Math.floor(l.at / 1440) + 1} · ${clock(l.at)}</time><br>${l.speaker ? `${html(name(l.speaker))} · ` : ''}${html(l.text)}</p>`).join('')}</div>`;
+  journal.innerHTML = `<summary>What you heard</summary><div class="journal">${game.s.log.map((l) => `<p><time>Day ${Math.floor(l.at / 1440) + 1} · ${clock(l.at)}</time><br>${l.speaker && !['overheard', 'witness', 'incident', 'witnessed'].includes(l.kind) ? `${html(name(l.speaker))} · ` : ''}${html(l.text)}</p>`).join('')}</div>`;
   d.append(journal);
   const status = document.createElement('p');
   status.className = 'download-status';
@@ -443,7 +494,7 @@ function notebook(): void {
       status.textContent = `Saved ${a.download}`;
       setTimeout(() => URL.revokeObjectURL(url), 1000);
     }),
-    button('Import a notebook', importFile),
+    button('Import a run', importFile),
     button('Send this run to the notebook', () => lab.openSendDialog({ getRun: () => exportRun(game) })),
   );
   const privacy = document.createElement('p');
@@ -456,7 +507,7 @@ function notebook(): void {
       lab.setEventsOff(lab.eventsOn);
       d.close();
       d.remove();
-      notebook();
+      gameMenu();
     }),
   );
 }
@@ -470,6 +521,8 @@ function importFile(): void {
     try {
       const imported = verifyImport(await file.text());
       game = imported;
+      sceneMemory = null;
+      await putImmediate('run-ui', null);
       firstStart = false;
       resetScene();
       saved = game;
@@ -482,10 +535,13 @@ function importFile(): void {
       last = performance.now();
       render();
     } catch (error) {
-      const d = dialog('Notebook could not open');
+      document.querySelectorAll('dialog').forEach((d) => {
+        d.close();
+      });
+      const d = dialog('Run could not open');
       const p = document.createElement('p');
       p.textContent =
-        error instanceof Error ? error.message : 'Invalid notebook. Your current garden is unchanged.';
+        error instanceof Error ? error.message : 'Invalid run. Your current garden is unchanged.';
       d.append(p);
     }
   };
@@ -529,7 +585,7 @@ function review(): void {
     .join('');
   host.innerHTML = `<main class="review"><p class="eyebrow">The end of the fortnight</p><h1>Words find their way.</h1><p>${game.s.engagement === 'accepted' ? 'Rıza has agreed. Emre and Elif may marry.' : game.s.engagement === 'refused' ? 'Rıza has refused the engagement. The two households will remember.' : 'The engagement remains unsettled.'}</p><h2>What changed</h2><p>Your garden ended ${html(game.s.garden)}. ${confrontations.length ? `${html(confrontations.join(', '))} traced words back to your gate.` : 'No neighbour confronted you at your gate.'} ${shopChanges.length ? `${html(shopChanges.join(' and '))} closed the shutters early.` : ''}</p><h2>The paths your words took</h2><p class="fine">Open one of your statements to follow its descendants. Withdrawals do not recall copies that have already travelled.</p>${ownRoutes || '<p>You started no testimony.</p>'}<details class="all-routes"><summary>The whole village: every rumour route</summary><p class="fine">This includes conversations you could not witness.</p><div class="route-list">${game.s.routes.map(routeHtml).join('') || '<p>No rumour travelled.</p>'}</div></details><h2>One question to carry</h2><p>Whose trust mattered when you chose what to say?</p><div id="review-actions"></div></main>`;
   host.querySelector('#review-actions')?.append(
-    button('Notebook', notebook),
+    button('Game menu', gameMenu),
     button('Return to title', () => {
       saved = game;
       title();
@@ -539,7 +595,13 @@ function review(): void {
 function frame(now: number): void {
   const elapsed = Math.min(250, now - last);
   last = now;
-  if (playing && game && !game.s.ended && !document.hidden) {
+  if (
+    playing &&
+    game &&
+    !game.s.ended &&
+    !document.hidden &&
+    !document.querySelector('dialog[data-system-menu]')
+  ) {
     const hour = Math.floor((game.s.minute % 1440) / 60);
     accumulator += (elapsed * (hour < 6 || hour >= 23 ? 240 : speed)) / 1000;
     if (accumulator >= 1 && !pendingJournal) {
@@ -562,7 +624,16 @@ function frame(now: number): void {
   requestAnimationFrame(frame);
 }
 export async function start(): Promise<void> {
-  const [row, journalRow] = await Promise.all([get<Game>('run'), get<Journal>('run-log')]);
+  const [row, journalRow, sceneRow] = await Promise.all([
+    get<Game>('run'),
+    get<Journal>('run-log'),
+    get<SceneMemory>('run-ui'),
+  ]);
+  const remembered = sceneRow?.value;
+  sceneMemory =
+    remembered && Number.isSafeInteger(remembered.seed) && Number.isSafeInteger(remembered.dismissedIncident)
+      ? remembered
+      : null;
   saved = row?.value?.s?.version === 1 && Array.isArray(row.value.inputs) ? row.value : null;
   const journal = journalRow?.value;
   if (
