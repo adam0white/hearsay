@@ -53,3 +53,35 @@ it('closes the menu before sending, stops time, and resumes the chosen speed on 
   expect(await page.locator('[data-speed="80"]').getAttribute('data-chosen')).toBe('true');
   await page.locator('.hflab-veil').evaluate((el) => el.remove());
 });
+
+it('keeps a reopened notebook dialog stopped when a canceled send completes late', async () => {
+  await page.evaluate(`(async () => {
+    const { lab } = await import('/src/ui/lab.ts');
+    lab.sendEnvelopeText = () => new Promise((resolve) => {
+      window.resolveCanceledSend = resolve;
+    });
+  })()`);
+  await page.locator('#game-menu').click();
+  await page.getByRole('button', { name: 'Send this run to the notebook', exact: true }).click();
+  await page.locator('.hflab .send').click();
+  await page.getByRole('button', { name: 'Not now', exact: true }).click();
+  await page.locator('.hflab-veil').waitFor({ state: 'detached' });
+
+  await page.locator('#game-menu').click();
+  await page.getByRole('button', { name: 'Send this run to the notebook', exact: true }).click();
+  await page.locator('#hflab-note').fill('Keep this second note.');
+  const held = await page.locator('#clock').innerText();
+  await page.clock.runFor(3000);
+  expect(await page.locator('#clock').innerText()).toBe(held);
+
+  await page.evaluate('window.resolveCanceledSend("local-canceled-reference")');
+  await page.clock.runFor(3000);
+  expect(await page.locator('#clock').innerText()).toBe(held);
+  expect(await page.locator('.hflab-veil').count()).toBe(1);
+  expect(await page.locator('#hflab-note').inputValue()).toBe('Keep this second note.');
+
+  await page.getByRole('button', { name: 'Not now', exact: true }).click();
+  await page.clock.runFor(3000);
+  expect(await page.locator('#clock').innerText()).not.toBe(held);
+  expect(await page.locator('[data-speed="80"]').getAttribute('data-chosen')).toBe('true');
+});

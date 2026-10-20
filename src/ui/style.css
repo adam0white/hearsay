@@ -173,6 +173,9 @@ summary {
   padding: 10px 0;
   font-size: 0.8235rem;
 }
+.other-neighbours > summary {
+  min-height: 44px;
+}
 .opening-evidence summary {
   font-size: 0.7059rem;
   padding: 4px 0;

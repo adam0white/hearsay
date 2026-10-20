@@ -29,6 +29,7 @@ let saved: Game | null = null;
 let speed = 5;
 let playing = false;
 let sendingRun = false;
+let sendGeneration = 0;
 let shownMinute = -1;
 let last = performance.now();
 let accumulator = 0;
@@ -966,9 +967,12 @@ function gameMenu(): void {
     button('Send this run to the notebook', () => {
       d.close();
       d.remove();
+      const generation = ++sendGeneration;
       sendingRun = true;
       accumulator = 0;
       const resume = () => {
+        // A canceled request may finish after another send dialog has opened.
+        if (generation !== sendGeneration) return;
         sendingRun = false;
         accumulator = 0;
         last = performance.now();

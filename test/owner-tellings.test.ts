@@ -130,3 +130,71 @@ it('provides pure UI protection for an imported legacy run without changing its 
   expect(act(g, input)).toBe(true);
   expect(fingerprint(g.s)).toBe('53cbae48');
 });
+
+it('recovers legacy public tellings collapsed into echoes without changing replay state', () => {
+  const g = newGame(1, 1);
+  advance(g, 420);
+  const input = { type: 'tell', listener: 'deniz', target: 'hasan', trait: 'reliable' } as const;
+  const before = save(g);
+  expect(tellingUnavailable(g.s, input)).toContain('already heard this from Selin');
+  expect(tellingUnavailable(load(before).s, input)).toContain('Selin');
+  for (const run of [exportRun(g), compactRun(exportRun(g))])
+    expect(tellingUnavailable(verifyImport(JSON.stringify(run)).s, input)).toContain('Selin');
+  expect(save(g)).toBe(before);
+  // Historical inputs still apply under version 1, even when the UI knows better.
+  expect(act(g, input)).toBe(true);
+  expect(fingerprint(replay(1, g.inputs, 420, 1).s)).toBe(fingerprint(g.s));
+});
+
+it('does not use an echo to reveal a private delivery of the same claim by the same speaker', () => {
+  const g = newGame(1, 1);
+  advance(g, 420);
+  const publicRoute = g.s.routes.find((r) => r.id === 25);
+  if (!publicRoute) throw new Error('Missing public telling fixture');
+  g.s.routes.push({ ...publicRoute, id: g.s.routes.length + 1, to: 'ali', at: 419 });
+  const before = save(g);
+  expect(
+    tellingUnavailable(g.s, { type: 'tell', listener: 'ali', target: 'hasan', trait: 'reliable' }),
+  ).toBeUndefined();
+  expect(save(g)).toBe(before);
+});
+
+it('does not restore a legacy duplicate-story limit after a later withdrawal, even in the same minute', () => {
+  const g = newGame(1, 1);
+  advance(g, 390);
+  const input = { type: 'tell-story', listener: 'fatma', incident: 1 } as const;
+  expect(act(g, input)).toBe(true);
+  expect(act(g, input)).toBe(true);
+  expect(tellingUnavailable(g.s, input)).toContain('already told Fatma');
+  expect(act(g, { type: 'make-amends', listener: 'fatma', target: 'kemal' })).toBe(true);
+  const before = save(g);
+  expect(tellingUnavailable(g.s, input)).toBeUndefined();
+  expect(tellingUnavailable(load(before).s, input)).toBeUndefined();
+  for (const run of [exportRun(g), compactRun(exportRun(g))])
+    expect(tellingUnavailable(verifyImport(JSON.stringify(run)).s, input)).toBeUndefined();
+  expect(save(g)).toBe(before);
+  expect(act(g, input)).toBe(true);
+  expect(tellingUnavailable(g.s, input)).toContain('already told Fatma');
+  expect(fingerprint(replay(1, g.inputs, 390, 1).s)).toBe(fingerprint(g.s));
+});
+
+it('loads an owner-style full legacy export through day 7 with repeated stories and withdrawal', () => {
+  // Synthetic history: no private owner data belongs in a fixture.
+  const story = { type: 'tell-story', listener: 'fatma', incident: 1 } as const;
+  const inputs = [story, story, { type: 'make-amends', listener: 'fatma', target: 'kemal' }, story].map(
+    (input) => ({ at: 390, input }),
+  );
+  const run = {
+    game: 'hearsay',
+    version: 1,
+    seed: 1,
+    minute: 9240,
+    inputs,
+    fingerprint: '30000cb5',
+  };
+  const g = verifyImport(JSON.stringify(run));
+  const full = exportRun(g);
+  expect(full.version).toBe(1);
+  expect(full.fingerprint).toBe(run.fingerprint);
+  expect(exportRun(verifyImport(JSON.stringify(full)))).toEqual(full);
+});

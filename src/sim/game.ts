@@ -1579,6 +1579,20 @@ export function tellingUnavailable(s: State, input: Input): string | undefined {
   if (s.version === 1) {
     // Old saves have no knowledge index. Recover only speech Hatice herself made
     // or heard. A hidden route alone is never evidence that she knows it.
+    const heardKey = (r: Route) => {
+      const trait = !r.value && OPPOSITE[r.trait] ? OPPOSITE[r.trait]! : r.trait;
+      const value = !r.value && OPPOSITE[r.trait] ? true : r.value;
+      return `${Math.floor(r.at / 1440)}:${r.target}:${trait}:${value}`;
+    };
+    const echoed = (r: Route) => {
+      const key = heardKey(r);
+      const heard = s.heardClaims?.[key];
+      const echo = heard?.echo ? s.log[heard.echo - 1] : undefined;
+      if (echo?.kind !== 'echo' || !echo.who?.includes(r.from)) return false;
+      // Echoes aggregate a day's speakers, not recipients or delivery times.
+      // Only a unique matching delivery identifies whom Hatice heard them tell.
+      return s.routes.filter((other) => other.from === r.from && heardKey(other) === key).length === 1;
+    };
     const visible = (r: Route) =>
       r.from === 'hatice' ||
       s.log.some(
@@ -1587,7 +1601,8 @@ export function tellingUnavailable(s: State, input: Input): string | undefined {
           l.speaker === r.from &&
           l.target === r.target &&
           ['conversation', 'rumour'].includes(l.kind),
-      );
+      ) ||
+      echoed(r);
     const prior = s.routes.findLast(
       (r) =>
         r.to === input.listener &&
@@ -1623,7 +1638,15 @@ export function tellingUnavailable(s: State, input: Input): string | undefined {
           : reply.text.includes('You told me that one already')
             ? 'hatice'
             : PEOPLE.find((p) => reply.text.includes(`${p.name} told me that one already`))?.id;
-        if (source && (!record || reply.at >= record.at)) record = { source, at: reply.at };
+        const withdrawn = s.routes.some(
+          (r) =>
+            r.from === source &&
+            r.to === input.listener &&
+            r.incident === claim.incident &&
+            r.retractedAt !== undefined &&
+            r.retractedAt >= reply.at,
+        );
+        if (source && !withdrawn && (!record || reply.at >= record.at)) record = { source, at: reply.at };
         break;
       }
     }

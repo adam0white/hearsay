@@ -45,7 +45,20 @@ async function load(fixture: Game) {
   await page.getByRole('button', { name: 'Resume', exact: true }).click();
   await page.locator('.game').waitFor();
 }
+it.each([
+  { width: 360, height: 690 },
+  { width: 1280, height: 800 },
+])('gives the people-list disclosure a 44px target at $width×$height', async (viewport) => {
+  await page.setViewportSize(viewport);
+  await load(newGame(1));
+  const target = page.locator('.other-neighbours > summary');
+  const bounds = await target.boundingBox();
+  expect(bounds).not.toBeNull();
+  expect(bounds?.width).toBeGreaterThanOrEqual(44);
+  expect(bounds?.height).toBeGreaterThanOrEqual(44);
+});
 it('keeps wedding words, scene and one nonmodal talk sheet on a phone', async () => {
+  await page.setViewportSize({ width: 360, height: 690 });
   await load(newGame(1));
   expect(await page.locator('.lk-stage').count()).toBe(1);
   await page.locator('[data-person]').first().click();
