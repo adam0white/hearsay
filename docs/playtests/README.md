@@ -48,3 +48,12 @@ Round 4 changes: telling the concerned person is not backbiting; a listener sits
 - `2026-10-20-r4-fun-review.md` (Codex adversarial review): "Conversations become a form before they become relationships"; "Exposure ends with a penalty where I want a decision."
 
 Both now said they were getting somewhere; neither would return tomorrow. Round 5 answers with scenes (confrontation, the family coffee, Rıza's word) that ask for a choice, visible threads for messages on their way, Rıza's trust in Hatice as a fourth item with a way to mend it, stories over repeated adjectives, and a tomorrow line that names an unfinished decision.
+
+## Round 5 (2026-10-20): live build 83562e6, two fresh testers
+
+Round 5 changes: confrontation and the Day 4 / Day 8 family steps are scenes with choices; known messages show as threads (on its way / arrived / didn't reach him); Rıza's trust in Hatice is a fourth item with a way to mend it; a second bare compliment about Emre draws "You've told me he's a saint"; quick replies under a waiting question; the day card's tomorrow line names an unfinished decision.
+
+- `2026-10-20-r5-tester-h.md` (Tom, methodical sceptic, stopped at 9:05 at the Day 4 day-end card): "Yes, I would open it tomorrow to find evidence of Emre's kindness and see whether Rıza gives his word. The family coffee made me want to come back; the repeated chatter nearly lost me."
+- `2026-10-20-r5-tester-g.md` (Joanna, tired mystery player, stopped at 5:50, Day 2): "I would not open it tomorrow on my own. … A clearer reason for Cem's refusal and a new dilemma involving Elif would have made me more likely to return."
+
+First fresh persona who would return on their own (Tom). Both hit the same defect: the story chosen under "Tell what you saw" changed while they read (flour became basket). Tom could not tell why a thread "didn't reach him" when the day card said the two men met. Both tuned out the repeated "keeps promises" chatter.
