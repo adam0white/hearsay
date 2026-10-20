@@ -38,3 +38,13 @@ Both quit and neither would return tomorrow.
 - `2026-10-20-r3-tester-d.md` (Hakan, strategy player, quit at 4:54, Day 3): "The wedding is progressing, but I don't feel that I'm directing it. I would not open this tomorrow on my own. I would come back for a clear plan I could try, and a visible sign that my particular choice helped or hurt it."
 
 Diagnosis (designer, 2026-10-20). Both quits share one trigger: the game marks Meryem "would want to know", she asks about her own cart, the truthful answer draws a backbiting refusal and then emptier benches (DL-19, a cue that means the opposite of what happens). All four round 2 and 3 testers lost a listener while the talk panel was open (DL-15). Rıza leaned warm on Day 1 without any plan by the player, so the wedding had no stakes and its changes could not be attributed (Hakan). The day card's question worked as a reason to press on (Selin pressed Sleep for it).
+
+## Round 4 (2026-10-20): live build 497f999, two fresh testers and an adversarial fun review
+
+Round 4 changes: telling the concerned person is not backbiting; a listener sits while the talk panel is open; Rıza's three named doubts settle only through other people's word or his own sight ("You are his mother, Hatice"); the wedding road (Day 4 coffee, Day 8 his word, Day 13 answer); one Talk to… entry; lab client 0.1.2 with compact runs.
+
+- `2026-10-20-r4-tester-e.md` (Leyla, cozy-game player, stopped at 5:52, Day 3): "I did get somewhere—two doubts settled—but I don't want another round of choosing a name and a word tonight. I wouldn't open it tomorrow on my own. I would if the next scene promised a real conversation with the families…"
+- `2026-10-20-r4-tester-f.md` (Burak, schemer, quit at 5:25, Day 8): "I got two ticks, got caught lying, took it back, and then kept telling Cem the last thing Rıza wanted without seeing it land. … I would if I could see a concrete way to recover his trust and whether my message is actually on its way."
+- `2026-10-20-r4-fun-review.md` (Codex adversarial review): "Conversations become a form before they become relationships"; "Exposure ends with a penalty where I want a decision."
+
+Both now said they were getting somewhere; neither would return tomorrow. Round 5 answers with scenes (confrontation, the family coffee, Rıza's word) that ask for a choice, visible threads for messages on their way, Rıza's trust in Hatice as a fourth item with a way to mend it, stories over repeated adjectives, and a tomorrow line that names an unfinished decision.
