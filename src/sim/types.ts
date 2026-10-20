@@ -95,7 +95,15 @@ export interface QuickReply {
   options: { label: string; says: string; input: Input }[];
 }
 export interface State {
-  version: 1;
+  version: 1 | 2;
+  /** Only facts Hatice told, witnessed in conversation, or learned from a reply. */
+  knownTellings?: Record<
+    string,
+    {
+      claims: Record<string, { value: boolean; source: string; at: number }>;
+      incidents: Record<number, { source: string; at: number }>;
+    }
+  >;
   scene?: Scene;
   threads?: Thread[];
   sceneQueue?: Scene[];

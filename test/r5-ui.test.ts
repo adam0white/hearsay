@@ -298,3 +298,71 @@ it('shows one ambient promise line per unfamiliar subject in the feed and journa
     1,
   );
 });
+
+it('disables a story already told with an adjacent known reason and leaves a new story available', async () => {
+  const g = newGame(1);
+  advance(g, 390);
+  expect(act(g, { type: 'tell-story', listener: 'fatma', incident: 1 })).toBe(true);
+  await load(g);
+  await page.locator('[data-person="fatma"]').click();
+  await page.locator('[data-story="1"]').click();
+  expect(await page.locator('[data-verb="tell"]').getAttribute('aria-disabled')).toBe('true');
+  expect(await page.locator('.telling-limit').innerText()).toContain('Fatma');
+  const before = (await journalInputs()).length;
+  await page.locator('[data-verb="tell"]').click({ force: true });
+  expect((await journalInputs()).length).toBe(before);
+  await page.locator('[data-target="emre"]').click();
+  await page.locator('[data-trait="kind"]').click();
+  expect(await page.locator('[data-verb="tell"]').getAttribute('aria-disabled')).toBeNull();
+});
+
+it('uses the journal simulation version when the cached coordinates match', async () => {
+  const g = newGame(1, 1);
+  advance(g, 390);
+  await load(g);
+  await page.evaluate(async () => {
+    const db = await new Promise<IDBDatabase>((resolve) => {
+      const r = indexedDB.open('hearsay', 1);
+      r.onsuccess = () => resolve(r.result);
+    });
+    await new Promise<void>((resolve) => {
+      const tx = db.transaction('pages', 'readwrite');
+      tx.objectStore('pages').put(
+        { plain: JSON.stringify({ version: 2, seed: 1, minute: 390, inputs: [] }), at: Date.now() },
+        'run-log',
+      );
+      tx.oncomplete = () => resolve();
+    });
+    db.close();
+  });
+  await page.reload();
+  await page.getByRole('button', { name: 'Resume', exact: true }).click();
+  const version = await page.evaluate(async () => {
+    const db = await new Promise<IDBDatabase>((resolve) => {
+      const r = indexedDB.open('hearsay', 1);
+      r.onsuccess = () => resolve(r.result);
+    });
+    return await new Promise<number>((resolve) => {
+      const r = db.transaction('pages').objectStore('pages').get('run-log');
+      r.onsuccess = () => {
+        db.close();
+        resolve(JSON.parse(r.result.plain).version);
+      };
+    });
+  });
+  expect(version).toBe(2);
+});
+
+it('updates an open talk choice when Hatice hears the listener learn it', async () => {
+  const g = newGame(1);
+  advance(g, 390);
+  await load(g);
+  await page.locator('[data-person="fatma"]').click();
+  await page.locator('[data-target="kemal"]').click();
+  await page.locator('[data-trait="cruel"]').click();
+  expect(await page.locator('[data-verb="tell"]').getAttribute('aria-disabled')).toBeNull();
+  await page.clock.runFor(17000);
+  expect(await page.locator('[data-verb="tell"]').getAttribute('aria-disabled')).toBe('true');
+  expect(await page.locator('.telling-limit').innerText()).toContain('Ayşe');
+  expect(await page.locator('.presence').innerText()).toContain('Fatma sits with you');
+});

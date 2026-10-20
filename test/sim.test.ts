@@ -95,7 +95,8 @@ import { receiveTestimony } from '../src/sim/testimony.ts';
 
 it('a more trusted contradictory speaker reduces the earlier source standing', () => {
   const g = newGame(1);
-  advance(g, 405);
+  // Speak before Ayşe brings Fatma the same claim at 06:45.
+  advance(g, 390);
   act(g, { type: 'tell', listener: 'fatma', target: 'kemal', trait: 'cruel' });
   const p = g.s.people.fatma!;
   p.memory.sourceTrust.emre = 0.98;

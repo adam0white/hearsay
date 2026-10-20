@@ -140,8 +140,8 @@ describe('round-five conversation rules', () => {
     expect(repaired.s.engagement).toBe('accepted');
   });
 
-  it('does not count a second bare endorsement to the same listener that day', () => {
-    const game = newGame(1);
+  it('preserves the legacy limit on a second bare endorsement to the same listener that day', () => {
+    const game = newGame(1, 1);
     game.s.locations.cem = 'garden';
     expect(act(game, { type: 'tell', listener: 'cem', target: 'emre', trait: 'honest' })).toBe(true);
     const routes = game.s.routes.length;

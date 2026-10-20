@@ -170,3 +170,16 @@ it('reports the current public marriage position and the closing question', () =
   for (const key of ['sourceTrust', 'routes', 'credence', 'rng'])
     expect(JSON.stringify(shown)).not.toContain(key);
 });
+
+it('removes known duplicate normal and edge tellings from offered actions', () => {
+  const a = new HearsayAdapter(1);
+  advance(a.game, 390);
+  const story = 'tell-story:fatma:1';
+  expect(a.actions().some((action) => action.id === story)).toBe(true);
+  a.apply(story);
+  expect(a.actions().some((action) => action.id === story)).toBe(false);
+  const lie = 'tell:fatma:emre:sport';
+  expect(a.edgeActions().some((action) => action.id === lie)).toBe(true);
+  a.apply(lie);
+  expect(a.edgeActions().some((action) => action.id === lie)).toBe(false);
+});

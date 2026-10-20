@@ -15,8 +15,8 @@ it('rejects asking a neighbour about themselves without recording an input', () 
   expect(save(g)).toBe(before);
 });
 
-it('answers repeated speech with a substantive reply linked to each input', () => {
-  const g = newGame(3);
+it('preserves legacy repeated speech replies linked to each input', () => {
+  const g = newGame(3, 1);
   advance(g, 405);
   g.s.locations.fatma = 'garden';
   for (let index = 0; index < 12; index++) {

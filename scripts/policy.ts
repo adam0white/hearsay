@@ -1,4 +1,4 @@
-import { act, advance, newGame, PEOPLE, view } from '../src/sim/game.ts';
+import { act, advance, newGame, PEOPLE, tellingUnavailable, view } from '../src/sim/game.ts';
 import type { Game, Input } from '../src/sim/types.ts';
 
 export const POLICIES = [
@@ -39,6 +39,7 @@ export function policyStep(g: Game, policy: Policy) {
     const listener = ['cem', 'osman'].find(
       (id) =>
         v.present.includes(id) &&
+        !tellingUnavailable(g.s, { type: 'tell', listener: id, target: 'riza', trait: 'cruel' }) &&
         !g.inputs.some(
           ({ input }) => input.type === 'tell' && input.listener === id && input.target === 'riza',
         ),
@@ -82,6 +83,7 @@ export function policyStep(g: Game, policy: Policy) {
             .flatMap((story) => sources.map((p) => ({ story, listener: p.id })))
             .find(
               ({ story, listener }) =>
+                !tellingUnavailable(g.s, { type: 'tell-story', listener, incident: story.id }) &&
                 !g.inputs.some(
                   ({ input }) =>
                     input.type === 'tell-story' && input.incident === story.id && input.listener === listener,
@@ -93,6 +95,11 @@ export function policyStep(g: Game, policy: Policy) {
         ? (v.stories ?? []).findLast(
             (story) =>
               story.target === question.target &&
+              !tellingUnavailable(g.s, {
+                type: 'tell-story',
+                listener: question.speaker!,
+                incident: story.id,
+              }) &&
               story.target !== 'emre' &&
               story.day === Math.floor(g.s.minute / 1440) + 1,
           )
@@ -105,7 +112,7 @@ export function policyStep(g: Game, policy: Policy) {
   } else {
     input = { type: 'tell', listener, target: 'emre', trait: 'dishonest' };
   }
-  act(g, input);
+  act(g, tellingUnavailable(g.s, input) ? { type: 'ask', listener, target: 'emre' } : input);
 }
 
 export function runPolicy(seed: number, policy: Policy, until = 14 * 1440) {

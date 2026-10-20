@@ -60,6 +60,14 @@ Lying about a rival; ruining someone for sport; playing two households against e
 
 One seed; all randomness from seeded RNG held in state or from hashes of (seed, event). Inputs are logged at the minute they apply. Save in IndexedDB. Game menu offers the playtest export (seed, input log, state JSON, fingerprint); `replay(seed, inputs, minute)` reproduces the fingerprint (tested). Lab client 0.1.1 sends regular anonymous telemetry and opt-in runs with notes, as in The Warren.
 
+## Owner fixes, phase 1 (2026-10-20)
+
+The notebook send dialog closes the Game menu first and stops the clock. A body observer resumes when the lab-client veil leaves the document; successful sending also resumes through `onSent`. The chosen pace is retained.
+
+New runs use simulation/export version 2. Hatice remembers which stories and claims each listener has heard from her or in her presence. A listener can tell her who already brought private news; only then does it become a visible limit. A changed claim, new incident or actual withdrawal leaves room to speak again. Version 1 runs retain their historical simulation and fingerprints. Their UI derives limits from speech Hatice knows without changing saved state. Recovery journals carry the simulation version.
+
+Builder checks cover duplicate inputs, private-source discovery, retraction, legacy replay/import, live conversation updates, and the real send dialog with local transport. This is a response to the owner's playtest, not a claim of owner acceptance.
+
 ## Phones
 
 Actions stay above the fold at 360×780 (L9). The map is a Canvas 2D drawing of the hill; the garden panel is below it.

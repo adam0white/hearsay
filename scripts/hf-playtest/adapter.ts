@@ -1,5 +1,5 @@
 /** Four-call HF playtester contract. Only garden-visible events and actions leave this adapter. */
-import { act, advance, newGame, view } from '../../src/sim/game.ts';
+import { act, advance, newGame, tellingUnavailable, view } from '../../src/sim/game.ts';
 import { DAILY_INCIDENTS } from '../../src/sim/incidents.ts';
 import type { Game, Input, Trait } from '../../src/sim/types.ts';
 
@@ -93,7 +93,7 @@ export class HearsayAdapter {
       mischief?: boolean;
     }[] = [];
     const add = (id: string, label: string, input: Input, promise: number) => {
-      if (this.offered.has(id)) return;
+      if (this.offered.has(id) || tellingUnavailable(this.game.s, input)) return;
       this.offered.set(id, input);
       actions.push({ id, label, kind: input.type, promise });
     };
@@ -227,7 +227,16 @@ export class HearsayAdapter {
     const v = view(this.game.s);
     if (v.ended) return [];
     const lies = v.present
-      .filter((id) => id !== 'emre')
+      .filter(
+        (id) =>
+          id !== 'emre' &&
+          !tellingUnavailable(this.game.s, {
+            type: 'tell',
+            listener: id,
+            target: 'emre',
+            trait: 'dishonest',
+          }),
+      )
       .map((listener) => {
         const id = `tell:${listener}:emre:sport`;
         this.offered.set(id, { type: 'tell', listener, target: 'emre', trait: 'dishonest' });

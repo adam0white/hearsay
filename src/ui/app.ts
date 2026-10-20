@@ -1,5 +1,14 @@
 import { credence } from '@adam0white/human-framework';
-import { act, advance, newGame, REPUTATION_TRAITS, replay, spokenClaim, view } from '../sim/engine';
+import {
+  act,
+  advance,
+  newGame,
+  REPUTATION_TRAITS,
+  replay,
+  spokenClaim,
+  tellingUnavailable,
+  view,
+} from '../sim/engine';
 import { storyScene } from '../sim/incidents';
 import type { Game, Input, Line, LoggedInput, State, Trait } from '../sim/types';
 import { claimText, knownIncidentClaim } from '../sim/voices';
@@ -17,6 +26,7 @@ let game: Game;
 let saved: Game | null = null;
 let speed = 5;
 let playing = false;
+let sendingRun = false;
 let shownMinute = -1;
 let last = performance.now();
 let accumulator = 0;
@@ -56,10 +66,10 @@ let shownQuick = '';
 let conversation: HTMLDialogElement | null = null;
 let refreshConversation: (() => void) | null = null;
 let pendingJournal: Promise<boolean> | null = null;
-type Journal = { version: 1; seed: number; minute: number; inputs: LoggedInput[] };
+type Journal = { version: 1 | 2; seed: number; minute: number; inputs: LoggedInput[] };
 function persistJournal(): Promise<boolean> {
   const writing = putImmediate('run-log', {
-    version: 1,
+    version: game.s.version,
     seed: game.s.seed,
     minute: game.s.minute,
     inputs: game.inputs,
@@ -360,7 +370,8 @@ async function perform(input: Input): Promise<void> {
             .filter((l) => ['answer', 'shop', 'refusal'].includes(l.kind))
             .map((l) => `${l.speaker ? `${name(l.speaker)}: ` : ''}${l.text}`)
             .join(' ')
-      : 'They have moved on. Choose someone still at the garden or passing the fountain.';
+      : (tellingUnavailable(game.s, input) ??
+        'They have moved on. Choose someone still at the garden or passing the fountain.');
     verbReason = '';
     firstStart = false;
     noticeVisitors();
@@ -459,7 +470,9 @@ function chooseTalk(id: string): void {
   const body = document.createElement('div');
   body.className = 'conversation-body';
   d.append(body);
+  let shownKnowledge = '';
   const update = () => {
+    shownKnowledge = JSON.stringify(game.s.knownTellings) ?? '';
     const available = view(game.s).present.includes(talkTo);
     if (!available) {
       departure(talkTo, d);
@@ -477,9 +490,18 @@ function chooseTalk(id: string): void {
         ? 'Tell someone else about this person.'
         : !trait && !selectedStory
           ? 'Choose a word or a story first.'
-          : '';
+          : (tellingUnavailable(
+              game.s,
+              selectedStory
+                ? { type: 'tell-story', listener: talkTo, incident: selectedStory.id }
+                : { type: 'tell', listener: talkTo, target, trait: trait! },
+            ) ?? '');
     const defendReason =
-      target === talkTo ? 'Defend this person to someone else.' : !trait ? 'Choose a word first.' : '';
+      target === talkTo
+        ? 'Defend this person to someone else.'
+        : !trait
+          ? 'Choose a word first.'
+          : (tellingUnavailable(game.s, { type: 'defend', listener: talkTo, target, trait }) ?? '');
     body.innerHTML = `<p class="fine presence" role="status">${html(presenceText)}</p><div class="talk-choices"><h3>About whom?</h3><div class="subject-chips">${(fullList ? PEOPLE.filter((p) => p.id !== 'hatice').map((p) => p.id) : subjects).map((p) => `<button type="button" data-target="${p}" aria-pressed="${target === p}">${html(name(p))}</button>`).join('')}<button type="button" id="other-person">${fullList ? 'Show today’s people' : 'Someone else…'}</button></div>${stories.length ? `<h3>Tell what you saw</h3><div class="story-chips">${stories.map((item) => `<button type="button" data-story="${item.id}" aria-pressed="${story === item.id}">${html(item.title)}</button>`).join('')}</div>${selectedStory ? `<p class="story-preview">You'll say: “${html(storySentence(selectedStory))}”</p>` : ''}` : ''}<h3>Which word?</h3><div class="word-chips">${Object.keys(
       REPUTATION_TRAITS,
     )
@@ -489,7 +511,7 @@ function chooseTalk(id: string): void {
       )
       .join(
         '',
-      )}</div></div><div class="talk-bar"><div class="statement"><p class="tell-preview">${html(selectedStory ? storyPreview(selectedStory) : preview('tell'))}</p><button type="button" data-verb="tell" ${unavailable(tellReason)}>Tell</button></div>${selectedStory || preview('tell') !== preview('defend') ? `<div class="statement"><p class="defend-preview">${html(preview('defend'))}</p><button type="button" data-verb="defend" ${unavailable(defendReason)}>Defend</button></div>` : ''}<p class="ask-preview">${html(askPreview())}</p><div class="conversation-actions"><button type="button" data-verb="ask" ${unavailable(target === talkTo ? 'Ask someone else about this person.' : '')}>Ask</button><button type="button" data-verb="make-amends">Make amends</button></div><p class="verb-reason" role="status"></p><p class="fine">Ask about ${html(name(target))}, or withdraw what you told ${html(name(talkTo))} about them.</p></div>`;
+      )}</div></div><div class="talk-bar"><div class="statement"><p class="tell-preview">${html(selectedStory ? storyPreview(selectedStory) : preview('tell'))}</p><button type="button" data-verb="tell" ${unavailable(tellReason)}>Tell</button>${tellReason ? `<p class="telling-limit action-limit">${html(tellReason)}</p>` : ''}</div>${selectedStory || preview('tell') !== preview('defend') ? `<div class="statement"><p class="defend-preview">${html(preview('defend'))}</p><button type="button" data-verb="defend" ${unavailable(defendReason)}>Defend</button>${defendReason ? `<p class="defending-limit action-limit">${html(defendReason)}</p>` : ''}</div>` : ''}<p class="ask-preview">${html(askPreview())}</p><div class="conversation-actions"><button type="button" data-verb="ask" ${unavailable(target === talkTo ? 'Ask someone else about this person.' : '')}>Ask</button><button type="button" data-verb="make-amends">Make amends</button></div><p class="verb-reason" role="status"></p><p class="fine">Ask about ${html(name(target))}, or withdraw what you told ${html(name(talkTo))} about them.</p></div>`;
     body.querySelectorAll<HTMLButtonElement>('[data-target]').forEach((b) => {
       b.onclick = () => {
         selectedBelief(b.dataset.target ?? target);
@@ -539,7 +561,10 @@ function chooseTalk(id: string): void {
       departure(talkTo, d);
       return;
     }
-    if ((state().stories?.length ?? 0) !== body.querySelectorAll('[data-story]').length) {
+    if (
+      (state().stories?.length ?? 0) !== body.querySelectorAll('[data-story]').length ||
+      shownKnowledge !== (JSON.stringify(game.s.knownTellings) ?? '')
+    ) {
       update();
       return;
     }
@@ -846,9 +871,37 @@ function gameMenu(): void {
       setTimeout(() => URL.revokeObjectURL(url), 1000);
     }),
     button('Import a run', importFile),
-    button('Send this run to the notebook', () =>
-      lab.openSendDialog({ getRun: () => exportRun(game), ...notebookRunOptions }),
-    ),
+    button('Send this run to the notebook', () => {
+      d.close();
+      d.remove();
+      sendingRun = true;
+      accumulator = 0;
+      const resume = () => {
+        sendingRun = false;
+        accumulator = 0;
+        last = performance.now();
+      };
+      // lab-client 0.1.2 has no close callback. Observe its veil leaving the document.
+      const removed = new MutationObserver(() => {
+        if (!document.querySelector('.hflab-veil')) {
+          removed.disconnect();
+          resume();
+          host.querySelector<HTMLButtonElement>('#game-menu')?.focus();
+        }
+      });
+      removed.observe(document.body, { childList: true, subtree: true });
+      try {
+        lab.openSendDialog({ getRun: () => exportRun(game), ...notebookRunOptions, onSent: resume });
+        if (!document.querySelector('.hflab-veil')) {
+          removed.disconnect();
+          resume();
+        }
+      } catch (error) {
+        removed.disconnect();
+        resume();
+        throw error;
+      }
+    }),
   );
   const privacy = document.createElement('p');
   privacy.className = 'fine';
@@ -1012,6 +1065,7 @@ function frame(now: number): void {
     game &&
     !game.s.ended &&
     !document.hidden &&
+    !sendingRun &&
     !document.querySelector('dialog[data-system-menu]')
   ) {
     showDayCard();
@@ -1071,10 +1125,14 @@ export async function start(): Promise<void> {
     remembered && Number.isSafeInteger(remembered.seed) && Number.isSafeInteger(remembered.dismissedIncident)
       ? remembered
       : null;
-  saved = row?.value?.s?.version === 1 && Array.isArray(row.value.inputs) ? row.value : null;
+  saved =
+    [1, 2].includes(row?.value?.s?.version ?? 0) && Array.isArray(row?.value?.inputs)
+      ? (row?.value ?? null)
+      : null;
   const journal = journalRow?.value;
   if (
-    journal?.version === 1 &&
+    journal &&
+    [1, 2].includes(journal.version) &&
     Number.isSafeInteger(journal.seed) &&
     Number.isSafeInteger(journal.minute) &&
     journal.minute >= 360 &&
@@ -1084,11 +1142,12 @@ export async function start(): Promise<void> {
     try {
       if (
         !saved ||
+        saved.s.version !== journal.version ||
         saved.s.seed !== journal.seed ||
         saved.s.minute !== journal.minute ||
         JSON.stringify(saved.inputs) !== JSON.stringify(journal.inputs)
       )
-        saved = replay(journal.seed, journal.inputs, journal.minute);
+        saved = replay(journal.seed, journal.inputs, journal.minute, journal.version);
     } catch {
       /* Keep a valid full-state cache if a recovery journal was damaged. */
     }

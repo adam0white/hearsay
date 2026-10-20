@@ -3,7 +3,7 @@ import type { Game, LoggedInput, State } from '../sim/types.ts';
 
 export interface RunExport {
   game: 'hearsay';
-  version: 1;
+  version: 1 | 2;
   seed: number;
   minute: number;
   inputs: LoggedInput[];
@@ -13,7 +13,7 @@ export interface RunExport {
 export function exportRun(game: Game): RunExport {
   return {
     game: 'hearsay',
-    version: 1,
+    version: game.s.version,
     seed: game.s.seed,
     minute: game.s.minute,
     inputs: structuredClone(game.inputs),
@@ -34,7 +34,7 @@ export function verifyImport(text: string): Game {
   const d = data as Partial<RunExport>;
   if (
     d.game !== 'hearsay' ||
-    d.version !== 1 ||
+    (d.version !== 1 && d.version !== 2) ||
     !Number.isSafeInteger(d.seed) ||
     !Number.isSafeInteger(d.minute) ||
     !Array.isArray(d.inputs) ||
@@ -83,7 +83,7 @@ export function verifyImport(text: string): Game {
       throw new Error('Invalid scene choice in run.');
     if (input.type === 'call-over' && !ids.has(input.person)) throw new Error('Unknown passer-by in run.');
   }
-  const game = replay(d.seed as number, d.inputs, d.minute as number);
+  const game = replay(d.seed as number, d.inputs, d.minute as number, d.version);
   if (
     fingerprint(game.s) !== d.fingerprint ||
     (Object.hasOwn(d, 'state') && (!d.state || fingerprint(d.state) !== d.fingerprint))

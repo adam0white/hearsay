@@ -684,9 +684,9 @@ function confrontHatice(s: State, root: Route, recipient: string) {
   markWordHurt(s, root.target);
 }
 
-export function newGame(seed: number): Game {
+export function newGame(seed: number, version: State['version'] = 2): Game {
   const s: State = {
-    version: 1,
+    version,
     seed,
     minute: 360,
     people: {},
@@ -890,6 +890,18 @@ function talk(s: State, from: string, to: string) {
   for (const c of result.claims) {
     if (c.about && c.prop.split(':')[1]) {
       const r = route(s, from, to, c.about, c.prop.split(':')[1] as Trait, c.deceit, c.value);
+      if (['garden', 'fountain'].includes(s.locations[from]!))
+        rememberTelling(
+          s,
+          to,
+          {
+            target: r.target,
+            trait: r.trait,
+            value: r.value,
+            ...(r.incident ? { incident: r.incident } : {}),
+          },
+          from,
+        );
       if (r.trait !== c.prop.split(':')[1] || r.value !== c.value) {
         for (const percept of result.told)
           for (const claim of percept.claims ?? [])
@@ -1474,6 +1486,13 @@ function makeAmends(s: State, listener: string, target: string) {
   for (const r of wrongs) {
     believe(p, prop(r.target, r.trait), !r.value, 0.95, 'hatice', s.minute);
     r.retractedAt = s.minute;
+    if (s.version === 2) {
+      const known = s.knownTellings?.[listener];
+      if (known) {
+        delete known.claims[assertionKey(r.target, r.trait, r.value).key];
+        if (r.incident) delete known.incidents[r.incident];
+      }
+    }
     s.routes.push({
       id: s.routes.length + 1,
       at: s.minute,
@@ -1510,6 +1529,115 @@ function makeAmends(s: State, listener: string, target: string) {
   if (thread) thread.status = 'arrived';
 }
 
+/** The assertion actually spoken; Defend and debt negation share this with duplicate checks. */
+function tellingClaim(input: Input) {
+  if (input.type === 'tell-story') {
+    const story = storyScene(input.incident);
+    return story
+      ? { target: story.target, trait: story.trait, value: story.value, incident: story.id }
+      : undefined;
+  }
+  if (input.type !== 'tell' && input.type !== 'defend') return;
+  return {
+    target: input.target,
+    trait: input.type === 'defend' ? (good[input.trait] ?? input.trait) : input.trait,
+    value: !(input.type === 'defend' && input.trait === 'owes'),
+  };
+}
+function assertionKey(target: string, trait: string, value: boolean) {
+  const canonical = good[trait];
+  return { key: `${target}:${canonical ?? trait}`, value: canonical ? !value : value };
+}
+function rememberTelling(
+  s: State,
+  listener: string,
+  claim: NonNullable<ReturnType<typeof tellingClaim>>,
+  source: string,
+) {
+  if (s.version !== 2) return;
+  s.knownTellings ??= {};
+  s.knownTellings[listener] ??= { claims: {}, incidents: {} };
+  const known = s.knownTellings[listener];
+  const assertion = assertionKey(claim.target, claim.trait, claim.value);
+  known.claims[assertion.key] = { value: assertion.value, source, at: s.minute };
+  if ('incident' in claim && claim.incident !== undefined)
+    known.incidents[claim.incident] = { source, at: s.minute };
+}
+/** UI reasons read Hatice's knowledge only. Private routes never disable an untried action. */
+export function tellingUnavailable(s: State, input: Input): string | undefined {
+  if (!('listener' in input)) return;
+  const claim = tellingClaim(input);
+  if (!claim) return;
+  const known = s.knownTellings?.[input.listener];
+  const assertion = assertionKey(claim.target, claim.trait, claim.value);
+  let record =
+    'incident' in claim
+      ? known?.incidents[claim.incident!]
+      : known?.claims[assertion.key]?.value === assertion.value
+        ? known.claims[assertion.key]
+        : undefined;
+  if (s.version === 1) {
+    // Old saves have no knowledge index. Recover only speech Hatice herself made
+    // or heard. A hidden route alone is never evidence that she knows it.
+    const visible = (r: Route) =>
+      r.from === 'hatice' ||
+      s.log.some(
+        (l) =>
+          l.at === r.at &&
+          l.speaker === r.from &&
+          l.target === r.target &&
+          ['conversation', 'rumour'].includes(l.kind),
+      );
+    const prior = s.routes.findLast(
+      (r) =>
+        r.to === input.listener &&
+        !r.retractedAt &&
+        !r.retractionOf &&
+        visible(r) &&
+        ('incident' in claim
+          ? r.incident === claim.incident
+          : assertionKey(r.target, r.trait, r.value).key === assertion.key),
+    );
+    if (
+      prior &&
+      ('incident' in claim || assertionKey(prior.target, prior.trait, prior.value).value === assertion.value)
+    )
+      record = { source: prior.from, at: prior.at };
+    if ('incident' in claim) {
+      const scene = storyScene(claim.incident!);
+      const detail = scene && ('detail' in scene ? scene.detail : knownIncidentClaim(scene));
+      // A legacy already-heard reply follows Hatice's exact story line.
+      for (let index = s.log.length - 1; index > 0; index--) {
+        const reply = s.log[index]!;
+        const said = s.log[index - 1]!;
+        if (
+          reply.speaker !== input.listener ||
+          reply.kind !== 'reply' ||
+          !detail ||
+          said.speaker !== 'hatice' ||
+          !said.text.includes(detail)
+        )
+          continue;
+        const source = reply.text.includes('I saw that myself')
+          ? input.listener
+          : reply.text.includes('You told me that one already')
+            ? 'hatice'
+            : PEOPLE.find((p) => reply.text.includes(`${p.name} told me that one already`))?.id;
+        if (source && (!record || reply.at >= record.at)) record = { source, at: reply.at };
+        break;
+      }
+    }
+  }
+  if (!record) return;
+  const when = clockOf(record.at);
+  const time = when.text;
+  return record.source === 'hatice'
+    ? `You already told ${nameOf(input.listener)} ${'incident' in claim ? 'this story' : 'this claim'} (${time}). Tell something new or changed.`
+    : record.source === input.listener
+      ? `${nameOf(input.listener)} already witnessed this (${time}). Tell something new or changed.`
+      : `${nameOf(input.listener)} already heard this from ${nameOf(record.source)} (${time}). Tell something new or changed.`;
+}
+
 export function act(g: Game, input: Input): boolean {
   const s = g.s;
   if (s.ended) return false;
@@ -1529,6 +1657,7 @@ export function act(g: Game, input: Input): boolean {
       story.target === 'hatice')
   )
     return false;
+  if (s.version === 2 && tellingUnavailable(s, input)) return false;
   const idsHere = present(s).map((p) => p.id);
   if ('listener' in input && (input.listener === 'hatice' || !idsHere.includes(input.listener))) return false;
   if (input.type === 'choose') {
@@ -1602,7 +1731,41 @@ export function act(g: Game, input: Input): boolean {
         : input.type === 'defend'
           ? (good[input.trait] ?? input.trait)
           : input.trait;
-    if (story) {
+    if (s.version === 2) {
+      const claim = tellingClaim(input)!;
+      const assertion = assertionKey(target, trait, claim.value);
+      const latest = s.routes.findLast((r) => {
+        if (r.to !== input.listener || r.retractedAt || r.retractionOf) return false;
+        if (story) return r.incident === story.id;
+        const other = assertionKey(r.target, r.trait, r.value);
+        return other.key === assertion.key;
+      });
+      const prior =
+        latest && (story || assertionKey(latest.target, latest.trait, latest.value).value === assertion.value)
+          ? latest
+          : undefined;
+      const saw = story ? s.incidentWitnesses?.[story.id]?.includes(input.listener) : false;
+      if (prior || saw) {
+        const source = saw ? input.listener : prior!.from;
+        rememberTelling(s, input.listener, claim, source);
+        answer(
+          s,
+          input.listener,
+          saw
+            ? 'I saw that myself, Hatice.'
+            : source === 'hatice'
+              ? 'You told me that already, Hatice.'
+              : `${nameOf(source)} told me that${story ? ' one' : ''} already, Hatice.`,
+          target,
+          { to: g.inputs.length },
+        );
+        answerQuestion(s, input.listener, target);
+        g.inputs.push({ at: s.minute, input: structuredClone(input) });
+        return true;
+      }
+      rememberTelling(s, input.listener, claim, 'hatice');
+    }
+    if (story && s.version === 1) {
       const prior = s.routes.findLast(
         (r) => r.to === input.listener && r.incident === story.id && !r.retractedAt && !r.retractionOf,
       );
@@ -1634,7 +1797,12 @@ export function act(g: Game, input: Input): boolean {
         return true;
       }
     }
-    if (input.type !== 'tell-story' && target === 'emre' && !isUnfavourableTrait(trait, true)) {
+    if (
+      s.version === 1 &&
+      input.type !== 'tell-story' &&
+      target === 'emre' &&
+      !isUnfavourableTrait(trait, true)
+    ) {
       s.bareEndorsements ??= {};
       const key = `${Math.floor(s.minute / 1440)}:${input.listener}`;
       const count = s.bareEndorsements[key] ?? 0;
@@ -2208,8 +2376,8 @@ export function advance(g: Game, toMinute: number) {
     if (boundary === quarter) step(g.s);
   }
 }
-export function replay(seed: number, inputs: LoggedInput[], minute: number) {
-  const g = newGame(seed);
+export function replay(seed: number, inputs: LoggedInput[], minute: number, version: State['version'] = 2) {
+  const g = newGame(seed, version);
   for (const entry of inputs) {
     advance(g, entry.at);
     act(g, entry.input);
@@ -2222,7 +2390,7 @@ export function save(g: Game) {
 }
 export function load(data: string): Game {
   const g = JSON.parse(data) as Game;
-  if (g.s?.version !== 1 || !Array.isArray(g.inputs)) throw new Error('Unsupported Hearsay save');
+  if (![1, 2].includes(g.s?.version) || !Array.isArray(g.inputs)) throw new Error('Unsupported Hearsay save');
   g.s.silence ??= {};
   g.s.confronted ??= [];
   g.s.greetings ??= {};
