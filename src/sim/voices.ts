@@ -31,7 +31,7 @@ const VOICES: Record<string, { open: string[]; refuse: string[]; reply: string[]
   },
   emre: {
     open: [
-      'Anne, let me finish.',
+      'Anne (Mother), let me finish.',
       'Can we talk without everyone listening?',
       'I wanted to find you alone.',
       'Wait, hear me out first.',
@@ -47,7 +47,7 @@ const VOICES: Record<string, { open: string[]; refuse: string[]; reply: string[]
       'They haven’t done anything to me.',
     ],
     reply: [
-      'Anne, listen.',
+      'Anne (Mother), listen.',
       'I’ve thought about it, actually.',
       'I’ll tell you what I think.',
       'All right. Here goes.',
@@ -247,7 +247,7 @@ const VOICES: Record<string, { open: string[]; refuse: string[]; reply: string[]
       'I’ve brought my sewing along.',
     ],
     refuse: [
-      'Gıybet, Hatice. They can’t answer us.',
+      'Gıybet, talk behind someone’s back. They can’t answer us.',
       'No, I’d owe them an apology.',
       'I couldn’t look them in the eye after.',
       'They trusted us with that.',
@@ -880,7 +880,7 @@ export function claimText(name: string, trait: string, value: boolean): string {
 export function knownIncidentClaim(scene: DailyIncident): string {
   const details: Record<number, string> = {
     1: 'Kemal said he mixes old flour into the new and leaves the new-flour label on',
-    2: 'Emre found fifty lira too much in Ali’s payment and set it aside to return',
+    2: 'Emre found fifty lira (Turkish money) too much in Ali’s payment and set it aside to return',
     3: 'Osman left Meryem’s cart by the gate, though he’d promised to bring it',
     4: 'Elif gave Derya both her cheese rolls and kept only an apple',
     5: 'Rıza brought the school bread on time, including the two loaves without sesame',

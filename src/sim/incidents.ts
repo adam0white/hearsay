@@ -38,7 +38,7 @@ export const DAILY_INCIDENTS: readonly DailyIncident[] = [
     trait: 'honest',
     value: true,
     tone: 'kind',
-    text: 'Emre counts the coins Ali left for the garden bench repair. He finds an extra fifty lira, puts it in a separate envelope, and writes “Ali — overpayment” on the front.',
+    text: 'Emre counts the coins Ali left for the garden bench repair. He finds an extra fifty lira (Turkish money), puts it in a separate envelope, and writes “Ali — overpayment” on the front.',
     question: 'Hatice, I think I counted the bench money wrong. Did Emre say anything about it?',
     questionAt: 405,
   },

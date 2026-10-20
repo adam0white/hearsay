@@ -79,6 +79,10 @@ function line(s: State, kind: string, text: string, speaker?: string, target?: s
     ...(speaker ? { speaker } : {}),
     ...(target ? { target } : {}),
   });
+  if (kind === 'question' && speaker) {
+    const question = s.log.at(-1)!;
+    question.quick = questionReplies(s, question);
+  }
 }
 function answer(s: State, id: string, detail: string, target?: string, reply?: Line['reply']) {
   // A voice stem is optional. The actual answer is never optional or collapsed into an echo.
@@ -89,7 +93,7 @@ function answer(s: State, id: string, detail: string, target?: string, reply?: L
 
 const DOUBTS = ['honest', 'reliable', 'kind'] as const;
 const nameOf = (id: string) => PEOPLE.find((p) => p.id === id)?.name ?? id;
-function trustedSources(s: State) {
+export function trustedSources(s: State) {
   return PEOPLE.filter((p) => !['hatice', 'emre', 'riza'].includes(p.id))
     .sort((a, b) => trustOf(s.people.riza!, b.id) - trustOf(s.people.riza!, a.id) || a.id.localeCompare(b.id))
     .slice(0, 2);
@@ -421,7 +425,14 @@ function closeDay(s: State) {
           : 'What will Rıza learn about Emre and your household tomorrow?';
   const tomorrow = ensureRiza(s).steps!.find((step) => step.day === day + 1);
   for (const thread of s.threads ?? [])
-    if (thread.status === 'on its way' && thread.at < day * 1440) thread.status = 'stalled';
+    if (thread.who !== 'hatice' && thread.status === 'on its way' && thread.at <= (day - 1) * 1440 + 1050) {
+      thread.status = 'stalled';
+      thread.reason ??= `${nameOf(thread.who)} has not brought back word of reaching ${nameOf(thread.to)}.`;
+    }
+  const stalled = s.threads?.findLast(
+    (thread) => thread.status === 'stalled' && (thread.attemptedAt ?? thread.at) >= (day - 1) * 1440,
+  );
+  if (stalled?.reason) summary.push(stalled.reason);
   const repair = s.amends?.find((c) => c.listeners.length);
   const unresolved = s.routes.findLast(
     (r) => r.from === 'hatice' && r.lie && !r.retractedAt && !r.retractionOf,
@@ -447,7 +458,7 @@ function closeDay(s: State) {
       decision ??
       (tomorrow
         ? `Tomorrow: ${tomorrow.label}${tomorrow.day === 13 ? ' after supper' : ' at six in the evening'}.`
-        : 'At dusk Rıza and Cem meet at the fountain.'),
+        : 'Tomorrow, Cem and Rıza usually pass the fountain at dusk.'),
   });
   line(s, 'day', `${summary.join(' ')} ${question}`);
 }
@@ -769,7 +780,7 @@ export function newGame(seed: number): Game {
   line(
     s,
     'arrival',
-    'The samovar warms. Emre sets two cups aside. Rıza has still not given an answer about Elif.',
+    'The samovar, a tea urn, warms. Emre sets two cups aside. Rıza has still not given an answer about Elif.',
   );
   return { s, inputs: [] };
 }
@@ -941,8 +952,14 @@ function giveUpQuestion(s: State) {
 function quickReplies(s: State): import('./types.ts').QuickReply | undefined {
   const question = waitingQuestion(s);
   if (!question?.speaker || !present(s).some((p) => p.id === question.speaker)) return;
-  const listener = question.speaker;
-  const story = s.stories?.findLast((story) => story.target === question.target);
+  return question.quick ?? questionReplies(s, question);
+}
+function questionReplies(s: State, question: Line): import('./types.ts').QuickReply {
+  const listener = question.speaker!;
+  const story = s.stories?.findLast((story) => {
+    const scene = storyScene(story.id);
+    return story.target === question.target && scene && (scene.day - 1) * 1440 + scene.at <= question.at;
+  });
   const scene = story ? storyScene(story.id) : undefined;
   const target = question.target ?? 'kemal';
   return {
@@ -1025,7 +1042,49 @@ function reportThreads(s: State) {
         ((r.trait === original.trait && r.value === original.value) ||
           (OPPOSITE[r.trait] === original.trait && r.value !== original.value)),
     );
-    if (!delivered || ![thread.who, thread.to].some((id) => here.includes(id))) continue;
+    if (!delivered) {
+      const t = s.minute % 1440;
+      if (t === 1050 && thread.status === 'on its way' && thread.at <= s.minute) {
+        const from = nameOf(thread.who),
+          to = nameOf(thread.to);
+        const together =
+          here.includes(thread.who) &&
+          here.includes(thread.to) &&
+          s.locations[thread.who] === s.locations[thread.to];
+        if (together) {
+          const p = s.people[thread.who]!;
+          const c = credence(p, prop(original.target, original.trait));
+          const opposite = OPPOSITE[original.trait];
+          const other = opposite ? credence(p, prop(original.target, opposite)) : 0.5;
+          const confident = Math.max(original.value ? c : 1 - c, original.value ? 1 - other : other) >= 0.7;
+          thread.reason =
+            (s.silence[thread.who] ?? 0) > s.minute
+              ? `${from} met ${to} but kept this account to himself.`
+              : !confident
+                ? `${from} met ${to} but did not believe it enough to pass on.`
+                : `${from} met ${to} but spoke about something else.`;
+          if (!confident && (s.silence[thread.who] ?? 0) <= s.minute)
+            answer(
+              s,
+              thread.who,
+              `I met ${to}, but I am not sure enough about that account to pass it on.`,
+              original.target,
+            );
+          thread.attemptedAt = s.minute;
+        } else if (here.includes(thread.who) || here.includes(thread.to)) {
+          thread.reason =
+            s.held?.id === thread.to
+              ? `${from} didn’t get to ${to}: ${to} stayed at your table during the fountain meeting.`
+              : s.held?.id === thread.who
+                ? `${from} didn’t get to ${to}: ${from} stayed at your table during the fountain meeting.`
+                : `${from} didn’t get to ${to}: they were not at the fountain together.`;
+          thread.attemptedAt = s.minute;
+        }
+      }
+      if (t >= 1140 && thread.attemptedAt !== undefined && thread.reason) thread.status = 'stalled';
+      continue;
+    }
+    if (![thread.who, thread.to].some((id) => here.includes(id))) continue;
     const speaker = here.includes(thread.to) ? thread.to : thread.who;
     const words =
       speaker === thread.to
@@ -1033,6 +1092,7 @@ function reportThreads(s: State) {
         : `I told ${nameOf(thread.to)} ${claimText(nameOf(original.target), original.trait, original.value)}.`;
     answer(s, speaker, words, original.target);
     thread.status = 'arrived';
+    delete thread.reason;
   }
 }
 function mendNames(s: State, target?: string) {
@@ -1542,6 +1602,38 @@ export function act(g: Game, input: Input): boolean {
         : input.type === 'defend'
           ? (good[input.trait] ?? input.trait)
           : input.trait;
+    if (story) {
+      const prior = s.routes.findLast(
+        (r) => r.to === input.listener && r.incident === story.id && !r.retractedAt && !r.retractionOf,
+      );
+      const saw = s.incidentWitnesses?.[story.id]?.includes(input.listener);
+      if (prior || saw) {
+        const confidence = credence(s.people[input.listener]!, prop(target, trait));
+        const believes = (story.value ? confidence : 1 - confidence) > 0.6 ? 'yes' : 'doubt';
+        const already = saw
+          ? 'I saw that myself, Hatice.'
+          : prior!.from === 'hatice'
+            ? 'You told me that one already, Hatice.'
+            : `${nameOf(prior!.from)} told me that one already, Hatice.`;
+        line(
+          s,
+          'answer',
+          `You tell ${nameOf(input.listener)}: “${'detail' in story ? story.detail : knownIncidentClaim(story)}.”`,
+          'hatice',
+          target,
+        );
+        answer(
+          s,
+          input.listener,
+          `${already} ${believes === 'yes' ? 'I believe it.' : 'I still have doubts about it.'}`,
+          target,
+          { to: g.inputs.length, believes },
+        );
+        answerQuestion(s, input.listener, target);
+        g.inputs.push({ at: s.minute, input: structuredClone(input) });
+        return true;
+      }
+    }
     if (input.type !== 'tell-story' && target === 'emre' && !isUnfavourableTrait(trait, true)) {
       s.bareEndorsements ??= {};
       const key = `${Math.floor(s.minute / 1440)}:${input.listener}`;

@@ -42,6 +42,7 @@ export interface Line {
   target?: string;
   count?: number;
   witnessed?: boolean;
+  quick?: QuickReply;
   who?: string[];
   reply?: { to: number; believes?: 'yes' | 'doubt' | 'no' | 'refuse'; will?: string };
 }
@@ -85,6 +86,8 @@ export interface Thread {
   about: string;
   status: 'on its way' | 'arrived' | 'stalled';
   where?: string;
+  reason?: string;
+  attemptedAt?: number;
   at: number;
 }
 export interface QuickReply {

@@ -75,6 +75,9 @@ Actions stay above the fold at 360×780 (L9). The map is a Canvas 2D drawing of 
 
 ## Deferred
 
+- **2026-10-27 — A dilemma scene with Elif herself (Joanna, round 5)**
+- **2026-10-27 — Emre's kindness evidence earlier in the fortnight if playtests show it is hard to find (Tom, round 5)**
+
 - **Done 2026-10-20 — Public build, games page and lab dashboard.** Live at https://hearsay.adamwhite.work from commit `34bad4c` (HF 2.9.0, lab client 0.1.1); listed on https://human.adamwhite.work/games/ and the lab dashboard. Later docs-only commits do not change the deployed app; `/release.json` names the deployed source.
 - **2026-10-22 — Fresh-player retest of the round 3 polish.** Both round 2 source-unread testers quit (at 8 and 4 minutes). Nobody has played the fixes yet.
 - **Open, owner's call — Adam’s play acceptance.** The owner accepts this increment by playing it. That personal review remains outstanding; automated and source-unread playtests do not substitute for it.

@@ -112,3 +112,12 @@ it('keeps witnessed acts concrete without inventing motives', () => {
   expect(knownIncidentClaim(jarScene)).toMatch(/do not know|don’t know/);
   expect(knownIncidentClaim(vanScene)).toMatch(/paid|paying/);
 });
+
+it('explains setting terms in the speech where players first encounter them', () => {
+  const s = newGame(1).s;
+  const fatma = exhaust(s, 'fatma', 'refusal').find((line) => /gıybet/i.test(line));
+  expect(fatma).toMatch(/talk behind (?:someone|their)/i);
+  const emre = exhaust(s, 'emre', 'opening').find((line) => /Anne/.test(line));
+  expect(emre).toMatch(/Mother/);
+  expect(s.log[0]?.text).toMatch(/samovar.*tea urn/);
+});

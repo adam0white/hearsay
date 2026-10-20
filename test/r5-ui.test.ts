@@ -1,3 +1,4 @@
+import { believe } from '@adam0white/human-framework';
 import { type Browser, chromium, type Page } from 'playwright-core';
 import { createServer, type ViteDevServer } from 'vite';
 import { afterAll, beforeAll, expect, it } from 'vitest';
@@ -134,14 +135,22 @@ it('shows Your word repair and only the two newest known message threads', async
       where: 'at dusk, coffee house',
       at: 361,
     },
-    { id: 3, who: 'osman', to: 'riza', about: 'Emre keeps his word', status: 'stalled', at: 362 },
+    {
+      id: 3,
+      who: 'osman',
+      to: 'riza',
+      about: 'Emre keeps his word',
+      status: 'stalled',
+      at: 362,
+      reason: 'Osman met Rıza but kept this account to himself.',
+    },
   ];
   await load(g);
   await page.getByRole('button', { name: /Your word/ }).click();
   expect(await page.locator('.doubt-detail').innerText()).toContain('Take it back to Cem and Osman');
   const threads = await page.locator('.message-thread').allTextContents();
   expect(threads).toHaveLength(2);
-  expect(threads[0]).toContain("didn't reach him");
+  expect(threads[0]).toContain('Osman met Rıza but kept this account to himself.');
   expect(threads[1]).toContain("Cem → Rıza: Ali's money · at dusk, coffee house");
   expect(threads[1]).toContain('on its way');
   expect(await page.locator('[data-person="kemal"]').innerText()).toContain('Rıza listens to them');
@@ -225,4 +234,67 @@ it('keeps the answer above a different person’s still-waiting question and qui
   await page.getByRole('dialog').waitFor({ state: 'hidden' });
   await onScreen('.riza-mind, .reply');
   expect(await page.locator('.reply + .question + .quick-replies').count()).toBe(1);
+});
+
+it('keeps a chosen story and appends a new witness story while the panel is open and reopened', async () => {
+  const g = newGame(1);
+  advance(g, 764);
+  await load(g);
+  await page.locator('[data-person="riza"]').click();
+  await page.locator('[data-story="1"]').click();
+  const preview = await page.locator('.tell-preview').innerText();
+  const options = await page
+    .locator('[data-story]')
+    .evaluateAll((els) => els.map((el) => el.getAttribute('data-story')));
+  await page.clock.runFor(2200);
+  await page.locator('[data-story="15"]').waitFor();
+  expect(
+    await page.locator('[data-story]').evaluateAll((els) => els.map((el) => el.getAttribute('data-story'))),
+  ).toEqual([...options, '15']);
+  expect(await page.locator('[data-story="1"]').getAttribute('aria-pressed')).toBe('true');
+  expect(await page.locator('.tell-preview').innerText()).toBe(preview);
+  await page.getByRole('button', { name: 'Close Talk to Rıza', exact: true }).click();
+  await page.locator('[data-person="riza"]').click();
+  expect(await page.locator('[data-story="1"]').getAttribute('aria-pressed')).toBe('true');
+  expect(await page.locator('.tell-preview').innerText()).toBe(preview);
+  await page.locator('[data-verb="tell"]').click();
+  await page.getByRole('dialog').waitFor({ state: 'hidden' });
+  expect((await journalInputs()).findLast(({ input }) => input.type === 'tell-story')?.input).toEqual({
+    type: 'tell-story',
+    listener: 'riza',
+    incident: 1,
+  });
+});
+
+it('says when the selected witnessed story concerns an already settled doubt', async () => {
+  const g = newGame(1);
+  advance(g, 1440 + 405);
+  g.s.locations.cem = 'garden';
+  believe(g.s.people.riza!, 'emre:honest', true, 0.98, 'self', g.s.minute);
+  believe(g.s.people.riza!, 'emre:dishonest', false, 0.98, 'self', g.s.minute);
+  g.s.incidentWitnesses![2]!.push('riza');
+  await load(g);
+  await page.locator('[data-person="cem"]').click();
+  await page.locator('[data-story="2"]').click();
+  expect(await page.locator('.tell-preview').innerText()).toContain(
+    'Rıza already believes Emre tells the truth',
+  );
+});
+
+it('shows one ambient promise line per unfamiliar subject in the feed and journal, preserving family and trusted sources', async () => {
+  const g = newGame(1);
+  advance(g, 1379);
+  await load(g);
+  await page.getByRole('button', { name: 'Game menu', exact: true }).click();
+  await page
+    .locator('.notebook-history summary, details summary')
+    .filter({ hasText: 'What you heard' })
+    .click();
+  expect(await page.locator('.journal p').filter({ hasText: 'İbrahim keeps promises' }).count()).toBe(1);
+  expect(
+    await page.locator('.journal p').filter({ hasText: 'Hatice keeps promises' }).count(),
+  ).toBeGreaterThan(1);
+  expect(await page.locator('.journal p').filter({ hasText: 'Cem keeps promises' }).count()).toBeGreaterThan(
+    1,
+  );
 });
