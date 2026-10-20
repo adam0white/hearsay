@@ -17,7 +17,10 @@ it('a witnessed story persuades more strongly than the matching trait word', () 
 it('keeps the incident title on relays and confirms a true story on later evidence', () => {
   const g = newGame(3);
   advance(g, 405);
-  act(g, { type: 'tell-story', listener: 'ayse', incident: 1 });
+  // Round-five table scenes change this seed’s incidental flour meetings.
+  // Cem is willing to relay the account before the later public confirmation.
+  g.s.locations.cem = 'garden';
+  act(g, { type: 'tell-story', listener: 'cem', incident: 1 });
   const root = g.s.routes.findLast((r) => r.from === 'hatice')!;
   expect(root?.title).toBe('The flour');
   advance(g, 14 * 1440);

@@ -1,11 +1,53 @@
 import { act, advance, newGame, PEOPLE, view } from '../src/sim/game.ts';
 import type { Game, Input } from '../src/sim/types.ts';
 
-export type Policy = 'quiet' | 'careful' | 'reckless' | 'cunning' | 'passive' | 'careful-relay';
+export const POLICIES = [
+  'quiet',
+  'careful',
+  'reckless',
+  'cunning',
+  'passive',
+  'careful-relay',
+  'lie-own',
+  'lie-stand',
+] as const;
+export type Policy = (typeof POLICIES)[number];
 
 /** Policies use only people and talk visible from the garden. */
 export function policyStep(g: Game, policy: Policy) {
   const v = view(g.s);
+  const scene = g.s.scene;
+  if (scene) {
+    const preferred =
+      scene.kind === 'confrontation'
+        ? policy === 'lie-stand' || policy === 'reckless'
+          ? /stand/i
+          : /own|take it back/i
+        : scene.kind.endsWith('-missed')
+          ? policy === 'passive' || policy === 'quiet'
+            ? /rest/i
+            : /bread/i
+          : /truth|acknowledge/i;
+    const choice =
+      scene.choices.find((choice) => preferred.test(`${choice.id} ${choice.label}`)) ??
+      scene.choices.find((choice) => choice.id === scene.fallback) ??
+      scene.choices[0];
+    if (choice) act(g, { type: 'choose', scene: scene.id, choice: choice.id });
+    return;
+  }
+  if (policy === 'lie-own' || policy === 'lie-stand') {
+    const listener = ['cem', 'osman'].find(
+      (id) =>
+        v.present.includes(id) &&
+        !g.inputs.some(
+          ({ input }) => input.type === 'tell' && input.listener === id && input.target === 'riza',
+        ),
+    );
+    if (g.s.minute < 1440 && listener) {
+      act(g, { type: 'tell', listener, target: 'riza', trait: 'cruel' });
+      return;
+    }
+  }
   const listener = ['riza', 'ayse', ...v.present].find(
     (id) => v.present.includes(id) && id !== 'kemal' && id !== 'emre',
   );
@@ -24,7 +66,9 @@ export function policyStep(g: Game, policy: Policy) {
     policy === 'careful' ||
     policy === 'cunning' ||
     policy === 'careful-relay' ||
-    policy === 'passive'
+    policy === 'passive' ||
+    policy === 'lie-own' ||
+    policy === 'lie-stand'
   ) {
     const names = v.riza?.doubts?.map((d) => d.words).join(' ') ?? '';
     const sources = PEOPLE.filter(

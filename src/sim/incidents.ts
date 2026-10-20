@@ -232,7 +232,7 @@ export const EMRE_INCIDENTS = [
   },
   {
     id: 17,
-    day: 6,
+    day: 5,
     at: 840,
     title: 'Safiye’s spilled shopping',
     target: 'emre',
@@ -245,6 +245,18 @@ export const EMRE_INCIDENTS = [
 
 /** IDs stay fixed across saves. The basket is an extra witnessed scene on day one. */
 export function storyScene(id: number) {
+  if (id === 18)
+    return {
+      id,
+      day: 5,
+      at: 390,
+      title: 'Bread at Rıza’s door',
+      target: 'emre',
+      trait: 'kind' as Trait,
+      value: true,
+      detail:
+        'Emre brought bread to Rıza’s door before work and waited to see whether the family needed anything',
+    };
   const extra = EMRE_INCIDENTS.find((scene) => scene.id === id);
   if (extra) return extra;
   if (id === 15)

@@ -15,6 +15,8 @@ console.log(
       seconds: +elapsed.toFixed(3),
       people: Object.keys(g.s.people).length,
       inputs: g.inputs.length,
+      choices: g.inputs.filter(({ input }) => input.type === 'choose').length,
+      threads: g.s.threads?.length ?? 0,
       routes: g.s.routes.length,
       fingerprint: fingerprint(g.s),
       replayEqual: equal,

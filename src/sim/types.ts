@@ -13,7 +13,7 @@ export type Trait =
   | 'owes';
 export type Input =
   | { type: 'tell' | 'defend'; listener: string; target: string; trait: Trait }
-  | { type: 'ask'; listener: string; target: string }
+  | { type: 'ask'; listener: string; target: string; trait?: Trait }
   | { type: 'tell-story'; listener: string; incident: number }
   | { type: 'choose'; scene: string; choice: string }
   | { type: 'hold-tongue' }
@@ -43,7 +43,7 @@ export interface Line {
   count?: number;
   witnessed?: boolean;
   who?: string[];
-  reply?: { to: number; believes: 'yes' | 'doubt' | 'no' | 'refuse'; will?: string };
+  reply?: { to: number; believes?: 'yes' | 'doubt' | 'no' | 'refuse'; will?: string };
 }
 export interface Route {
   id: number;
@@ -66,6 +66,7 @@ export interface Route {
   incident?: number;
   title?: string;
   confirmedAt?: number;
+  stoodByAt?: number;
 }
 export interface Scene {
   id: string;
@@ -94,6 +95,19 @@ export interface State {
   version: 1;
   scene?: Scene;
   threads?: Thread[];
+  sceneQueue?: Scene[];
+  amends?: { target: string; listeners: string[]; after: number }[];
+  morningVisits?: {
+    who: string;
+    at: number;
+    until: number;
+    bread?: boolean;
+    done?: boolean;
+    scene?: Scene;
+  }[];
+  wordDenial?: boolean;
+  threadRoutes?: Record<number, number>;
+  bareEndorsements?: Record<string, number>;
   seed: number;
   minute: number;
   people: Record<string, Person>;

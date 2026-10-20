@@ -67,6 +67,8 @@ it('amends change belief and standing; hold-tongue cannot be farmed', () => {
   act(g, { type: 'make-amends', listener: 'ayse', target: 'emre' });
   expect(credence(p, 'emre:dishonest')).toBeLessThan(before);
   expect(trustOf(p, 'hatice')).toBeLessThan(trust);
+  // The unrelated amends leave Aylin’s flour question waiting in round five.
+  expect(act(g, { type: 'hold-tongue' })).toBe(true);
   expect(act(g, { type: 'hold-tongue' })).toBe(false);
 });
 it('cold greetings follow a confident damaging belief, including spontaneous testimony', () => {
