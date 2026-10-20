@@ -23,5 +23,6 @@ jobs:
           node-version: 24
           cache: npm
       - run: npm ci --no-audit --no-fund
+      - run: npx playwright-core install --with-deps chromium-headless-shell
       - run: npm run check
       - run: npm run build
