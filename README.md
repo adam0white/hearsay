@@ -14,7 +14,7 @@ npm run build
 npm run preview
 ```
 
-The six verbs act on neighbours at the garden or fountain. Tell repeats the selected claim; Defend states its favourable opposite. Both statements are previewed, including whether Hatice believes them. Call over can include an offer to pay for tea in exchange for silence. Slow, Walk, Trot and Gallop change the clock; a question slows it. No time passes while the page is hidden or closed.
+The six verbs act on neighbours at the garden or fountain. Tell repeats the selected claim; Defend states its favourable opposite. Both statements are previewed, including whether Hatice believes them. Call over can include an offer to pay for tea in exchange for silence. The clock moves briskly through quiet stretches and holds for questions, incidents and conversations. No time passes while the page is hidden or closed.
 
 The notebook downloads a seed, input history, full state and fingerprint. Import replays the choices and verifies both fingerprints before replacing the current run. Sending a run with a note is opt-in through the lab client. Saves use IndexedDB. A small seed/input/minute journal commits before each clock change is displayed. Full-state saves remain compressed during play, with an immediate full-state transaction when leaving.
 

@@ -28,8 +28,7 @@ afterAll(async () => {
   await server?.close();
 });
 
-it('closes the menu before sending, stops time, and resumes the chosen speed on removal and success', async () => {
-  await page.getByRole('button', { name: 'Gallop', exact: true }).click();
+it('closes the menu before sending, stops time, and resumes automatic time on removal and success', async () => {
   await page.locator('#game-menu').click();
   const before = await page.locator('#clock').innerText();
   await page.getByRole('button', { name: 'Send this run to the notebook', exact: true }).click();
@@ -41,7 +40,7 @@ it('closes the menu before sending, stops time, and resumes the chosen speed on 
   await page.getByRole('button', { name: 'Not now', exact: true }).click();
   await page.clock.runFor(4000);
   expect(await page.locator('#clock').innerText()).not.toBe(before);
-  expect(await page.locator('[data-speed="80"]').getAttribute('data-chosen')).toBe('true');
+  expect(await page.locator('[data-speed]').count()).toBe(0);
 
   await page.locator('#game-menu').click();
   await page.getByRole('button', { name: 'Send this run to the notebook', exact: true }).click();
@@ -50,7 +49,7 @@ it('closes the menu before sending, stops time, and resumes the chosen speed on 
   await page.locator('.hflab .ok').waitFor();
   await page.clock.runFor(3000);
   expect(await page.locator('#clock').innerText()).not.toBe(second);
-  expect(await page.locator('[data-speed="80"]').getAttribute('data-chosen')).toBe('true');
+  expect(await page.locator('[data-speed]').count()).toBe(0);
   await page.locator('.hflab-veil').evaluate((el) => el.remove());
 });
 
@@ -82,6 +81,8 @@ it('keeps a reopened notebook dialog stopped when a canceled send completes late
 
   await page.getByRole('button', { name: 'Not now', exact: true }).click();
   await page.clock.runFor(3000);
-  expect(await page.locator('#clock').innerText()).not.toBe(held);
-  expect(await page.locator('[data-speed="80"]').getAttribute('data-chosen')).toBe('true');
+  expect(await page.locator('.hflab-veil').count()).toBe(0);
+  expect(await page.locator('.clock-pace').innerText()).toContain('Time held');
+  expect(await page.locator('#clock').innerText()).toBe(held);
+  expect(await page.locator('[data-speed]').count()).toBe(0);
 });

@@ -105,3 +105,7 @@ A pending witnessed incident, question, family choice or confrontation keeps Slo
 - **Open, owner's call — Adam’s play acceptance.** The owner accepts this increment by playing it. That personal review remains outstanding; automated and source-unread playtests do not substitute for it.
 - **2026-10-27 — Later-fortnight player acceptance.** Round 1 supplies daily scenes and six lines per voice pool, but the nine bounded HF sessions stop at their twelve-minute caps on days 4–8. Human play through days 9–14 and the ending remains to be assessed. The 135-second rules-oriented lull and the limited adapter topic menu need review after that play evidence.
 - **2026-10-27 — Longer authored dialogue.** Six lines per voice pool; when a pool runs out, the game narrates the facts instead. Later days can still repeat.
+
+## Clock presentation (2026-10-21)
+
+The UI chooses its pace: five minutes per second with company, twenty when the garden and fountain are empty. Pending questions, incidents, scenes and open conversations hold time. Game menu and day cards keep their existing pause. Each minute still runs through the unchanged simulation; the UI stops immediately when a response appears and discards timing carry. Composer disclosures remain gameplay. The recorded-route tally appears only behind See tally at the end; no menu preference is needed. Simulation versions, inputs, replay and HF remain unchanged. Adam accepts feel by playing.

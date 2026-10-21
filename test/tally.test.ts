@@ -5,11 +5,11 @@ import { endingTally } from '../src/ui/tally';
 
 it('keeps the tally absent by default and throughout play', () => {
   const g = newGame(1);
-  expect(endingTally(g.s, false)).toBe('');
-  expect(endingTally(g.s, true)).toBe('');
+  expect(endingTally(g.s)).toBe('');
   g.s.ended = true;
-  expect(endingTally(g.s, false)).toBe('');
-  expect(endingTally(g.s, true)).toContain('Words from your gate: 0');
+  expect(endingTally(g.s)).toContain('<summary>See tally</summary>');
+  expect(endingTally(g.s)).not.toContain(' open');
+  expect(endingTally(g.s)).toContain('Words from your gate: 0');
 });
 
 it('counts own and onward Hatice-origin routes explicitly without changing the run', () => {
@@ -34,7 +34,7 @@ it('counts own and onward Hatice-origin routes explicitly without changing the r
     { ...route, id: 4, origin: 'kemal', from: 'kemal' },
   ];
   const before = JSON.stringify(g);
-  const tally = endingTally(g.s, true);
+  const tally = endingTally(g.s);
   expect(tally).toContain('Words from your gate: 3');
   expect(tally).toContain('your tellings (2) + onward tellings by neighbours (1)');
   expect(tally).toContain("game's own reckoning");

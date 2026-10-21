@@ -60,30 +60,34 @@ async function readFor(ms: number) {
   for (let elapsed = 0; elapsed < ms; elapsed += 500) await page.clock.runFor(500);
 }
 
-it('keeps a witnessed incident slow after the question passes and restores the chosen pace on expiry', async () => {
+it('holds an incident indefinitely until the player responds, without speed controls', async () => {
   await load(390);
-  await readFor(45000);
+  const clock = await page.locator('#clock').innerText();
+  await readFor(125000);
   expect(await page.locator('.table-incident').count()).toBe(1);
-  expect(await page.locator('[data-speed="1"]').getAttribute('aria-pressed')).toBe('true');
-  expect(await page.locator('.slow-reason').innerText()).toMatch(/overheard|incident/i);
-  await readFor(80000);
-  expect(await page.locator('.table-incident').count()).toBe(0);
-  expect(await page.locator('[data-speed="5"]').getAttribute('aria-pressed')).toBe('true');
+  expect(await page.locator('#clock').innerText()).toBe(clock);
+  expect(await page.locator('.clock-pace').innerText()).toMatch(/Time held.*overheard/i);
+  expect(await page.locator('[data-speed]').count()).toBe(0);
 });
 
-it('retains a chosen fast pace while a pending incident continues at Slow', async () => {
-  await load(390);
-  await page.locator('[data-speed="80"]').click();
-  expect(await page.locator('[data-speed="80"]').getAttribute('data-chosen')).toBe('true');
-  expect(await page.locator('[data-speed="1"]').getAttribute('aria-pressed')).toBe('true');
-});
-
-it('meets a waiting question before a fast frame can carry its listener away', async () => {
+it('meets a waiting question before a delayed frame can carry its listener away', async () => {
   await load(400, true);
-  await page.locator('[data-speed="80"]').click();
-  // One delayed animation frame must stop at the question, rather than cross its whole window.
-  await page.clock.fastForward(250);
+  await readFor(2000);
   expect(await page.locator('.question').innerText()).toContain('Aylin');
-  expect(await page.locator('[data-speed="1"]').getAttribute('aria-pressed')).toBe('true');
-  expect(await page.locator('.slow-reason').innerText()).toContain('Aylin');
+  const held = await page.locator('#clock').innerText();
+  await readFor(60000);
+  expect(await page.locator('#clock').innerText()).toBe(held);
+  expect(await page.locator('.clock-pace').innerText()).toContain('Aylin');
+});
+
+it('pauses the Game menu and resumes automatic time without adding a speed choice', async () => {
+  await load(390, true);
+  await page.locator('#game-menu').click();
+  const held = await page.locator('#clock').innerText();
+  await readFor(10000);
+  expect(await page.locator('#clock').innerText()).toBe(held);
+  expect(await page.getByRole('checkbox').count()).toBe(0);
+  await page.keyboard.press('Escape');
+  await readFor(1000);
+  expect(await page.locator('#clock').innerText()).not.toBe(held);
 });

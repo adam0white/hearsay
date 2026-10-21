@@ -65,10 +65,9 @@ async function weddingDetails() {
 }
 it('holds the listener beyond departure and keeps the statement and every verb on the phone', async () => {
   await load();
-  await page.getByRole('button', { name: 'Gallop', exact: true }).click();
   await talkTo('aylin');
   expect(await page.locator('.presence').innerText()).toContain('Aylin sits with you');
-  await page.locator('[data-speed="1"][aria-pressed="true"]').waitFor();
+  await page.waitForFunction(() => document.querySelector('.clock-pace')?.textContent?.includes('Time held'));
   await page.clock.runFor(2200);
   expect(await page.locator('.presence').innerText()).toContain('Aylin sits with you');
   expect(await page.locator('[data-person="aylin"]').count()).toBe(1);
@@ -83,18 +82,16 @@ it('holds the listener beyond departure and keeps the statement and every verb o
   expect(bounds.every((b) => b.top >= 0 && b.bottom <= 690)).toBe(true);
   expect(bounds.slice(1).every((b) => b.height >= 44)).toBe(true);
   await page.getByRole('button', { name: 'Close Talk to Aylin', exact: true }).click();
-  await page.locator('[data-speed="80"][aria-pressed="true"]').waitFor();
+  expect(await page.locator('[data-speed]').count()).toBe(0);
 });
-it('keeps the panel open and explains when the ninety minute hold ends', async () => {
+it('holds reading time so the seated listener does not expire while the panel is open', async () => {
   await load();
   await talkTo('aylin');
-  for (let i = 0; i < 110 && !(await page.locator('.presence').innerText()).includes('tea is finished'); i++)
-    await page.clock.runFor(1000);
+  const clock = await page.locator('#clock').innerText();
+  for (let i = 0; i < 110; i++) await page.clock.runFor(1000);
   expect(await page.getByRole('dialog').isVisible()).toBe(true);
-  expect({
-    clock: await page.locator('#clock').innerText(),
-    presence: await page.locator('.presence').innerText(),
-  }).toMatchObject({ presence: expect.stringMatching(/tea is finished|time with you has ended/i) });
+  expect(await page.locator('#clock').innerText()).toBe(clock);
+  expect(await page.locator('.presence').innerText()).toContain('Aylin sits with you');
 });
 it('offers one Talk entry, visible limits, household marks and a compact wedding road', async () => {
   await load(390);
@@ -118,7 +115,7 @@ it('offers one Talk entry, visible limits, household marks and a compact wedding
 it('releases a saved hold on Resume when its sheet no longer exists', async () => {
   await load();
   await talkTo('aylin');
-  await page.locator('[data-speed="1"][aria-pressed="true"]').waitFor();
+  await page.waitForFunction(() => document.querySelector('.clock-pace')?.textContent?.includes('Time held'));
   await page.reload();
   await page.getByRole('button', { name: 'Resume', exact: true }).click();
   await page.locator('.lk-strip').waitFor();

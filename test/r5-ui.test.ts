@@ -87,7 +87,7 @@ async function choose(selector: string) {
 async function weddingDetails() {
   await page.getByRole('button', { name: 'Wedding details', exact: true }).click();
 }
-it('puts a pending scene first and keeps all its spoken choices on the phone at Slow', async () => {
+it('puts a pending scene first and keeps all its spoken choices on the phone while time is held', async () => {
   const g = newGame(1);
   g.s.scene = {
     id: 'phone-scene',
@@ -112,9 +112,8 @@ it('puts a pending scene first and keeps all its spoken choices on the phone at 
   expect(await page.locator('.garden .lk-sheet-body > :first-child').getAttribute('data-scene')).toBe(
     'phone-scene',
   );
-  await page.getByRole('button', { name: 'Gallop', exact: true }).click();
-  expect(await page.locator('[data-speed="1"]').getAttribute('aria-pressed')).toBe('true');
-  expect(await page.locator('[data-speed="80"]').getAttribute('data-chosen')).toBe('true');
+  expect(await page.locator('.clock-pace').innerText()).toContain('Time held');
+  expect(await page.locator('[data-speed]').count()).toBe(0);
   await onScreen('[data-scene], [data-choice]');
   expect((await onScreen('[data-choice]')).every((r) => r.height >= 44)).toBe(true);
 });
@@ -207,15 +206,14 @@ it('keeps Sleep and tomorrow at the top even with a long recap', async () => {
   await onScreen('[data-day-card] button, [data-day-card] .tomorrow');
 });
 
-it('resolves a real scene, restores Gallop and retains its outcome through inspection and replay', async () => {
+it('resolves a real scene, resumes automatic time and retains its outcome through inspection and replay', async () => {
   const g = newGame(1);
   advance(g, 3 * 1440 + 1080);
   await load(g);
-  await page.getByRole('button', { name: 'Gallop', exact: true }).click();
   const choice = g.s.scene!.choices[0]!;
   await page.locator(`[data-choice="${choice.id}"]`).click();
   await page.locator('[data-scene]').waitFor({ state: 'hidden' });
-  expect(await page.locator('[data-speed="80"]').getAttribute('aria-pressed')).toBe('true');
+  expect(await page.locator('[data-speed]').count()).toBe(0);
   const outcome = await page.locator('.reply').innerText();
   expect(outcome.trim()).not.toBe('');
   expect(outcome).not.toContain('undefined');
@@ -227,21 +225,16 @@ it('resolves a real scene, restores Gallop and retains its outcome through inspe
   expect(verifyImport(JSON.stringify(exportRun(g))).inputs.at(-1)?.input.type).toBe('choose');
 });
 
-it('keeps an expired scene’s fallback and outcome in the answer area', async () => {
+it('holds an imminent scene deadline during reading instead of applying its fallback', async () => {
   const g = newGame(1);
   advance(g, 3 * 1440 + 1080);
   g.s.scene!.until = g.s.minute + 1;
-  const fallback = g.s.scene!.choices.find((c) => c.id === g.s.scene!.fallback)!;
+  const sceneId = g.s.scene!.id;
   await load(g);
-  await page.getByRole('button', { name: 'Gallop', exact: true }).click();
-  await page.clock.runFor(1500);
-  await page.locator('[data-scene]').waitFor({ state: 'hidden' });
-  expect(await page.locator('.reply').innerText()).toContain(fallback.says);
-  expect(await page.locator('.reply').innerText()).not.toContain('undefined');
-  await weddingDetails();
-  await page.getByRole('button', { name: /Your word/ }).click();
-  await page.getByRole('button', { name: 'Close Wedding details', exact: true }).click();
-  expect(await page.locator('.reply').innerText()).toContain(fallback.says);
+  const clock = await page.locator('#clock').innerText();
+  await page.clock.runFor(15000);
+  expect(await page.locator('#clock').innerText()).toBe(clock);
+  expect(await page.locator('[data-scene]').getAttribute('data-scene')).toBe(sceneId);
 });
 
 it('keeps the answer above a different person’s still-waiting question and quick replies', async () => {
@@ -257,7 +250,7 @@ it('keeps the answer above a different person’s still-waiting question and qui
   expect(await page.locator('.reply + .question + .quick-replies').count()).toBe(1);
 });
 
-it('keeps a chosen story and appends a new witness story while the panel is open and reopened', async () => {
+it('keeps a chosen story stable while time is held and after the panel is reopened', async () => {
   const g = newGame(1);
   advance(g, 764);
   await load(g);
@@ -268,10 +261,9 @@ it('keeps a chosen story and appends a new witness story while the panel is open
     .locator('[data-story]')
     .evaluateAll((els) => els.map((el) => el.getAttribute('data-story')));
   await page.clock.runFor(2200);
-  await page.locator('[data-story="15"]').waitFor();
   expect(
     await page.locator('[data-story]').evaluateAll((els) => els.map((el) => el.getAttribute('data-story'))),
-  ).toEqual([...options, '15']);
+  ).toEqual(options);
   expect(await page.locator('[data-story="1"]').getAttribute('aria-pressed')).toBe('true');
   expect(await page.locator('.tell-preview').innerText()).toBe(preview);
   await page.getByRole('button', { name: 'Close Talk to Rıza', exact: true }).click();
@@ -374,7 +366,7 @@ it('uses the journal simulation version when the cached coordinates match', asyn
   expect(version).toBe(2);
 });
 
-it('updates an open talk choice when Hatice hears the listener learn it', async () => {
+it('keeps talk choices stable while reading holds the clock', async () => {
   const g = newGame(1);
   advance(g, 390);
   await load(g);
@@ -382,8 +374,9 @@ it('updates an open talk choice when Hatice hears the listener learn it', async 
   await choose('[data-target="kemal"]');
   await choose('[data-trait="cruel"]');
   expect(await page.locator('[data-verb="tell"]').getAttribute('aria-disabled')).toBeNull();
+  const clock = await page.locator('#clock').innerText();
   await page.clock.runFor(17000);
-  expect(await page.locator('[data-verb="tell"]').getAttribute('aria-disabled')).toBe('true');
-  expect(await page.locator('.telling-limit').innerText()).toContain('Ayşe');
+  expect(await page.locator('#clock').innerText()).toBe(clock);
+  expect(await page.locator('[data-verb="tell"]').getAttribute('aria-disabled')).toBeNull();
   expect(await page.locator('.presence').innerText()).toContain('Fatma sits with you');
 });

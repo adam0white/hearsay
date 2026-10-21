@@ -18,6 +18,7 @@ import { exportRun, verifyImport } from './export';
 import { heardLines } from './heard';
 import { lab, notebookRunOptions } from './lab';
 import { drawMap, mapPersonAt } from './map';
+import { automaticPace } from './pacing';
 import { focusedPeople, personLabel, personRole } from './people';
 import { get, put, putImmediate, putNow } from './store';
 import { endingTally } from './tally';
@@ -29,7 +30,6 @@ let game: Game;
 let saved: Game | null = null;
 let speed = 5;
 let playing = false;
-let showTally = false;
 let sendingRun = false;
 let sendGeneration = 0;
 let shownMinute = -1;
@@ -45,7 +45,6 @@ let slowReason = '';
 let dismissedIncident = 0;
 type SceneMemory = { seed: number; dismissedIncident: number };
 let sceneMemory: SceneMemory | null = null;
-let chosenSpeed = 5;
 let seenLean = '';
 let leanHighlightUntil = 0;
 let talking: HTMLDialogElement | null = null;
@@ -84,12 +83,6 @@ function persistJournal(): Promise<boolean> {
   });
   return writing;
 }
-const speeds = [
-  { label: 'Slow', rate: 1 },
-  { label: 'Walk', rate: 5 },
-  { label: 'Trot', rate: 20 },
-  { label: 'Gallop', rate: 80 },
-];
 const html = (s: string) =>
   s.replace(
     /[&<>"']/g,
@@ -191,7 +184,6 @@ function resetScene(): void {
   talking = null;
   conversation = null;
   refreshConversation = null;
-  chosenSpeed = 5;
   speed = 5;
   dismissedIncident = sceneMemory?.seed === game.s.seed ? sceneMemory.dismissedIncident : 0;
   accumulator = 0;
@@ -236,16 +228,19 @@ function noticeVisitors(): boolean {
   // Re-evaluate every pending response. Ending one must not clear another's slowdown.
   slowReason = game.s.scene
     ? game.s.scene.kind === 'confrontation'
-      ? 'Slow · Someone is confronting you.'
-      : 'Slow · A conversation needs your choice.'
+      ? 'Time held · Someone is confronting you.'
+      : 'Time held · A conversation needs your choice.'
     : question
-      ? `Slow · ${name(question.speaker ?? '')} is waiting for your answer.`
+      ? `Time held · ${name(question.speaker ?? '')} is waiting for your answer.`
       : incident
-        ? 'Slow · You overheard something. Choose whom to tell.'
+        ? 'Time held · You overheard something. Choose whom to tell.'
         : talking?.open
-          ? 'Slow · You are talking.'
+          ? 'Time held · You are talking.'
           : '';
-  speed = slowReason ? 1 : chosenSpeed;
+  speed = automaticPace(
+    !!slowReason,
+    view(game.s).present.some((id) => id !== 'hatice'),
+  );
   const nextScene = game.s.scene?.id ?? '';
   if (pendingScene !== nextScene || previous !== `${speed}:${slowReason}`) accumulator = 0;
   pendingScene = nextScene;
@@ -296,7 +291,6 @@ function endTalk(d: HTMLDialogElement): void {
   act(game, { type: 'release' });
   if (question?.speaker && !view(game.s).present.includes(question.speaker))
     reply = `${name(question.speaker)} has moved on. You have not answered their question.`;
-  speed = chosenSpeed;
   slowReason = '';
   accumulator = 0;
   noticeVisitors();
@@ -424,9 +418,9 @@ function chooseTalk(id: string, backToPeople = false): void {
   d.classList.add('talk-sheet');
   talking = d;
   act(game, { type: 'sit', listener: id });
-  speed = 1;
+  speed = 0;
   accumulator = 0;
-  slowReason = 'Slow · You are talking.';
+  slowReason = 'Time held · You are talking.';
   void persistJournal().then(render);
   save();
   let fullList = false;
@@ -456,8 +450,8 @@ function chooseTalk(id: string, backToPeople = false): void {
     const selectedStory = stories.find((item) => item.id === story);
     const holdEnded = view(game.s).held?.id !== talkTo;
     const presenceText = holdEnded
-      ? `${name(talkTo)}’s tea is finished. Their time with you has ended; they may leave now. The clock keeps moving.`
-      : `${name(talkTo)} sits with you while you talk. The clock keeps moving.`;
+      ? `${name(talkTo)}’s tea is finished. Their time with you has ended; they may leave now. Time is held while this conversation is open.`
+      : `${name(talkTo)} sits with you while you talk. Time is held while this conversation is open.`;
     const tellReason =
       target === talkTo
         ? 'Tell someone else about this person.'
@@ -560,8 +554,8 @@ function chooseTalk(id: string, backToPeople = false): void {
     if (presence)
       presence.textContent =
         view(game.s).held?.id === talkTo
-          ? `${name(talkTo)} sits with you while you talk. The clock keeps moving.`
-          : `${name(talkTo)}’s tea is finished. Their time with you has ended; they may leave now. The clock keeps moving.`;
+          ? `${name(talkTo)} sits with you while you talk. Time is held while this conversation is open.`
+          : `${name(talkTo)}’s tea is finished. Their time with you has ended; they may leave now. Time is held while this conversation is open.`;
     const tell = body.querySelector('.tell-preview');
     const selectedStory = stories.find((item) => item.id === story);
     if (tell) tell.textContent = selectedStory ? storyPreview(selectedStory) : preview('tell');
@@ -732,7 +726,7 @@ function render(): void {
     ? (document.activeElement as HTMLElement)
     : null;
   openSheet?.remove();
-  host.innerHTML = `<main class="game lk-stage${incident ? ' has-incident' : ''}" data-sheet="fit"><div class="lk-strip"><header><a class="wordmark" href="#" id="home">Hearsay</a><div class="clock" id="clock">${dateLabel(game.s.minute)}</div><button type="button" id="game-menu" class="text-button">Game menu</button></header><div class="speeds" role="group" aria-label="Time speed">${speeds.map((s) => `<button type="button" data-speed="${s.rate}" aria-pressed="${speed === s.rate}" ${chosenSpeed === s.rate ? 'data-chosen="true"' : ''}>${s.label}</button>`).join('')}</div>${slowReason ? `<p class="slow-reason" role="status">${html(slowReason)}</p>` : ''}${weddingStrip()}</div><section class="garden lk-sheet" aria-label="Your tea garden"><div class="lk-sheet-body">${sceneCard()}${introduction}<section class="conversation-panel" aria-label="Conversation"><div class="section-heading"><h2>At your table</h2><span>and by the fountain</span></div>${reply ? `<p class="reply" role="status">${html(reply)}</p>` : ''}${question ? `<p class="question">${html(name(question.speaker ?? ''))}: ${html(question.text)}</p>` : ''}${v.quick ? `<div class="quick-replies" aria-label="Answer ${html(name(v.quick.listener))}">${v.quick.options.map((option, i) => `<button type="button" data-quick="${i}"><strong>${html(option.label)}</strong><small>${html(option.says)}</small></button>`).join('')}</div>` : ''}<div class="actions"><button type="button" class="primary" data-open-talk ${unavailable(present.length ? '' : 'No one is close enough. Wait for someone at the garden or fountain.')}>Talk to…</button><div class="action-option"><button type="button" id="hold" ${unavailable(holdReason)}>Hold your tongue</button>${holdReason ? `<small class="action-limit">${html(holdReason)}</small>` : ''}</div><div class="action-option"><button type="button" id="call" ${unavailable(callReason)}>Call over</button>${callReason ? `<small class="action-limit">${html(callReason)}</small>` : ''}</div></div><p class="verb-reason" role="status">${html(verbReason)}</p></section>${incident ? `<aside class="table-incident" aria-label="What you overheard"><p>${html(incident.text)}</p></aside>` : ''}<div class="people-chips" aria-label="People close enough to talk">${
+  host.innerHTML = `<main class="game lk-stage${incident ? ' has-incident' : ''}" data-sheet="fit"><div class="lk-strip"><header><a class="wordmark" href="#" id="home">Hearsay</a><div class="clock" id="clock">${dateLabel(game.s.minute)}</div><button type="button" id="game-menu" class="text-button">Game menu</button></header><p class="clock-pace" role="status">${html(slowReason || 'Time passing')}</p>${weddingStrip()}</div><section class="garden lk-sheet" aria-label="Your tea garden"><div class="lk-sheet-body">${sceneCard()}${introduction}<section class="conversation-panel" aria-label="Conversation"><div class="section-heading"><h2>At your table</h2><span>and by the fountain</span></div>${reply ? `<p class="reply" role="status">${html(reply)}</p>` : ''}${question ? `<p class="question">${html(name(question.speaker ?? ''))}: ${html(question.text)}</p>` : ''}${v.quick ? `<div class="quick-replies" aria-label="Answer ${html(name(v.quick.listener))}">${v.quick.options.map((option, i) => `<button type="button" data-quick="${i}"><strong>${html(option.label)}</strong><small>${html(option.says)}</small></button>`).join('')}</div>` : ''}<div class="actions"><button type="button" class="primary" data-open-talk ${unavailable(present.length ? '' : 'No one is close enough. Wait for someone at the garden or fountain.')}>Talk to…</button><div class="action-option"><button type="button" id="hold" ${unavailable(holdReason)}>Hold your tongue</button>${holdReason ? `<small class="action-limit">${html(holdReason)}</small>` : ''}</div><div class="action-option"><button type="button" id="call" ${unavailable(callReason)}>Call over</button>${callReason ? `<small class="action-limit">${html(callReason)}</small>` : ''}</div></div><p class="verb-reason" role="status">${html(verbReason)}</p></section>${incident ? `<aside class="table-incident" aria-label="What you overheard"><p>${html(incident.text)}</p></aside>` : ''}<div class="people-chips" aria-label="People close enough to talk">${
     orderedPeople
       .slice(0, 3)
       .map(
@@ -767,14 +761,6 @@ function render(): void {
   host.querySelector('#dismiss-intro')?.addEventListener('click', () => {
     firstStart = false;
     render();
-  });
-  host.querySelectorAll<HTMLButtonElement>('[data-speed]').forEach((b) => {
-    b.onclick = () => {
-      chosenSpeed = Number(b.dataset.speed);
-      slowReason = '';
-      noticeVisitors();
-      render();
-    };
   });
   host.querySelectorAll<HTMLButtonElement>('[data-person]').forEach((b) => {
     b.onclick = () => chooseTalk(b.dataset.person ?? '');
@@ -938,17 +924,6 @@ function gameMenu(): void {
   lab.screen('game-menu');
   const d = dialog('Game menu');
   d.dataset.systemMenu = 'true';
-  const tallyLabel = document.createElement('label');
-  const tallyToggle = document.createElement('input');
-  tallyToggle.type = 'checkbox';
-  tallyToggle.checked = showTally;
-  tallyToggle.onchange = () => {
-    showTally = tallyToggle.checked;
-    const ending = host.querySelector('#ending-tally');
-    if (ending) ending.innerHTML = endingTally(game.s, showTally);
-  };
-  tallyLabel.append(tallyToggle, ' Count the words from my gate when the fortnight ends');
-  d.append(tallyLabel);
   const p = document.createElement('p');
   p.textContent =
     'Save the whole run: your seed, choices, state and a replay fingerprint. An imported run must replay exactly before it replaces your garden.';
@@ -1098,7 +1073,7 @@ function review(): void {
           .join('')}</div></details>`,
     )
     .join('');
-  host.innerHTML = `<main class="review"><p class="eyebrow">The end of the fortnight</p><h1>Words find their way.</h1><p>${game.s.engagement === 'accepted' ? 'Rıza has agreed. Emre and Elif may marry.' : game.s.engagement === 'refused' ? 'Rıza has refused the engagement. The two households will remember.' : 'The engagement remains unsettled.'}</p><h2>What changed</h2><p>Your garden ended ${html(game.s.garden)}. ${confrontations.length ? `${html(confrontations.join(', '))} traced words back to your gate.` : 'No neighbour confronted you at your gate.'} ${shopChanges.length ? `${html(shopChanges.join(' and '))} closed the shutters early.` : ''}</p><h2>The paths your words took</h2><p class="fine">Open one of your statements to follow its descendants. Withdrawals do not recall copies that have already travelled.</p>${ownRoutes || '<p>You started no testimony.</p>'}<details class="all-routes"><summary>The whole village: every rumour route</summary><p class="fine">This includes conversations you could not witness.</p><div class="route-list">${game.s.routes.map(routeHtml).join('') || '<p>No rumour travelled.</p>'}</div></details><h2>One question to carry</h2><p>Whose trust mattered when you chose what to say?</p><div id="ending-tally">${endingTally(game.s, showTally)}</div><div id="review-actions"></div></main>`;
+  host.innerHTML = `<main class="review"><p class="eyebrow">The end of the fortnight</p><h1>Words find their way.</h1><p>${game.s.engagement === 'accepted' ? 'Rıza has agreed. Emre and Elif may marry.' : game.s.engagement === 'refused' ? 'Rıza has refused the engagement. The two households will remember.' : 'The engagement remains unsettled.'}</p><h2>What changed</h2><p>Your garden ended ${html(game.s.garden)}. ${confrontations.length ? `${html(confrontations.join(', '))} traced words back to your gate.` : 'No neighbour confronted you at your gate.'} ${shopChanges.length ? `${html(shopChanges.join(' and '))} closed the shutters early.` : ''}</p><h2>The paths your words took</h2><p class="fine">Open one of your statements to follow its descendants. Withdrawals do not recall copies that have already travelled.</p>${ownRoutes || '<p>You started no testimony.</p>'}<details class="all-routes"><summary>The whole village: every rumour route</summary><p class="fine">This includes conversations you could not witness.</p><div class="route-list">${game.s.routes.map(routeHtml).join('') || '<p>No rumour travelled.</p>'}</div></details><h2>One question to carry</h2><p>Whose trust mattered when you chose what to say?</p><div id="ending-tally">${endingTally(game.s)}</div><div id="review-actions"></div></main>`;
   host.querySelector('#review-actions')?.append(
     button('Game menu', gameMenu),
     button('Return to title', () => {
@@ -1181,6 +1156,7 @@ function frame(now: number): void {
       requestAnimationFrame(frame);
       return;
     }
+    noticeVisitors();
     accumulator += (elapsed * speed) / 1000;
     if (accumulator >= 1 && !pendingJournal) {
       const minutes = Math.floor(accumulator);
@@ -1192,7 +1168,10 @@ function frame(now: number): void {
       while (game.s.minute < to && !game.s.ended) {
         advance(game, game.s.minute + 1);
         // A delayed fast frame must stop when a live response first becomes available.
-        if (game.s.scene || tableIncident() || liveQuestion()) break;
+        if (game.s.scene || tableIncident() || liveQuestion()) {
+          accumulator = 0;
+          break;
+        }
       }
       if (sceneBefore && game.s.scene?.id !== sceneBefore) {
         const outcome = game.s.log.findLast(

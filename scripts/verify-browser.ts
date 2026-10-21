@@ -1,10 +1,13 @@
 /** Local browser acceptance checks against a built preview. No telemetry or run is sent. */
 import assert from 'node:assert/strict';
 import { mkdirSync, readFileSync } from 'node:fs';
+import { homedir } from 'node:os';
+import { join } from 'node:path';
 import { chromium } from 'playwright-core';
 import { fingerprint, replay } from '../src/sim/game.ts';
 
-mkdirSync('scratch/acceptance', { recursive: true });
+const output = join(homedir(), 'code/.lab-scratch/codex/hearsay-pace-browser');
+mkdirSync(output, { recursive: true });
 const browser = await chromium.launch();
 try {
   const context = await browser.newContext({
@@ -20,11 +23,14 @@ try {
   await page.goto(process.env.GAME_URL ?? 'http://127.0.0.1:4173/');
   await page.getByRole('button', { name: 'Start', exact: true }).click();
   await page.getByRole('button', { name: 'Got it', exact: true }).click();
-  await page.getByRole('button', { name: 'Trot', exact: true }).click();
-  await page.clock.runFor(2450);
+  for (let i = 0; i < 20; i++) await page.clock.runFor(500);
   assert.match(await page.locator('.clock').innerText(), /06:/);
   assert.match(await page.locator('.table-incident').innerText(), /old flour/);
+  if (!(await page.locator('[data-person="fatma"]').isVisible()))
+    await page.locator('.other-neighbours > summary').click();
   await page.locator('[data-person="fatma"]').click();
+  if (!(await page.locator('[data-target="kemal"]').isVisible()))
+    await page.getByText('Choose person, story or word', { exact: true }).click();
   await page.locator('[data-target="kemal"]').click();
   await page.locator('[data-trait="dishonest"]').click();
   assert.match(await page.locator('.defend-preview').innerText(), /Kemal tells the truth.*lie/);
@@ -47,7 +53,7 @@ try {
     bounds.every((b) => b.bottom <= 690),
     JSON.stringify(bounds),
   );
-  await page.screenshot({ path: 'scratch/acceptance/phone.png', fullPage: true });
+  await page.screenshot({ path: join(output, 'phone.png'), fullPage: true });
   const download = async (path: string) => {
     await page.locator('#game-menu').click();
     const [file] = await Promise.all([
@@ -58,16 +64,16 @@ try {
     await page.getByRole('button', { name: 'Close Game menu', exact: true }).click();
     return JSON.parse(readFileSync(path, 'utf8'));
   };
-  const run = await download('scratch/acceptance/run.json');
+  const run = await download(join(output, 'run.json'));
   assert.equal(fingerprint(replay(run.seed, run.inputs, run.minute).s), run.fingerprint);
   await page.getByRole('link', { name: 'Hearsay', exact: true }).click();
   const [chooser] = await Promise.all([
     page.waitForEvent('filechooser'),
     page.getByRole('button', { name: 'Import a run', exact: true }).click(),
   ]);
-  await chooser.setFiles('scratch/acceptance/run.json');
+  await chooser.setFiles(join(output, 'run.json'));
   await page.locator('#game-menu').waitFor();
-  const imported = await download('scratch/acceptance/imported.json');
+  const imported = await download(join(output, 'imported.json'));
   assert.equal(imported.fingerprint, run.fingerprint);
   // Leave after unsaved clock motion. pagehide must preserve that latest clock.
   await page.clock.runFor(1700);

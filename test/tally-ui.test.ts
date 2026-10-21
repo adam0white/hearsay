@@ -6,7 +6,6 @@ import { advance, newGame } from '../src/sim/game';
 let server: ViteDevServer;
 let browser: Browser;
 let page: Page;
-const label = 'Count the words from my gate when the fortnight ends';
 beforeAll(async () => {
   server = await createServer({ server: { host: '127.0.0.1', port: 0, hmr: false, watch: null } });
   await server.listen();
@@ -19,7 +18,7 @@ afterAll(async () => {
   await browser?.close();
   await server?.close();
 });
-it('keeps the checkbox current and toggles the ending immediately without persisting the preference', async () => {
+it('offers the tally only as a closed ending disclosure, without a menu preference', async () => {
   await page.goto(server.resolvedUrls?.local[0] ?? '');
   await page.locator('.title-page').waitFor();
   const g = newGame(1);
@@ -39,20 +38,13 @@ it('keeps the checkbox current and toggles the ending immediately without persis
   }, g);
   await page.reload();
   await page.getByRole('button', { name: 'Resume', exact: true }).click();
-  expect(await page.locator('#ending-tally').innerText()).toBe('');
+  const tally = page.locator('#ending-tally details');
+  expect(await tally.getAttribute('open')).toBe(null);
+  await page.getByText('See tally', { exact: true }).click();
+  expect(await tally.innerText()).toContain('Total =');
   await page.getByRole('button', { name: 'Game menu', exact: true }).click();
-  expect(await page.getByRole('checkbox', { name: label }).isChecked()).toBe(false);
-  await page.getByRole('checkbox', { name: label }).check();
-  expect(await page.locator('#ending-tally').innerText()).toContain('Total =');
-  await page.getByRole('button', { name: 'Close Game menu', exact: true }).click();
-  await page.getByRole('button', { name: 'Game menu', exact: true }).click();
-  expect(await page.getByRole('checkbox', { name: label }).isChecked()).toBe(true);
-  await page.getByRole('checkbox', { name: label }).uncheck();
-  expect(await page.locator('#ending-tally').innerText()).toBe('');
-  await page.getByRole('checkbox', { name: label }).check();
+  expect(await page.getByRole('checkbox').count()).toBe(0);
   await page.reload();
   await page.getByRole('button', { name: 'Resume', exact: true }).click();
-  expect(await page.locator('#ending-tally').innerText()).toBe('');
-  await page.getByRole('button', { name: 'Game menu', exact: true }).click();
-  expect(await page.getByRole('checkbox', { name: label }).isChecked()).toBe(false);
+  expect(await tally.getAttribute('open')).toBe(null);
 });
