@@ -20,6 +20,7 @@ import { lab, notebookRunOptions } from './lab';
 import { drawMap, mapPersonAt } from './map';
 import { focusedPeople, personLabel, personRole } from './people';
 import { get, put, putImmediate, putNow } from './store';
+import { endingTally } from './tally';
 
 const root = document.querySelector<HTMLDivElement>('#app');
 if (!root) throw new Error('Missing app');
@@ -28,6 +29,7 @@ let game: Game;
 let saved: Game | null = null;
 let speed = 5;
 let playing = false;
+let showTally = false;
 let sendingRun = false;
 let sendGeneration = 0;
 let shownMinute = -1;
@@ -936,6 +938,17 @@ function gameMenu(): void {
   lab.screen('game-menu');
   const d = dialog('Game menu');
   d.dataset.systemMenu = 'true';
+  const tallyLabel = document.createElement('label');
+  const tallyToggle = document.createElement('input');
+  tallyToggle.type = 'checkbox';
+  tallyToggle.checked = showTally;
+  tallyToggle.onchange = () => {
+    showTally = tallyToggle.checked;
+    const ending = host.querySelector('#ending-tally');
+    if (ending) ending.innerHTML = endingTally(game.s, showTally);
+  };
+  tallyLabel.append(tallyToggle, ' Count the words from my gate when the fortnight ends');
+  d.append(tallyLabel);
   const p = document.createElement('p');
   p.textContent =
     'Save the whole run: your seed, choices, state and a replay fingerprint. An imported run must replay exactly before it replaces your garden.';
@@ -1085,7 +1098,7 @@ function review(): void {
           .join('')}</div></details>`,
     )
     .join('');
-  host.innerHTML = `<main class="review"><p class="eyebrow">The end of the fortnight</p><h1>Words find their way.</h1><p>${game.s.engagement === 'accepted' ? 'Rıza has agreed. Emre and Elif may marry.' : game.s.engagement === 'refused' ? 'Rıza has refused the engagement. The two households will remember.' : 'The engagement remains unsettled.'}</p><h2>What changed</h2><p>Your garden ended ${html(game.s.garden)}. ${confrontations.length ? `${html(confrontations.join(', '))} traced words back to your gate.` : 'No neighbour confronted you at your gate.'} ${shopChanges.length ? `${html(shopChanges.join(' and '))} closed the shutters early.` : ''}</p><h2>The paths your words took</h2><p class="fine">Open one of your statements to follow its descendants. Withdrawals do not recall copies that have already travelled.</p>${ownRoutes || '<p>You started no testimony.</p>'}<details class="all-routes"><summary>The whole village: every rumour route</summary><p class="fine">This includes conversations you could not witness.</p><div class="route-list">${game.s.routes.map(routeHtml).join('') || '<p>No rumour travelled.</p>'}</div></details><h2>One question to carry</h2><p>Whose trust mattered when you chose what to say?</p><div id="review-actions"></div></main>`;
+  host.innerHTML = `<main class="review"><p class="eyebrow">The end of the fortnight</p><h1>Words find their way.</h1><p>${game.s.engagement === 'accepted' ? 'Rıza has agreed. Emre and Elif may marry.' : game.s.engagement === 'refused' ? 'Rıza has refused the engagement. The two households will remember.' : 'The engagement remains unsettled.'}</p><h2>What changed</h2><p>Your garden ended ${html(game.s.garden)}. ${confrontations.length ? `${html(confrontations.join(', '))} traced words back to your gate.` : 'No neighbour confronted you at your gate.'} ${shopChanges.length ? `${html(shopChanges.join(' and '))} closed the shutters early.` : ''}</p><h2>The paths your words took</h2><p class="fine">Open one of your statements to follow its descendants. Withdrawals do not recall copies that have already travelled.</p>${ownRoutes || '<p>You started no testimony.</p>'}<details class="all-routes"><summary>The whole village: every rumour route</summary><p class="fine">This includes conversations you could not witness.</p><div class="route-list">${game.s.routes.map(routeHtml).join('') || '<p>No rumour travelled.</p>'}</div></details><h2>One question to carry</h2><p>Whose trust mattered when you chose what to say?</p><div id="ending-tally">${endingTally(game.s, showTally)}</div><div id="review-actions"></div></main>`;
   host.querySelector('#review-actions')?.append(
     button('Game menu', gameMenu),
     button('Return to title', () => {
