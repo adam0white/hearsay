@@ -112,3 +112,21 @@ it('invalidates the drawing cache when only the selected listener changes', asyn
   expect(result.changed).toBe(true);
   expect(result.layout.people.map((p: { id: string }) => p.id)).toEqual(['hatice', 'emre']);
 });
+
+it('crops the phone garden to the two places within hearing at 190px', async () => {
+  const s = newGame(1).s;
+  s.locations.cem = 'fountain';
+  const layout = await draw(s, undefined, 190);
+  expect(layout.mode).toBe('garden');
+  expect(layout.labels.map((label: { id: string }) => label.id)).toEqual(
+    expect.arrayContaining(['garden', 'fountain']),
+  );
+  expect(
+    layout.people.every((person: { location: string }) => ['garden', 'fountain'].includes(person.location)),
+  ).toBe(true);
+  expect(layout.hits).toContainEqual({ id: 'cem', hit: 'cem' });
+  for (const person of layout.people) {
+    expect(person.x).toBeGreaterThanOrEqual(0);
+    expect(person.y + person.height).toBeLessThanOrEqual(190);
+  }
+});

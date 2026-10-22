@@ -42,7 +42,7 @@ export function mapPersonAt(canvas: HTMLCanvasElement, clientX: number, clientY:
     .get(canvas)
     ?.people.filter((p) => p.id !== 'hatice' && ['garden', 'fountain'].includes(p.location))
     .map((p) => ({ id: p.id, distance: Math.hypot(x - p.x - p.width / 2, y - p.y - p.height / 2) }))
-    .filter((p) => p.distance <= 12)
+    .filter((p) => p.distance <= 22)
     .sort((a, b) => a.distance - b.distance)[0]?.id;
 }
 function closeUp(
@@ -133,6 +133,99 @@ function closeUp(
   });
 }
 
+/** Phone camera keeps the two audible places in view instead of shrinking the village. */
+function gardenCrop(
+  canvas: HTMLCanvasElement,
+  ctx: CanvasRenderingContext2D,
+  state: State,
+  signature: string,
+): void {
+  const width = canvas.clientWidth;
+  const height = canvas.clientHeight;
+  const people: MapPerson[] = [];
+  const labels: (Rect & { id: string; text: string })[] = [];
+  const benches: Rect[] = [];
+  ctx.strokeStyle = '#f6f0df';
+  ctx.lineWidth = 28;
+  ctx.beginPath();
+  ctx.moveTo(-20, height * 0.25);
+  ctx.bezierCurveTo(width * 0.3, height * 0.55, width * 0.65, height * 0.4, width + 20, height * 0.2);
+  ctx.stroke();
+  const places = [
+    { id: 'garden', text: 'Tea garden', x: width * 0.3, y: height * 0.53 },
+    { id: 'fountain', text: 'Fountain', x: width * 0.78, y: height * 0.34 },
+  ];
+  ctx.font = '12px Georgia';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  for (const place of places) {
+    ctx.fillStyle = place.id === 'garden' ? '#c7d2ae' : '#7daba9';
+    ctx.beginPath();
+    ctx.ellipse(
+      place.x,
+      place.y,
+      place.id === 'garden' ? width * 0.24 : 23,
+      place.id === 'garden' ? height * 0.32 : 13,
+      0,
+      0,
+      Math.PI * 2,
+    );
+    ctx.fill();
+    if (place.id === 'fountain') {
+      ctx.strokeStyle = '#eaf6ef';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.ellipse(place.x, place.y, 14, 8, 0, 0, Math.PI * 2);
+      ctx.stroke();
+    }
+    const labelWidth = ctx.measureText(place.text).width + 6;
+    const label = {
+      id: place.id,
+      text: place.text,
+      x: place.x - labelWidth / 2,
+      y: height - 19,
+      width: labelWidth,
+      height: 16,
+    };
+    labels.push(label);
+    ctx.fillStyle = '#364b45';
+    ctx.fillText(place.text, place.x, label.y + 8);
+    const nearby = PEOPLE.filter((p) => p.id !== 'hatice' && state.locations[p.id] === place.id);
+    const columns = place.id === 'garden' ? 4 : 3;
+    const regionLeft = place.id === 'garden' ? 12 : width * 0.58;
+    const regionWidth = place.id === 'garden' ? width * 0.52 : width * 0.4;
+    for (const [i, person] of nearby.entries()) {
+      const x = regionLeft + (((i % columns) + 0.5) * regionWidth) / columns;
+      const y = 30 + Math.floor(i / columns) * 43;
+      const box = { id: person.id, location: place.id, x: x - 4, y: y - 5, width: 8, height: 11 };
+      people.push(box);
+      if (place.id === 'garden') {
+        benches.push({ x: x - 13, y: y + 7, width: 26, height: 3 });
+        ctx.fillStyle = '#897557';
+        ctx.fillRect(x - 13, y + 7, 26, 3);
+      }
+      ctx.fillStyle = ['#335f60', '#a45f4b', '#6e7551', '#9a854f'][hash(person.id) % 4] ?? '#335f60';
+      ctx.beginPath();
+      ctx.arc(x, y - 3, 4, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillRect(x - 4, y + 2, 8, 10);
+      ctx.font = '10px Georgia';
+      const w = ctx.measureText(person.name).width + 4;
+      const label = { id: person.id, text: person.name, x: x - w / 2, y: y + 15, width: w, height: 13 };
+      labels.push(label);
+      ctx.fillStyle = '#364b45';
+      ctx.fillText(person.name, x, y + 21);
+      ctx.font = '12px Georgia';
+    }
+  }
+  canvas.setAttribute(
+    'aria-label',
+    `Tea garden and fountain. Nearby: ${people.map((p) => personLabel(p.id)).join(', ') || 'no one yet'}. Tap a neighbour to call them over.`,
+  );
+  layouts.set(canvas, { people, state, signature });
+  canvas.dataset.mapLayout = JSON.stringify({ mode: 'garden', labels, people, benches, witnessed: [] });
+}
+
 export function drawMap(
   canvas: HTMLCanvasElement,
   state: State,
@@ -141,7 +234,8 @@ export function drawMap(
 ): void {
   const width = canvas.clientWidth;
   const height = canvas.clientHeight;
-  canvas.dataset.camera = height < 180 ? 'table' : 'village';
+  const phoneCrop = width < 700 && height >= 100 && height <= 260;
+  canvas.dataset.camera = height < 100 ? 'table' : phoneCrop ? 'garden' : 'village';
   const ratio = window.devicePixelRatio || 1;
   const signature = JSON.stringify([
     width,
@@ -168,8 +262,12 @@ export function drawMap(
   ctx.clearRect(0, 0, width, height);
   ctx.fillStyle = '#e5e8d7';
   ctx.fillRect(0, 0, width, height);
-  if (height < 180) {
+  if (height < 100) {
     closeUp(canvas, ctx, state, signature, selectedId);
+    return;
+  }
+  if (phoneCrop) {
+    gardenCrop(canvas, ctx, state, signature);
     return;
   }
   canvas.setAttribute(

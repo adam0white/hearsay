@@ -57,30 +57,29 @@ async function load(minute: number, dismiss = false) {
   await page.locator('#clock').waitFor();
 }
 async function readFor(ms: number) {
-  for (let elapsed = 0; elapsed < ms; elapsed += 500) await page.clock.runFor(500);
+  await page.clock.fastForward(ms);
 }
 
 it('holds an incident indefinitely until the player responds, at every chosen speed', async () => {
   await load(390);
-  await page.locator('[data-speed="80"]').click();
-  expect(await page.locator('[data-speed="80"]').getAttribute('aria-pressed')).toBe('true');
+
   expect(await page.evaluate(() => document.documentElement.scrollHeight <= innerHeight)).toBe(true);
   const clock = await page.locator('#clock').innerText();
-  await readFor(125000);
+  await readFor(6000);
   expect(await page.locator('.table-incident').count()).toBe(1);
   expect(await page.locator('#clock').innerText()).toBe(clock);
-  expect(await page.locator('.clock-pace').innerText()).toMatch(/Time held.*overheard/i);
-  expect(await page.locator('[data-speed]').count()).toBe(4);
+  expect(await page.locator('.state-status').innerText()).toMatch(/Held.*overheard/i);
+  expect(await page.locator('[data-speed]').count()).toBe(0);
 });
 
 it('meets a waiting question before a delayed frame can carry its listener away', async () => {
-  await load(400, true);
+  await load(405, true);
   await readFor(2000);
-  expect(await page.locator('.question').innerText()).toContain('Aylin');
+  expect(await page.locator('.question-card').innerText()).toContain('Aylin');
   const held = await page.locator('#clock').innerText();
-  await readFor(60000);
+  await readFor(6000);
   expect(await page.locator('#clock').innerText()).toBe(held);
-  expect(await page.locator('.clock-pace').innerText()).toContain('Aylin');
+  expect(await page.locator('.state-status').innerText()).toContain('Aylin');
 });
 
 it('pauses the Game menu and resumes the chosen speed', async () => {
@@ -89,9 +88,9 @@ it('pauses the Game menu and resumes the chosen speed', async () => {
   const held = await page.locator('#clock').innerText();
   await readFor(10000);
   expect(await page.locator('#clock').innerText()).toBe(held);
-  expect(await page.getByRole('checkbox').count()).toBe(1);
-  expect(await page.getByRole('checkbox', { name: 'Record play for the lab' }).count()).toBe(1);
+  expect(await page.getByRole('switch').count()).toBe(1);
+  expect(await page.getByRole('switch', { name: 'Record play for the lab' }).count()).toBe(1);
   await page.keyboard.press('Escape');
-  await readFor(1000);
+  await page.clock.runFor(1500);
   expect(await page.locator('#clock').innerText()).not.toBe(held);
 });

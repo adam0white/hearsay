@@ -74,18 +74,36 @@ async function onScreen(selector: string) {
   return boxes;
 }
 async function talkTo(id: string) {
+  const incidentPerson = page.locator(`[data-incident-person="${id}"]`);
+  if (await incidentPerson.isVisible()) {
+    await incidentPerson.click();
+    return;
+  }
+  const waiting = page.locator(`[data-question-person="${id}"]`);
+  if (await waiting.isVisible()) {
+    await waiting.click();
+    return;
+  }
   const person = page.locator(`[data-person="${id}"]`);
-  if (!(await person.isVisible())) await page.locator('.other-neighbours > summary').click();
+  if (!(await person.isVisible())) {
+    const keep = page.locator('#keep-incident');
+    if (await keep.isVisible()) await keep.click();
+    const hold = page.locator('#hold');
+    if (await hold.isVisible()) await hold.click();
+    if (!(await person.isVisible())) await page.locator('.other-neighbours > summary').click();
+  }
   await person.click();
 }
 async function choose(selector: string) {
+  if (selector.includes('data-story')) await page.locator('[data-tab="story"]').click();
+  if (selector.includes('data-trait')) await page.locator('[data-tab="word"]').click();
   const option = page.locator(selector);
-  if (!(await option.isVisible()))
-    await page.getByText('Choose person, story or word', { exact: true }).click();
+  if (!(await option.isVisible()) && selector.includes('data-target'))
+    await page.locator('#other-person').click();
   await option.click();
 }
 async function weddingDetails() {
-  await page.getByRole('button', { name: 'Wedding details', exact: true }).click();
+  await page.locator('[data-wedding-details]').click();
 }
 it('puts a pending scene first and keeps all its spoken choices on the phone while time is held', async () => {
   const g = newGame(1);
@@ -112,8 +130,8 @@ it('puts a pending scene first and keeps all its spoken choices on the phone whi
   expect(await page.locator('.garden .lk-sheet-body > :first-child').getAttribute('data-scene')).toBe(
     'phone-scene',
   );
-  expect(await page.locator('.clock-pace').innerText()).toContain('Time held');
-  expect(await page.locator('[data-speed]').count()).toBe(4);
+  expect(await page.locator('.state-status').innerText()).toContain('Held');
+  expect(await page.locator('[data-speed]').count()).toBe(0);
   await onScreen('[data-scene], [data-choice]');
   expect((await onScreen('[data-choice]')).every((r) => r.height >= 44)).toBe(true);
 });
@@ -125,8 +143,8 @@ it('shows concrete quick replies immediately after the waiting question and send
   await onScreen('.question, .quick-replies button');
   const says = await page.locator('.quick-replies button small').first().innerText();
   await page.locator('[data-quick]').first().click();
-  await page.locator('.reply').waitFor();
-  expect(await page.locator('.reply').innerText()).not.toContain('moved on');
+  await page.locator('.speech-overlay').waitFor();
+  expect(await page.locator('.speech-overlay').innerText()).not.toContain('moved on');
   expect(says.length).toBeGreaterThan(0);
   expect((await journalInputs()).at(-1)?.input).toEqual(view(g.s).quick!.options[0]!.input);
   expect(await page.getByRole('dialog').count()).toBe(0);
@@ -162,7 +180,7 @@ it('shows Your word repair and only the two newest known message threads', async
   ];
   await load(g);
   await weddingDetails();
-  await page.getByRole('button', { name: /Your word/ }).click();
+  await page.locator('[data-word]').click();
   expect(await page.locator('.doubt-detail').innerText()).toContain('Take it back to Cem and Osman');
   const threads = await page.locator('.message-thread').allTextContents();
   expect(threads).toHaveLength(2);
@@ -182,16 +200,16 @@ it('removes duplicate Defend and previews the actual Ask without a belief verdic
   await choose('[data-target="emre"]');
   await choose('[data-trait="reliable"]');
   expect(await page.locator('[data-verb="defend"]').count()).toBe(0);
-  expect(await page.locator('.ask-preview').innerText()).toBe("You'll ask: Does Emre keep promises?");
+  expect(await page.locator('.ask-preview').innerText()).toBe('Does Emre keep promises?');
   await page.locator('[data-verb="ask"]').click();
-  await page.getByRole('dialog').waitFor({ state: 'hidden' });
+  await page.locator('.reply-sheet').waitFor();
   const lastInput = (await journalInputs()).findLast(({ input }) => input.type === 'ask')?.input;
   expect(lastInput).toMatchObject({ type: 'ask', target: 'emre', trait: 'reliable' });
-  expect(await page.locator('.reply').innerText()).not.toMatch(
+  expect(await page.locator('.speech-overlay').innerText()).not.toMatch(
     /Believes you|Doubts it|Doesn’t believe you|Won’t hear it/,
   );
 });
-it('keeps Sleep and tomorrow at the top even with a long recap', async () => {
+it('keeps Sleep and tomorrow pinned even with a long recap', async () => {
   const g = newGame(1);
   advance(g, 1380);
   g.s.days![0]!.summary = Array.from(
@@ -201,7 +219,8 @@ it('keeps Sleep and tomorrow at the top even with a long recap', async () => {
   await load(g);
   await onScreen('[data-day-card] button, [data-day-card] .tomorrow');
   await page.locator('[data-day-card]').evaluate((el) => {
-    el.scrollTop = el.scrollHeight;
+    const body = el.querySelector('.lk-sheet-body');
+    if (body) body.scrollTop = body.scrollHeight;
   });
   await onScreen('[data-day-card] button, [data-day-card] .tomorrow');
 });
@@ -213,14 +232,14 @@ it('resolves a real scene, resumes automatic time and retains its outcome throug
   const choice = g.s.scene!.choices[0]!;
   await page.locator(`[data-choice="${choice.id}"]`).click();
   await page.locator('[data-scene]').waitFor({ state: 'hidden' });
-  expect(await page.locator('[data-speed]').count()).toBe(4);
-  const outcome = await page.locator('.reply').innerText();
+  expect(await page.locator('[data-speed]').count()).toBe(0);
+  const outcome = await page.locator('.speech-overlay').innerText();
   expect(outcome.trim()).not.toBe('');
   expect(outcome).not.toContain('undefined');
   await weddingDetails();
-  await page.getByRole('button', { name: /Your word/ }).click();
-  await page.getByRole('button', { name: 'Close Wedding details', exact: true }).click();
-  expect((await page.locator('.reply').innerText()).trim()).toBe(outcome.trim());
+  await page.locator('[data-word]').click();
+  await page.getByRole('button', { name: 'Close Wedding', exact: true }).click();
+  expect((await page.locator('.speech-overlay').innerText()).trim()).toBe(outcome.trim());
   expect(act(g, { type: 'choose', scene: g.s.scene!.id, choice: choice.id })).toBe(true);
   expect(verifyImport(JSON.stringify(exportRun(g))).inputs.at(-1)?.input.type).toBe('choose');
 });
@@ -237,17 +256,18 @@ it('holds an imminent scene deadline during reading instead of applying its fall
   expect(await page.locator('[data-scene]').getAttribute('data-scene')).toBe(sceneId);
 });
 
-it('keeps the answer above a different person’s still-waiting question and quick replies', async () => {
+it('gives a waiting question the sheet and keeps its spoken answer in the scene overlay', async () => {
   const g = newGame(1);
   advance(g, 405);
   await load(g);
-  await talkTo('emre');
-  await choose('[data-target="kemal"]');
-  await choose('[data-trait="dishonest"]');
-  await page.locator('[data-verb="tell"]').click();
-  await page.getByRole('dialog').waitFor({ state: 'hidden' });
-  await onScreen('.lk-chips, .reply');
-  expect(await page.locator('.reply + .question + .quick-replies').count()).toBe(1);
+  expect(await page.locator('.question-card').isVisible()).toBe(true);
+  expect(await page.locator('[data-person]').count()).toBe(0);
+  expect(await page.locator('#skip').count()).toBe(0);
+  const option = view(g.s).quick!.options[0]!;
+  await page.locator('[data-quick]').first().click();
+  await page.locator('.speech-overlay').waitFor();
+  expect((await journalInputs()).at(-1)?.input).toEqual(option.input);
+  await onScreen('.speech-overlay');
 });
 
 it('keeps a chosen story stable while time is held and after the panel is reopened', async () => {
@@ -266,12 +286,12 @@ it('keeps a chosen story stable while time is held and after the panel is reopen
   ).toEqual(options);
   expect(await page.locator('[data-story="1"]').getAttribute('aria-pressed')).toBe('true');
   expect(await page.locator('.tell-preview').innerText()).toBe(preview);
-  await page.getByRole('button', { name: 'Close Talk to Rıza', exact: true }).click();
+  await page.getByRole('button', { name: /^Close ← Rıza/ }).click();
   await talkTo('riza');
   expect(await page.locator('[data-story="1"]').getAttribute('aria-pressed')).toBe('true');
   expect(await page.locator('.tell-preview').innerText()).toBe(preview);
   await page.locator('[data-verb="tell"]').click();
-  await page.getByRole('dialog').waitFor({ state: 'hidden' });
+  await page.locator('.reply-sheet').waitFor();
   expect((await journalInputs()).findLast(({ input }) => input.type === 'tell-story')?.input).toEqual({
     type: 'tell-story',
     listener: 'riza',
@@ -283,6 +303,7 @@ it('says when the selected witnessed story concerns an already settled doubt', a
   const g = newGame(1);
   advance(g, 1440 + 405);
   g.s.locations.cem = 'garden';
+  g.s.newsWaiting = false;
   believe(g.s.people.riza!, 'emre:honest', true, 0.98, 'self', g.s.minute);
   believe(g.s.people.riza!, 'emre:dishonest', false, 0.98, 'self', g.s.minute);
   g.s.incidentWitnesses![2]!.push('riza');
@@ -299,10 +320,7 @@ it('shows one ambient promise line per unfamiliar subject in the feed and journa
   advance(g, 1379);
   await load(g);
   await page.getByRole('button', { name: 'Game menu', exact: true }).click();
-  await page
-    .locator('.notebook-history summary, details summary')
-    .filter({ hasText: 'What you heard' })
-    .click();
+  await page.locator('.menu-row').filter({ hasText: 'What you heard' }).click();
   expect(await page.locator('.journal p').filter({ hasText: 'İbrahim keeps promises' }).count()).toBe(1);
   expect(
     await page.locator('.journal p').filter({ hasText: 'Hatice keeps promises' }).count(),
@@ -320,7 +338,7 @@ it('disables a story already told with an adjacent known reason and leaves a new
   await talkTo('fatma');
   await choose('[data-story="1"]');
   expect(await page.locator('[data-verb="tell"]').getAttribute('aria-disabled')).toBe('true');
-  expect(await page.locator('.telling-limit').innerText()).toContain('Fatma');
+  expect(await page.locator('.tell-preview').innerText()).toContain('Fatma');
   const before = (await journalInputs()).length;
   await page.locator('[data-verb="tell"]').click({ force: true });
   expect((await journalInputs()).length).toBe(before);
@@ -378,5 +396,5 @@ it('keeps talk choices stable while reading holds the clock', async () => {
   await page.clock.runFor(17000);
   expect(await page.locator('#clock').innerText()).toBe(clock);
   expect(await page.locator('[data-verb="tell"]').getAttribute('aria-disabled')).toBeNull();
-  expect(await page.locator('.presence').innerText()).toContain('Fatma sits with you');
+  expect(await page.locator('.state-status').innerText()).toContain('talking');
 });

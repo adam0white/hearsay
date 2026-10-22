@@ -62,6 +62,8 @@ it('keeps wedding words, scene and one nonmodal talk sheet on a phone', async ()
   await load(newGame(1));
   expect(await page.locator('.lk-stage').count()).toBe(1);
   await page.locator('[data-person]').first().click();
+  await page.locator('.lk-stage[data-phase="talk"]').waitFor();
+  await page.waitForFunction(() => /Held/.test(document.querySelector('.state-status')?.textContent ?? ''));
   expect(await page.locator('.lk-sheet:visible').count()).toBe(1);
   expect(await page.locator('dialog:modal').count()).toBe(0);
   const result = await page.evaluate(() => {
@@ -77,9 +79,8 @@ it('keeps wedding words, scene and one nonmodal talk sheet on a phone', async ()
       }),
     };
   });
-  expect(result.words).toContain('Emre');
-  expect(result.words).toContain('Day 4');
-  expect(result.words).toContain('Honesty');
+  expect(result.words).toMatch(/Held|talking/i);
+  expect(await page.locator('.wedding-button').innerText()).toContain('Honesty');
   expect(result.scene).toBeGreaterThan(35);
   expect(result.overflow).toBe(false);
   expect(result.actions.every(Boolean)).toBe(true);
@@ -94,7 +95,7 @@ it('docks the one sheet beside the map on desktop and reflows at narrow enlarged
     }),
   );
   expect(boxes[0]!.top).toBe(boxes[1]!.top);
-  expect(boxes[1]!.right).toBeLessThanOrEqual(boxes[0]!.left);
+  expect(boxes[0]!.right).toBeLessThanOrEqual(boxes[1]!.left);
   await page.setViewportSize({ width: 320, height: 690 });
   await page.evaluate(() => (document.documentElement.style.fontSize = '34px'));
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
@@ -115,31 +116,23 @@ it('shows waiting quick replies without scrolling the phone', async () => {
   expect(visible.every(Boolean)).toBe(true);
   expect(await page.evaluate(() => document.documentElement.scrollHeight <= innerHeight)).toBe(true);
 });
-it('returns from a nested talk to its people list and restores focus to the opener', async () => {
-  await load(newGame(1));
-  await page.locator('[data-open-talk]').click();
-  await page.locator('dialog .lk-sheet-head').waitFor();
-  await page.locator('dialog > div:not(.dialog-head) button').first().click();
-  await page.getByRole('button', { name: 'Back to people', exact: true }).click();
-  expect(await page.locator('.lk-sheet:visible').count()).toBe(1);
-  expect(await page.locator('dialog[open] h2').innerText()).toBe('Who will you talk to?');
-  await page.getByRole('button', { name: 'Close Who will you talk to?', exact: true }).click();
-  await page.waitForFunction(() => document.querySelector('[data-open-talk]') === document.activeElement);
-});
-it('keeps a long known duplicate reason and all verbs visible with optional choices closed', async () => {
+it('keeps a long known duplicate reason and all verbs visible on its Tell button', async () => {
   await page.setViewportSize({ width: 360, height: 690 });
   const g = newGame(1);
   advance(g, 390);
   const { act } = await import('../src/sim/engine');
   expect(act(g, { type: 'tell-story', listener: 'fatma', incident: 1 })).toBe(true);
   await load(g);
+  const dismiss = page.getByRole('button', { name: 'Keep it to yourself for now', exact: true });
+  if (await dismiss.isVisible()) await dismiss.click();
   const fatma = page.locator('[data-person="fatma"]');
   if (!(await fatma.isVisible())) await page.locator('.other-neighbours > summary').click();
   await fatma.click();
-  await page.getByText('Choose person, story or word', { exact: true }).click();
+  await page.locator('.lk-stage[data-phase="talk"]').waitFor();
+  await page.waitForFunction(() => /Held/.test(document.querySelector('.state-status')?.textContent ?? ''));
+  await page.locator('[data-tab="story"]').click();
   await page.locator('[data-story="1"]').click();
-  await page.getByText('Choose person, story or word', { exact: true }).click();
-  expect(await page.locator('.telling-limit').innerText()).toContain('Fatma');
+  expect(await page.locator('[data-verb="tell"] small').innerText()).toContain('Fatma');
   const bounds = await page.locator('.telling-limit,.tell-preview,[data-verb]').evaluateAll((els) =>
     els.map((el) => {
       const r = el.getBoundingClientRect();
@@ -150,40 +143,20 @@ it('keeps a long known duplicate reason and all verbs visible with optional choi
   expect(await page.evaluate(() => document.documentElement.scrollHeight <= innerHeight)).toBe(true);
 });
 
-it('keeps enlarged talk controls reachable within the sheet with no horizontal scroll', async () => {
-  await page.setViewportSize({ width: 320, height: 690 });
+it('keeps the pressed subject visible and every talk action within the phone', async () => {
+  await page.setViewportSize({ width: 360, height: 690 });
   await load(newGame(1));
   await page.locator('[data-person]').first().click();
-  await page.evaluate(() => (document.documentElement.style.fontSize = '34px'));
-  await page.locator('.lk-stage[data-large-text="true"]').waitFor();
-  await page.locator('[data-verb="ask"]').scrollIntoViewIfNeeded();
-  const r = await page.locator('[data-verb="ask"]').boundingBox();
-  expect(
-    r,
-    JSON.stringify(
-      await page.locator('.lk-strip,dialog,.conversation-body').evaluateAll((els) =>
-        els.map((el) => ({
-          tag: el.tagName,
-          rect: el.getBoundingClientRect().toJSON(),
-          scroll: el.scrollHeight,
-          css: getComputedStyle(el).overflow,
-        })),
-      ),
-    ),
-  ).toMatchObject({ y: expect.any(Number) });
-  expect(
-    r && r.y >= 0 && r.y + r.height <= 690,
-    JSON.stringify(
-      await page.locator('.lk-strip,dialog,.conversation-body').evaluateAll((els) =>
-        els.map((el) => ({
-          tag: el.tagName,
-          rect: el.getBoundingClientRect().toJSON(),
-          scroll: el.scrollHeight,
-          css: getComputedStyle(el).overflow,
-        })),
-      ),
-    ),
-  ).toBe(true);
+  await page.locator('.lk-stage[data-phase="talk"]').waitFor();
+  await page.waitForFunction(() => /Held/.test(document.querySelector('.state-status')?.textContent ?? ''));
+  expect(await page.locator('.talk-choices details').count()).toBe(0);
+  const selected = page.locator('.subject-chips [aria-pressed="true"]');
+  const selectedRect = await selected.boundingBox();
+  expect(selectedRect && selectedRect.y >= 0 && selectedRect.y + selectedRect.height <= 690).toBe(true);
+  const rects = await page
+    .locator('[data-verb]')
+    .evaluateAll((els) => els.map((el) => el.getBoundingClientRect().toJSON()));
+  expect(rects.every((r) => r.width >= 44 && r.height >= 44 && r.y >= 0 && r.bottom <= 690)).toBe(true);
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
 });
 it('keeps the sentence and verbs visible on Day 6 with many optional stories', async () => {
@@ -192,8 +165,11 @@ it('keeps the sentence and verbs visible on Day 6 with many optional stories', a
   advance(g, 5 * 1440 + 765);
   await load(g);
   await page.locator('[data-person]').first().click();
+  await page.locator('.lk-stage[data-phase="talk"]').waitFor();
+  await page.waitForFunction(() => /Held/.test(document.querySelector('.state-status')?.textContent ?? ''));
+  expect(await page.locator('.talk-choices details').count()).toBe(0);
+  await page.locator('[data-tab="story"]').click();
   expect(await page.locator('[data-story]').count()).toBeGreaterThan(5);
-  expect(await page.locator('.talk-choices details').getAttribute('open')).toBeNull();
   const bounds = await page.locator('.tell-preview,[data-verb]').evaluateAll((els) =>
     els.map((el) => {
       const r = el.getBoundingClientRect();
@@ -207,33 +183,30 @@ it('keeps the sentence and verbs visible on Day 6 with many optional stories', a
 it('keeps the promise doubt in the strip and keyboard focus through a clock render', async () => {
   await page.setViewportSize({ width: 360, height: 690 });
   await load(newGame(1));
-  expect(await page.locator('.lk-chips').innerText()).toMatch(/your word/i);
+  expect(await page.locator('.wedding-button').innerText()).toMatch(/word/i);
   await page.locator('[data-person]').first().click();
+  await page.locator('.lk-stage[data-phase="talk"]').waitFor();
+  await page.waitForFunction(() => /Held/.test(document.querySelector('.state-status')?.textContent ?? ''));
   await page.locator('[data-verb="ask"]').focus();
   for (let i = 0; i < 40; i++) await page.clock.runFor(500);
   expect(await page.locator('[data-verb="ask"]').evaluate((el) => el === document.activeElement)).toBe(true);
 });
 
-it('refreshes open wedding details when Rıza changes his mind', async () => {
+it('holds the clock while wedding details are open', async () => {
+  await page.setViewportSize({ width: 360, height: 690 });
   const g = newGame(1);
   advance(g, 614);
-  g.s.riza!.lean = 'warm';
   await load(g);
   await page.locator('[data-wedding-details]').click();
-  expect(await page.locator('.lean-label').innerText()).toContain('warm');
-  await page.clock.runFor(1500);
-  expect(await page.locator('.lean-label').innerText()).toContain('unsure');
-});
-
-it('brings a newly waiting family scene in front of an inspection sheet', async () => {
-  const g = newGame(1);
-  advance(g, 3 * 1440 + 1079);
-  await load(g);
-  await page.locator('[data-wedding-details]').click();
-  await page.clock.runFor(1500);
-  expect(await page.locator('dialog[aria-label="Wedding details"]').count()).toBe(0);
-  expect(await page.locator('[data-scene]').isVisible()).toBe(true);
-  expect(await page.locator('.lk-sheet:visible').count()).toBe(1);
+  const before = await page.locator('#clock').innerText();
+  await page.clock.runFor(3000);
+  expect(await page.locator('#clock').innerText()).toBe(before);
+  expect(await page.locator('.doubt-chips button').count()).toBe(4);
+  expect(
+    await page
+      .locator('.doubt-chips button')
+      .evaluateAll((els) => els.every((el) => el.getBoundingClientRect().height >= 56)),
+  ).toBe(true);
 });
 
 it('keeps the selected listener visible in the compact scene while choosing a story', async () => {
@@ -243,7 +216,8 @@ it('keeps the selected listener visible in the compact scene while choosing a st
   const id = await person.getAttribute('data-person');
   const label = await person.locator('strong').innerText();
   await person.click();
-  await page.getByText('Choose person, story or word', { exact: true }).click();
+  await page.locator('.lk-stage[data-phase="talk"]').waitFor();
+  await page.waitForFunction(() => /Held/.test(document.querySelector('.state-status')?.textContent ?? ''));
   await page.waitForFunction(
     (id) =>
       JSON.parse(document.querySelector<HTMLCanvasElement>('#map')?.dataset.mapLayout ?? '{}').selectedId ===
@@ -280,6 +254,8 @@ it('keeps the wedding outcome readable while talking after the answer', async ()
   for (const step of g.s.riza?.steps ?? []) step.status = 'missed';
   await load(g);
   await page.locator('[data-person]').first().click();
-  expect(await page.locator('.lk-chips').innerText()).toContain('Rıza refused');
-  expect(await page.locator('.lk-chips').innerText()).not.toContain('Next:');
+  await page.locator('.lk-stage[data-phase="talk"]').waitFor();
+  await page.waitForFunction(() => /Held/.test(document.querySelector('.state-status')?.textContent ?? ''));
+  expect(await page.locator('.wedding-button').innerText()).toContain('Rıza has refused');
+  expect(await page.locator('.wedding-button').innerText()).not.toContain('Next:');
 });
