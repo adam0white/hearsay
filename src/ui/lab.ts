@@ -1,5 +1,5 @@
 /**
- * The game lab client (anonymous play events and the opt-in "send this run" dialog), from @adam0white/lab-client.
+ * The game lab client (linked recording and the existing run dialog), from @adam0white/lab-client.
  * Headless test browsers (navigator.webdriver, as Playwright sets it) send nothing, so the playtest driver does not
  * count as a player.
  */
@@ -18,6 +18,15 @@ const quiet: Lab | null =
         screen() {},
         flush() {},
         eventsOn: false,
+        telemetryOn: false,
+        playerId: null,
+        setTelemetryOff() {},
+        trackRun() {
+          return () => {};
+        },
+        captureSave() {},
+        log() {},
+        sendFeedback: async () => '',
         privacySignalOn: false,
         privacyOverride: false,
         setPrivacyOverride() {},

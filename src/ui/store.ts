@@ -2,6 +2,14 @@
  * Saves live in IndexedDB as gzip (a year's state is megabytes of JSON; localStorage would not hold it).
  * Every access is wrapped: a private window or blocked storage gives "no save", never a broken page.
  */
+import { lab } from './lab';
+
+function captureStored(key: string, text: string): void {
+  try {
+    lab.captureSave({ key, value: JSON.parse(text) });
+  } catch {}
+}
+
 const DB = 'hearsay';
 const STORE = 'pages';
 let connection: IDBDatabase | null = null;
@@ -39,7 +47,8 @@ export async function put(key: string, value: unknown): Promise<boolean> {
   try {
     const revision = (revisions.get(key) ?? 0) + 1;
     revisions.set(key, revision);
-    const blob = await gzip(JSON.stringify(value));
+    const text = JSON.stringify(value);
+    const blob = await gzip(text);
     if (revisions.get(key) !== revision) return true;
     const db = await open();
     if (revisions.get(key) !== revision) return true;
@@ -48,7 +57,9 @@ export async function put(key: string, value: unknown): Promise<boolean> {
       tx.objectStore(STORE).put({ blob, at: Date.now() }, key);
       tx.oncomplete = () => res();
       tx.onerror = () => rej(tx.error);
+      tx.onabort = () => rej(tx.error);
     });
+    captureStored(key, text);
     return true;
   } catch {
     return false;
@@ -87,8 +98,10 @@ export function putNow(key: string, value: unknown): boolean {
   try {
     if (!connection) return false;
     revisions.set(key, (revisions.get(key) ?? 0) + 1);
+    const text = JSON.stringify(value);
     const tx = connection.transaction(STORE, 'readwrite');
-    tx.objectStore(STORE).put({ plain: JSON.stringify(value), at: Date.now() }, key);
+    tx.objectStore(STORE).put({ plain: text, at: Date.now() }, key);
+    tx.oncomplete = () => captureStored(key, text);
     return true;
   } catch {
     return false;
@@ -104,9 +117,13 @@ export function putImmediate(key: string, value: unknown): Promise<boolean> {
         return;
       }
       revisions.set(key, (revisions.get(key) ?? 0) + 1);
+      const text = JSON.stringify(value);
       const tx = connection.transaction(STORE, 'readwrite');
-      tx.objectStore(STORE).put({ plain: JSON.stringify(value), at: Date.now() }, key);
-      tx.oncomplete = () => resolve(true);
+      tx.objectStore(STORE).put({ plain: text, at: Date.now() }, key);
+      tx.oncomplete = () => {
+        captureStored(key, text);
+        resolve(true);
+      };
       tx.onerror = () => resolve(false);
       tx.onabort = () => resolve(false);
     } catch {

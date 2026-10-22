@@ -43,7 +43,8 @@ it('offers the tally only as a closed ending disclosure, without a menu preferen
   await page.getByText('See tally', { exact: true }).click();
   expect(await tally.innerText()).toContain('Total =');
   await page.getByRole('button', { name: 'Game menu', exact: true }).click();
-  expect(await page.getByRole('checkbox').count()).toBe(0);
+  expect(await page.getByRole('checkbox').count()).toBe(1);
+  expect(await page.getByRole('checkbox', { name: 'Record play for the lab' }).count()).toBe(1);
   await page.reload();
   await page.getByRole('button', { name: 'Resume', exact: true }).click();
   expect(await tally.getAttribute('open')).toBe(null);

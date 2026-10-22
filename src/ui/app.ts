@@ -1,5 +1,6 @@
 import '@adam0white/lab-kit/stage.css';
 import { credence } from '@adam0white/human-framework';
+import { telemetryNotice, telemetryToggle } from '@adam0white/lab-kit';
 import {
   act,
   advance,
@@ -23,6 +24,8 @@ import { focusedPeople, personLabel, personRole } from './people';
 import { get, put, putImmediate, putNow } from './store';
 import { endingTally } from './tally';
 
+const notice = telemetryNotice();
+if (notice) Object.assign(notice.style, { position: 'static', transform: 'none', margin: '0 auto' });
 const root = document.querySelector<HTMLDivElement>('#app');
 if (!root) throw new Error('Missing app');
 const host = root;
@@ -117,6 +120,12 @@ function title(): void {
   playing = false;
   lab.screen('title');
   host.innerHTML = `<main class="title-page"><p class="eyebrow">A fortnight in the neighbourhood</p><h1>Hearsay<span class="subtitle">Someone will hear.</span></h1><div class="title-illustration" aria-hidden="true"><i></i><i></i><i></i><b>☕</b></div><p>You are Hatice. You keep the tea garden.<br>Your son hopes to marry the baker’s daughter.<br>This morning, you overhear something true.</p><div id="start"></div><p class="fine">Fourteen days. Six ways to answer.<br>Your words will find their way home.</p><button type="button" id="import-title" class="text-button">Import a run</button></main>`;
+  if (notice && !notice.dataset.shown) {
+    const slot = document.createElement('div');
+    slot.append(notice);
+    host.querySelector('main')?.prepend(slot);
+    notice.dataset.shown = '1';
+  }
   host.querySelector('#start')?.append(
     button(
       saved ? 'Resume' : 'Start',
@@ -1000,19 +1009,12 @@ function gameMenu(): void {
       }
     }),
   );
+  d.append(telemetryToggle(lab));
   const privacy = document.createElement('p');
   privacy.className = 'fine';
   privacy.innerHTML =
-    'Anonymous play events help improve Hearsay. Sending your run is your choice. <a href="https://human.adamwhite.work/lab/privacy/" target="_blank" rel="noreferrer">Privacy</a>';
+    '<a href="https://human.adamwhite.work/lab/privacy/" target="_blank" rel="noreferrer">Lab privacy</a>';
   d.append(privacy);
-  d.append(
-    button(lab.eventsOn ? 'Turn anonymous events off' : 'Turn anonymous events on', () => {
-      lab.setEventsOff(lab.eventsOn);
-      d.close();
-      d.remove();
-      gameMenu();
-    }),
-  );
 }
 function importFile(): void {
   const input = document.createElement('input');
@@ -1220,6 +1222,26 @@ function frame(now: number): void {
   requestAnimationFrame(frame);
 }
 export async function start(): Promise<void> {
+  lab.trackRun(
+    async () => {
+      const current = game;
+      if (current) {
+        for (const key of ['run', 'run-log', 'run-ui']) {
+          try {
+            const stored = await get<Game | Journal | SceneMemory>(key);
+            const value = stored?.value;
+            const seed = value && ('s' in value ? value.s.seed : value.seed);
+            if (game === current && value && seed === current.s.seed) lab.captureSave({ key, value });
+          } catch {}
+        }
+      }
+      return game ? exportRun(game) : null;
+    },
+    {
+      runKey: () => game?.s.seed ?? 'title',
+      getLogs: () => game?.s.log.slice(-40).map((line) => line.text) ?? [],
+    },
+  );
   const [row, journalRow, sceneRow] = await Promise.all([
     get<Game>('run'),
     get<Journal>('run-log'),

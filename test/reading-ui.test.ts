@@ -89,7 +89,8 @@ it('pauses the Game menu and resumes the chosen speed', async () => {
   const held = await page.locator('#clock').innerText();
   await readFor(10000);
   expect(await page.locator('#clock').innerText()).toBe(held);
-  expect(await page.getByRole('checkbox').count()).toBe(0);
+  expect(await page.getByRole('checkbox').count()).toBe(1);
+  expect(await page.getByRole('checkbox', { name: 'Record play for the lab' }).count()).toBe(1);
   await page.keyboard.press('Escape');
   await readFor(1000);
   expect(await page.locator('#clock').innerText()).not.toBe(held);
