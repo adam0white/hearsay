@@ -1,4 +1,4 @@
-/** Wall-clock presentation only; the simulation still advances one minute at a time. */
-export function automaticPace(pending: boolean, company: boolean): number {
-  return pending ? 0 : company ? 5 : 20;
+/** Wall-clock presentation only; pending responses always hold time. */
+export function automaticPace(pending: boolean, chosenSpeed: number): number {
+  return pending ? 0 : chosenSpeed;
 }

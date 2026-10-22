@@ -28,6 +28,7 @@ if (!root) throw new Error('Missing app');
 const host = root;
 let game: Game;
 let saved: Game | null = null;
+let chosenSpeed = 5;
 let speed = 5;
 let playing = false;
 let sendingRun = false;
@@ -83,6 +84,12 @@ function persistJournal(): Promise<boolean> {
   });
   return writing;
 }
+const speeds = [
+  { label: 'Slow', rate: 1 },
+  { label: 'Walk', rate: 5 },
+  { label: 'Trot', rate: 20 },
+  { label: 'Gallop', rate: 80 },
+];
 const html = (s: string) =>
   s.replace(
     /[&<>"']/g,
@@ -184,6 +191,7 @@ function resetScene(): void {
   talking = null;
   conversation = null;
   refreshConversation = null;
+  chosenSpeed = 5;
   speed = 5;
   dismissedIncident = sceneMemory?.seed === game.s.seed ? sceneMemory.dismissedIncident : 0;
   accumulator = 0;
@@ -237,10 +245,7 @@ function noticeVisitors(): boolean {
         : talking?.open
           ? 'Time held · You are talking.'
           : '';
-  speed = automaticPace(
-    !!slowReason,
-    view(game.s).present.some((id) => id !== 'hatice'),
-  );
+  speed = automaticPace(!!slowReason, chosenSpeed);
   const nextScene = game.s.scene?.id ?? '';
   if (pendingScene !== nextScene || previous !== `${speed}:${slowReason}`) accumulator = 0;
   pendingScene = nextScene;
@@ -726,7 +731,7 @@ function render(): void {
     ? (document.activeElement as HTMLElement)
     : null;
   openSheet?.remove();
-  host.innerHTML = `<main class="game lk-stage${incident ? ' has-incident' : ''}" data-sheet="fit"><div class="lk-strip"><header><a class="wordmark" href="#" id="home">Hearsay</a><div class="clock" id="clock">${dateLabel(game.s.minute)}</div><button type="button" id="game-menu" class="text-button">Game menu</button></header><p class="clock-pace" role="status">${html(slowReason || 'Time passing')}</p>${weddingStrip()}</div><section class="garden lk-sheet" aria-label="Your tea garden"><div class="lk-sheet-body">${sceneCard()}${introduction}<section class="conversation-panel" aria-label="Conversation"><div class="section-heading"><h2>At your table</h2><span>and by the fountain</span></div>${reply ? `<p class="reply" role="status">${html(reply)}</p>` : ''}${question ? `<p class="question">${html(name(question.speaker ?? ''))}: ${html(question.text)}</p>` : ''}${v.quick ? `<div class="quick-replies" aria-label="Answer ${html(name(v.quick.listener))}">${v.quick.options.map((option, i) => `<button type="button" data-quick="${i}"><strong>${html(option.label)}</strong><small>${html(option.says)}</small></button>`).join('')}</div>` : ''}<div class="actions"><button type="button" class="primary" data-open-talk ${unavailable(present.length ? '' : 'No one is close enough. Wait for someone at the garden or fountain.')}>Talk to…</button><div class="action-option"><button type="button" id="hold" ${unavailable(holdReason)}>Hold your tongue</button>${holdReason ? `<small class="action-limit">${html(holdReason)}</small>` : ''}</div><div class="action-option"><button type="button" id="call" ${unavailable(callReason)}>Call over</button>${callReason ? `<small class="action-limit">${html(callReason)}</small>` : ''}</div></div><p class="verb-reason" role="status">${html(verbReason)}</p></section>${incident ? `<aside class="table-incident" aria-label="What you overheard"><p>${html(incident.text)}</p></aside>` : ''}<div class="people-chips" aria-label="People close enough to talk">${
+  host.innerHTML = `<main class="game lk-stage${incident ? ' has-incident' : ''}" data-sheet="fit"><div class="lk-strip"><header><a class="wordmark" href="#" id="home">Hearsay</a><div class="clock" id="clock">${dateLabel(game.s.minute)}</div><button type="button" id="game-menu" class="text-button">Game menu</button></header><div class="speeds" role="group" aria-label="Time speed">${speeds.map((s) => `<button type="button" data-speed="${s.rate}" aria-pressed="${chosenSpeed === s.rate}">${s.label}</button>`).join('')}</div><p class="clock-pace" role="status">${html(slowReason || 'Time passing')}</p>${weddingStrip()}</div><section class="garden lk-sheet" aria-label="Your tea garden"><div class="lk-sheet-body">${sceneCard()}${introduction}<section class="conversation-panel" aria-label="Conversation"><div class="section-heading"><h2>At your table</h2><span>and by the fountain</span></div>${reply ? `<p class="reply" role="status">${html(reply)}</p>` : ''}${question ? `<p class="question">${html(name(question.speaker ?? ''))}: ${html(question.text)}</p>` : ''}${v.quick ? `<div class="quick-replies" aria-label="Answer ${html(name(v.quick.listener))}">${v.quick.options.map((option, i) => `<button type="button" data-quick="${i}"><strong>${html(option.label)}</strong><small>${html(option.says)}</small></button>`).join('')}</div>` : ''}<div class="actions"><button type="button" class="primary" data-open-talk ${unavailable(present.length ? '' : 'No one is close enough. Wait for someone at the garden or fountain.')}>Talk to…</button><div class="action-option"><button type="button" id="hold" ${unavailable(holdReason)}>Hold your tongue</button>${holdReason ? `<small class="action-limit">${html(holdReason)}</small>` : ''}</div><div class="action-option"><button type="button" id="call" ${unavailable(callReason)}>Call over</button>${callReason ? `<small class="action-limit">${html(callReason)}</small>` : ''}</div></div><p class="verb-reason" role="status">${html(verbReason)}</p></section>${incident ? `<aside class="table-incident" aria-label="What you overheard"><p>${html(incident.text)}</p></aside>` : ''}<div class="people-chips" aria-label="People close enough to talk">${
     orderedPeople
       .slice(0, 3)
       .map(
@@ -761,6 +766,14 @@ function render(): void {
   host.querySelector('#dismiss-intro')?.addEventListener('click', () => {
     firstStart = false;
     render();
+  });
+  host.querySelectorAll<HTMLButtonElement>('[data-speed]').forEach((b) => {
+    b.onclick = () => {
+      chosenSpeed = Number(b.dataset.speed);
+      accumulator = 0;
+      noticeVisitors();
+      render();
+    };
   });
   host.querySelectorAll<HTMLButtonElement>('[data-person]').forEach((b) => {
     b.onclick = () => chooseTalk(b.dataset.person ?? '');

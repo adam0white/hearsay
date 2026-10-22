@@ -60,14 +60,17 @@ async function readFor(ms: number) {
   for (let elapsed = 0; elapsed < ms; elapsed += 500) await page.clock.runFor(500);
 }
 
-it('holds an incident indefinitely until the player responds, without speed controls', async () => {
+it('holds an incident indefinitely until the player responds, at every chosen speed', async () => {
   await load(390);
+  await page.locator('[data-speed="80"]').click();
+  expect(await page.locator('[data-speed="80"]').getAttribute('aria-pressed')).toBe('true');
+  expect(await page.evaluate(() => document.documentElement.scrollHeight <= innerHeight)).toBe(true);
   const clock = await page.locator('#clock').innerText();
   await readFor(125000);
   expect(await page.locator('.table-incident').count()).toBe(1);
   expect(await page.locator('#clock').innerText()).toBe(clock);
   expect(await page.locator('.clock-pace').innerText()).toMatch(/Time held.*overheard/i);
-  expect(await page.locator('[data-speed]').count()).toBe(0);
+  expect(await page.locator('[data-speed]').count()).toBe(4);
 });
 
 it('meets a waiting question before a delayed frame can carry its listener away', async () => {
@@ -80,7 +83,7 @@ it('meets a waiting question before a delayed frame can carry its listener away'
   expect(await page.locator('.clock-pace').innerText()).toContain('Aylin');
 });
 
-it('pauses the Game menu and resumes automatic time without adding a speed choice', async () => {
+it('pauses the Game menu and resumes the chosen speed', async () => {
   await load(390, true);
   await page.locator('#game-menu').click();
   const held = await page.locator('#clock').innerText();

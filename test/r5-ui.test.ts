@@ -113,7 +113,7 @@ it('puts a pending scene first and keeps all its spoken choices on the phone whi
     'phone-scene',
   );
   expect(await page.locator('.clock-pace').innerText()).toContain('Time held');
-  expect(await page.locator('[data-speed]').count()).toBe(0);
+  expect(await page.locator('[data-speed]').count()).toBe(4);
   await onScreen('[data-scene], [data-choice]');
   expect((await onScreen('[data-choice]')).every((r) => r.height >= 44)).toBe(true);
 });
@@ -213,7 +213,7 @@ it('resolves a real scene, resumes automatic time and retains its outcome throug
   const choice = g.s.scene!.choices[0]!;
   await page.locator(`[data-choice="${choice.id}"]`).click();
   await page.locator('[data-scene]').waitFor({ state: 'hidden' });
-  expect(await page.locator('[data-speed]').count()).toBe(0);
+  expect(await page.locator('[data-speed]').count()).toBe(4);
   const outcome = await page.locator('.reply').innerText();
   expect(outcome.trim()).not.toBe('');
   expect(outcome).not.toContain('undefined');

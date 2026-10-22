@@ -82,7 +82,7 @@ it('holds the listener beyond departure and keeps the statement and every verb o
   expect(bounds.every((b) => b.top >= 0 && b.bottom <= 690)).toBe(true);
   expect(bounds.slice(1).every((b) => b.height >= 44)).toBe(true);
   await page.getByRole('button', { name: 'Close Talk to Aylin', exact: true }).click();
-  expect(await page.locator('[data-speed]').count()).toBe(0);
+  expect(await page.locator('[data-speed]').count()).toBe(4);
 });
 it('holds reading time so the seated listener does not expire while the panel is open', async () => {
   await load();

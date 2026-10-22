@@ -40,7 +40,7 @@ it('closes the menu before sending, stops time, and resumes automatic time on re
   await page.getByRole('button', { name: 'Not now', exact: true }).click();
   await page.clock.runFor(4000);
   expect(await page.locator('#clock').innerText()).not.toBe(before);
-  expect(await page.locator('[data-speed]').count()).toBe(0);
+  expect(await page.locator('[data-speed]').count()).toBe(4);
 
   await page.locator('#game-menu').click();
   await page.getByRole('button', { name: 'Send this run to the notebook', exact: true }).click();
@@ -49,7 +49,7 @@ it('closes the menu before sending, stops time, and resumes automatic time on re
   await page.locator('.hflab .ok').waitFor();
   await page.clock.runFor(3000);
   expect(await page.locator('#clock').innerText()).not.toBe(second);
-  expect(await page.locator('[data-speed]').count()).toBe(0);
+  expect(await page.locator('[data-speed]').count()).toBe(4);
   await page.locator('.hflab-veil').evaluate((el) => el.remove());
 });
 
@@ -84,5 +84,5 @@ it('keeps a reopened notebook dialog stopped when a canceled send completes late
   expect(await page.locator('.hflab-veil').count()).toBe(0);
   expect(await page.locator('.clock-pace').innerText()).toContain('Time held');
   expect(await page.locator('#clock').innerText()).toBe(held);
-  expect(await page.locator('[data-speed]').count()).toBe(0);
+  expect(await page.locator('[data-speed]').count()).toBe(4);
 });

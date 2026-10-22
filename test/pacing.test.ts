@@ -1,9 +1,9 @@
 import { expect, it } from 'vitest';
 import { automaticPace } from '../src/ui/pacing';
 
-it('moves empty stretches briskly, slows for company and holds pending responses', () => {
-  expect(automaticPace(false, false)).toBe(20);
-  expect(automaticPace(false, true)).toBe(5);
-  expect(automaticPace(true, true)).toBe(0);
-  expect(automaticPace(true, false)).toBe(0);
+it('uses the chosen rate and holds pending responses at every speed', () => {
+  for (const speed of [1, 5, 20, 80]) {
+    expect(automaticPace(false, speed)).toBe(speed);
+    expect(automaticPace(true, speed)).toBe(0);
+  }
 });
