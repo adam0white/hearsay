@@ -386,7 +386,13 @@ export async function createOneCastReturn(
       person: projection,
       history,
       checkpoint: await checkpointPerson(person),
-      admission: { adapter: ONE_CAST_ADAPTER, mapping: contract.returning, openingMinute: person.now },
+      admission: {
+        adapter: ONE_CAST_ADAPTER,
+        mapping: contract.returning,
+        openingMinute: person.now,
+        sourceRevision: admission.envelope.revision,
+        sourceCheckpointDigest: admission.checkpoint.checkpointDigest,
+      },
     },
     limitations: envelopeOmissions([
       'return requires locally saved source departure prefix; no world rewind',

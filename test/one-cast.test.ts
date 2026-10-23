@@ -155,6 +155,10 @@ describe('one-cast Hearsay boundary', () => {
     });
     expect(returned.source).toMatchObject({ game: 'hearsay', rules: '4' });
     expect(returned.parentRevision).toBe(envelope.revision);
+    expect(returned.transfer.admission).toMatchObject({
+      sourceRevision: admission.envelope.revision,
+      sourceCheckpointDigest: admission.checkpoint.checkpointDigest,
+    });
     expect(returned.transfer.history).toEqual([
       expect.objectContaining({
         kind: 'hearsay-encounter',
