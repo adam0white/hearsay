@@ -96,7 +96,9 @@ export interface QuickReply {
   options: { label: string; says: string; input: Input }[];
 }
 export interface State {
-  version: 1 | 2 | 3 | 4;
+  version: 1 | 2 | 3 | 4 | 5;
+  /** Edition5: suppress duplicate instantaneous talk at the timed chat completion boundary. */
+  deryaChatCompleted?: { at: number; partnerId: string };
   /** Edition 4: final relief shift completed; no further local duty is scheduled. */
   deryaAssignmentReleased?: boolean;
   /** Edition 3 onward: includes an open or queued Elif request. */

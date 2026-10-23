@@ -332,6 +332,7 @@ export async function createOneCastReturn(
   admission: OneCastAdmission,
   options: {
     targetBuild: string;
+    rules?: 4 | 5;
     parentRevision: string;
     encounter: OneCastEncounter;
     assignmentEnded?: boolean;
@@ -381,7 +382,12 @@ export async function createOneCastReturn(
     castRevision: '1',
     branchId: options.branchId ?? admission.envelope.branchId,
     parentRevision: options.parentRevision,
-    source: { game: 'hearsay', build: options.targetBuild, engine: person.engine, rules: '4' },
+    source: {
+      game: 'hearsay',
+      build: options.targetBuild,
+      engine: person.engine,
+      rules: String(options.rules ?? 5),
+    },
     transfer: {
       person: projection,
       history,
@@ -409,6 +415,7 @@ export async function createAuthoredDeryaCheckpoint(
   person: Person,
   options: {
     targetBuild: string;
+    rules?: 4 | 5;
     branchId: string;
     parentRevision: string | null;
     assignmentEnded?: boolean;
@@ -428,7 +435,12 @@ export async function createAuthoredDeryaCheckpoint(
     castRevision: '1',
     branchId: options.branchId,
     parentRevision: options.parentRevision,
-    source: { game: 'hearsay', build: options.targetBuild, engine: person.engine, rules: '4' },
+    source: {
+      game: 'hearsay',
+      build: options.targetBuild,
+      engine: person.engine,
+      rules: String(options.rules ?? 5),
+    },
     transfer: {
       person: projection,
       history: [],

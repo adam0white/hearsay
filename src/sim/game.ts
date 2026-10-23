@@ -684,7 +684,7 @@ function confrontHatice(s: State, root: Route, recipient: string) {
 
 export function newGame(
   seed: number,
-  version: State['version'] = 4,
+  version: State['version'] = 5,
   initialPeople?: Record<string, Person>,
   initialContinuity?: ContinuityState,
 ): Game {
@@ -928,7 +928,67 @@ function route(s: State, from: string, to: string, target: string, trait: Trait,
   s.routes.push(r);
   return r;
 }
-function talk(s: State, from: string, to: string) {
+/** Only Derya gets this edition5 host opportunity; HF owns selection and goal progress. */
+function socialPartnerAvailable(s: State, id: string): boolean {
+  const p = s.people[id];
+  return Boolean(
+    p?.body.alive &&
+      !p.body.asleep &&
+      p.activity?.mode !== 'sleep' &&
+      (!p.activity || ['rest', 'drink', 'eat'].includes(p.activity.action)),
+  );
+}
+function nurseOffDuty(s: State): boolean {
+  const t = s.minute % 1440;
+  return t >= 360 && t < 1020 && !(t >= 480 && t < 780) && !s.deryaAssignmentReleased;
+}
+function chatAvailable(s: State): boolean {
+  const p = s.people.derya;
+  const activity = p?.activity;
+  const partner = activity?.targetId;
+  return Boolean(
+    activity?.action === 'chat' &&
+      p?.body.alive &&
+      !p.body.asleep &&
+      nurseOffDuty(s) &&
+      partner &&
+      ['garden', 'fountain'].includes(activity.affordance.placeId ?? '') &&
+      s.locations.derya === activity.affordance.placeId &&
+      s.locations[partner] === activity.affordance.placeId &&
+      socialPartnerAvailable(s, partner),
+  );
+}
+function interruptDeryaChat(s: State): void {
+  const p = s.people.derya;
+  const activity = p?.activity;
+  if (s.version < 5 || !p || activity?.action !== 'chat' || chatAvailable(s)) return;
+  finish(p, {
+    affordanceId: activity.affordanceId,
+    action: 'chat',
+    targetId: activity.targetId,
+    status: 'interrupted',
+    at: s.minute,
+    needs: {},
+    summary: 'The conversation stopped when a participant could no longer stay.',
+  });
+  line(
+    s,
+    'social-chat-interrupted',
+    `Derya’s conversation with ${nameOf(activity.targetId ?? '')} stops; they cannot both stay.`,
+    'derya',
+    activity.targetId,
+  );
+}
+function occupiedByChat(s: State, id: string): boolean {
+  if (s.version < 5) return false;
+  const activity = s.people.derya?.activity;
+  return Boolean(
+    (activity?.action === 'chat' && (id === 'derya' || id === activity.targetId)) ||
+      (s.deryaChatCompleted?.at === s.minute && (id === 'derya' || id === s.deryaChatCompleted.partnerId)),
+  );
+}
+function talk(s: State, from: string, to: string, completedChat = false) {
+  if (!completedChat && (occupiedByChat(s, from) || occupiedByChat(s, to))) return;
   // Let the first witnessed incident open the morning's talk.
   if (s.minute < 390 || (s.silence[from] ?? 0) > s.minute) return;
   const a = s.people[from]!,
@@ -2077,6 +2137,7 @@ export function act(g: Game, input: Input): boolean {
     if (target === 'kemal' && bad[trait] === undefined && input.listener === 'fatma')
       talk(s, 'fatma', 'emre');
   }
+  interruptDeryaChat(s);
   updateRiza(s);
   g.inputs.push({ at: s.minute, input: structuredClone(input) });
   return true;
@@ -2086,6 +2147,9 @@ function step(s: State) {
   s.people.hatice!.now = s.minute;
   const previousLocations = { ...s.locations };
   place(s);
+  interruptDeryaChat(s);
+  // Evaluate the prior window before another participant starts their next quarter's activity.
+  const completingChat = s.version >= 5 && chatAvailable(s);
   const questionBefore = waitingQuestion(s);
   if (
     questionBefore?.speaker &&
@@ -2097,7 +2161,8 @@ function step(s: State) {
     if (p.id === 'hatice') continue;
     tick(p, s.minute);
     if (p.activity) {
-      const action = p.activity.action;
+      const activity = p.activity;
+      const action = activity.action;
       const needs =
         action === 'eat'
           ? { food: 0.5 }
@@ -2106,7 +2171,29 @@ function step(s: State) {
             : action === 'work'
               ? { competence: 0.015, meaning: 0.01 }
               : {};
-      finish(p, { affordanceId: p.activity.affordanceId, action, status: 'completed', at: s.minute, needs });
+      if (s.version >= 5 && p.id === 'derya' && action === 'chat') {
+        const completed = completingChat && s.minute >= activity.endsAt;
+        finish(p, {
+          affordanceId: activity.affordanceId,
+          action,
+          targetId: activity.targetId,
+          status: completed ? 'completed' : 'interrupted',
+          at: s.minute,
+          needs: completed ? { belonging: 0.01, leisure: 0.005 } : {},
+        });
+        if (completed && activity.targetId) {
+          s.deryaChatCompleted = { at: s.minute, partnerId: activity.targetId };
+          line(
+            s,
+            'social-chat-completed',
+            `Derya finishes a fifteen-minute conversation with ${nameOf(activity.targetId)}.`,
+            p.id,
+            activity.targetId,
+          );
+          talk(s, p.id, activity.targetId, true);
+        }
+      } else
+        finish(p, { affordanceId: activity.affordanceId, action, status: 'completed', at: s.minute, needs });
     }
     const minute = s.minute % 1440;
     if (s.version >= 4 && p.id === 'derya' && s.minute >= 13 * 1440 + 390) {
@@ -2167,10 +2254,47 @@ function step(s: State) {
         effort: 0.08,
         advertises: { competence: 0.015, meaning: 0.01 },
       });
+    if (
+      s.version >= 5 &&
+      p.id === 'derya' &&
+      !p.body.asleep &&
+      nurseOffDuty(s) &&
+      ['garden', 'fountain'].includes(s.locations.derya ?? '')
+    ) {
+      const partner = Object.values(s.people).find(
+        (other) =>
+          other.id !== p.id &&
+          s.locations[other.id] === s.locations.derya &&
+          socialPartnerAvailable(s, other.id) &&
+          (!other.activity || other.activity.endsAt > s.minute),
+      );
+      if (partner)
+        offers.push({
+          id: 'nurse-chat',
+          action: 'chat',
+          label: `Talk with ${partner.name}`,
+          duration: 15,
+          effort: 0.02,
+          // A tired night nurse must attend to a conversation; it is not free rest.
+          focus: 0.15,
+          with: [partner.id],
+          targetId: partner.id,
+          placeId: s.locations.derya,
+          advertises: { belonging: 0.01, leisure: 0.005 },
+        });
+    }
     const choice = decide(p, offers, { now: s.minute });
     const chosen = offers.find((a) => a.id === choice.chosenAffordanceId);
     if (chosen) {
       begin(p, chosen, choice);
+      if (chosen.action === 'chat')
+        line(
+          s,
+          'social-chat-started',
+          `Derya settles into a fifteen-minute conversation with ${nameOf(chosen.targetId ?? '')}.`,
+          p.id,
+          chosen.targetId,
+        );
       if (chosen.action === 'sleep' && s.held?.id !== p.id)
         s.locations[p.id] = PEOPLE.find((w) => w.id === p.id)?.home ?? s.locations[p.id]!;
     }
@@ -2519,6 +2643,7 @@ function step(s: State) {
     elifScene(s);
   }
   updateRiza(s);
+  interruptDeryaChat(s);
   if (t === 1380) closeDay(s);
   if (s.minute >= 14 * 1440) {
     s.ended = true;
@@ -2537,6 +2662,7 @@ export function advance(g: Game, toMinute: number) {
     g.s.minute = boundary;
     if (g.s.held && g.s.held.until <= boundary) release(g.s);
     expireScene(g.s);
+    interruptDeryaChat(g.s);
     if (boundary === quarter) step(g.s);
   }
 }
@@ -2544,7 +2670,7 @@ export function replay(
   seed: number,
   inputs: LoggedInput[],
   minute: number,
-  version: State['version'] = 4,
+  version: State['version'] = 5,
   initialPeople?: Record<string, Person>,
   initialContinuity?: ContinuityState,
 ) {
@@ -2561,7 +2687,7 @@ export function save(g: Game) {
 }
 export function load(data: string): Game {
   const g = JSON.parse(data) as Game;
-  if (![1, 2, 3, 4].includes(g.s?.version) || !Array.isArray(g.inputs))
+  if (![1, 2, 3, 4, 5].includes(g.s?.version) || !Array.isArray(g.inputs))
     throw new Error('Unsupported Hearsay save');
   g.s.silence ??= {};
   g.s.confronted ??= [];

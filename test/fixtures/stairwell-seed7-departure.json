@@ -1,0 +1,121 @@
+{
+  "format": "hf-persona/1",
+  "castId": "hf.cast.derya.stairwell",
+  "castRevision": "1",
+  "branchId": "3e9b431c-e51d-4dae-b751-78879a19c54e",
+  "parentRevision": null,
+  "source": {
+    "game": "stairwell",
+    "build": "e165761993a7",
+    "engine": "2.14.1",
+    "rules": "5"
+  },
+  "transfer": {
+    "person": {
+      "format": "hf-persona-state/1",
+      "mappingVersion": "stairwell-hearsay/1",
+      "source": {
+        "schema": "human/person@1",
+        "engine": "2.14.1",
+        "id": "derya",
+        "now": 480
+      },
+      "name": "Derya",
+      "life": {
+        "bornAt": -23126020,
+        "sex": "female"
+      },
+      "rng": {
+        "a": 393023765,
+        "b": 1111938969,
+        "c": 2960394319,
+        "d": 2273673902
+      },
+      "traits": {
+        "honesty": 0.7,
+        "emotionality": 0.5,
+        "extraversion": 0.35,
+        "agreeableness": 0.6,
+        "conscientiousness": 0.5,
+        "openness": 0.55
+      },
+      "values": {
+        "benevolence": 0.5,
+        "universalism": 0.5,
+        "tradition": 0.5,
+        "conformity": 0.5,
+        "security": 0.5,
+        "achievement": 0.5,
+        "power": 0.5,
+        "hedonism": 0.5,
+        "stimulation": 0.5,
+        "selfDirection": 0.5
+      },
+      "health": {
+        "health": 1,
+        "fitness": 0.4998663268029239,
+        "circadianPeak": 960
+      },
+      "family": null,
+      "bonds": null,
+      "skills": {},
+      "skillRetention": null,
+      "episodes": [
+        {
+          "id": "stairwell-night-work",
+          "at": 480,
+          "kind": "witnessed",
+          "valence": 0.1,
+          "salience": 0.36,
+          "summary": "I finished the night shift and came home to flat 5.",
+          "tags": [],
+          "action": "work",
+          "actorId": "derya"
+        }
+      ],
+      "commitments": [],
+      "limitations": [
+        "source transient body/needs/affect/ambient omitted; target arrival policy",
+        "source habits/methods/beliefs/social/conscience omitted; target authored state",
+        "source optional behaviour stores and decision history omitted; target authored state",
+        "family/bonds provenance checked; target authored state",
+        "episode:e0",
+        "episode:e1"
+      ]
+    },
+    "history": [
+      {
+        "id": "stairwell-night-work",
+        "kind": "night-work",
+        "sourceGame": "stairwell",
+        "episodeId": "stairwell-night-work",
+        "disclosed": true
+      }
+    ],
+    "checkpoint": {
+      "sourceSchema": "human/person@1",
+      "sourceNow": 480,
+      "sourceRng": {
+        "a": 393023765,
+        "b": 1111938969,
+        "c": 2960394319,
+        "d": 2273673902
+      },
+      "checkpointDigest": "be180691af8a8175ae3e20010b4ebfedb57172628cf0afde95ac13e2d2fc8b70"
+    },
+    "departure": {
+      "adapter": "stairwell-one-cast/1",
+      "rotaPaused": true,
+      "minute": 480
+    }
+  },
+  "limitations": [
+    "source transient body/needs/affect/ambient omitted; target arrival policy",
+    "source habits/methods/beliefs/social/conscience omitted; target authored state",
+    "source optional behaviour stores and decision history omitted; target authored state",
+    "family/bonds provenance checked; target authored state",
+    "episode:e0",
+    "episode:e1"
+  ],
+  "revision": "9406c7ccafbe1b39c68c0f8dcc2fa13f5827eceb2e54716fdfc30a9f7659eb1d"
+}

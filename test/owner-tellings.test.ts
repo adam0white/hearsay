@@ -116,8 +116,8 @@ it('replays a minimal pre-change duplicate run with its exact legacy fingerprint
   const run = { game: 'hearsay', version: 1, seed: 1, minute: 390, inputs, fingerprint: '53cbae48' };
   expect(legacyFingerprint(verifyImport(JSON.stringify(run)).s)).toBe('53cbae48');
   expect(exportRun(g).version).toBe(1);
-  expect(newGame(1).s.version).toBe(4);
-  expect(() => verifyImport(JSON.stringify({ ...run, version: 4 }))).toThrow();
+  expect(newGame(1).s.version).toBe(5);
+  expect(() => verifyImport(JSON.stringify({ ...run, version: 5 }))).toThrow();
 });
 
 it('permits a new assertion after retracting it to that listener', () => {

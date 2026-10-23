@@ -1511,13 +1511,13 @@ export async function start(): Promise<void> {
       ? remembered
       : null;
   saved =
-    [1, 2, 3, 4].includes(row?.value?.s?.version ?? 0) && Array.isArray(row?.value?.inputs)
+    [1, 2, 3, 4, 5].includes(row?.value?.s?.version ?? 0) && Array.isArray(row?.value?.inputs)
       ? (row?.value ?? null)
       : null;
   const journal = journalRow?.value;
   if (
     journal &&
-    [1, 2, 3, 4].includes(journal.version) &&
+    [1, 2, 3, 4, 5].includes(journal.version) &&
     Number.isSafeInteger(journal.seed) &&
     Number.isSafeInteger(journal.minute) &&
     journal.minute >= 360 &&

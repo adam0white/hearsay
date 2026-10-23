@@ -55,7 +55,7 @@ export function verifyImport(text: string): Game {
   const d = data as Partial<RunExport>;
   if (
     d.game !== 'hearsay' ||
-    (d.version !== 1 && d.version !== 2 && d.version !== 3 && d.version !== 4) ||
+    (d.version !== 1 && d.version !== 2 && d.version !== 3 && d.version !== 4 && d.version !== 5) ||
     !Number.isSafeInteger(d.seed) ||
     !Number.isSafeInteger(d.minute) ||
     !Array.isArray(d.inputs) ||
@@ -68,7 +68,7 @@ export function verifyImport(text: string): Game {
   if (
     Boolean(d.initialPeople) !== Boolean(d.initialContinuity) ||
     (d.initialPeople &&
-      (d.version !== 4 ||
+      ((d.version !== 4 && d.version !== 5) ||
         Object.keys(d.initialPeople).some((id) => !['derya', 'dilan-delivery'].includes(id))))
   )
     throw new Error('The pinned continuity is incomplete.');
@@ -112,7 +112,7 @@ export function verifyImport(text: string): Game {
       throw new Error('Invalid scene choice in run.');
     if (
       input.type === 'one-cast-encounter' &&
-      (d.version !== 4 ||
+      ((d.version !== 4 && d.version !== 5) ||
         !['derya', 'dilan-delivery'].includes(input.person) ||
         !['support', 'pry', 'leave'].includes(input.choice))
     )

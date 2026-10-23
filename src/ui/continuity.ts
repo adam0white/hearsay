@@ -201,7 +201,7 @@ export async function validateContinuity(g: ContinuityGame): Promise<void> {
     return;
   }
   if (
-    g.s.version !== 4 ||
+    (g.s.version !== 4 && g.s.version !== 5) ||
     !Array.isArray(g.continuity.entries) ||
     g.continuity.entries.length > 2 ||
     !Array.isArray(g.continuity.rows) ||
@@ -214,7 +214,7 @@ export async function validateContinuity(g: ContinuityGame): Promise<void> {
   for (const entry of g.continuity.entries) {
     await validatePersona(entry.head);
     await validatePersona(entry.admission.envelope);
-    const fresh = newGame(g.s.seed, 4);
+    const fresh = newGame(g.s.seed, g.s.version);
     const base =
       fresh.s.people[entry.admission.person.id] ??
       (await import('../sim/one-cast')).makeDilanOpening(g.s.seed, 360);
@@ -260,7 +260,7 @@ function row(e: ContinuityEntry, envelope: PersonaEnvelope, stage: string): OneC
 export async function arrive(seed: number, fresh = false): Promise<ContinuityGame> {
   await shelf.ready;
   lab.setPersonaRecording('pending-history');
-  const opening = newGame(seed, 4);
+  const opening = newGame(seed, 5);
   if (fresh || (!shelf.enabled && !candidate)) {
     await gateContinuity(opening);
     return opening;
@@ -313,7 +313,7 @@ export async function arrive(seed: number, fresh = false): Promise<ContinuityGam
           game: 'hearsay',
           build: build(),
           engine: '2.14.1',
-          rules: '4',
+          rules: '5',
         },
       });
       const scope = candidate?.revision === envelope.revision ? 'file' : 'shared';
@@ -338,7 +338,7 @@ export async function arrive(seed: number, fresh = false): Promise<ContinuityGam
   const g: ContinuityGame = prepared.length
     ? newGame(
         seed,
-        4,
+        5,
         Object.fromEntries(prepared.map((e) => [e.admission.person.id, e.admission.person])),
         continuity,
       )
@@ -357,7 +357,7 @@ export function checkpointContinuity(): Promise<void> {
   const g = current();
   if (
     !g ||
-    g.s.version !== 4 ||
+    (g.s.version !== 4 && g.s.version !== 5) ||
     (!shelf.enabled &&
       g.continuity?.source?.scope !== 'file' &&
       !g.continuity?.entries.some((e) => e.scope === 'file'))
@@ -386,6 +386,7 @@ export function checkpointContinuity(): Promise<void> {
         attemptedPrefix = prefix;
         const person = prefix.s.people.derya!;
         const envelope = await createAuthoredDeryaCheckpoint(person, {
+          rules: g.s.version as 4 | 5,
           targetBuild: build(),
           branchId: prior?.branchId ?? crypto.randomUUID(),
           parentRevision: prior?.revision ?? null,
@@ -471,6 +472,7 @@ export function checkpointContinuity(): Promise<void> {
         const person = prefix.s.people[entry.admission.person.id];
         if (!person) throw new Error('The continuing person is unavailable.');
         const envelope = await createOneCastReturn(person, entry.admission, {
+          rules: g.s.version as 4 | 5,
           targetBuild: build(),
           parentRevision: entry.head.revision,
           branchId: entry.head.branchId,
@@ -588,6 +590,7 @@ export function continuityPanel(): HTMLElement {
           const person = prefix.s.people.derya;
           if (!person) throw new Error('Derya is unavailable.');
           const envelope = await createAuthoredDeryaCheckpoint(person, {
+            rules: g.s.version as 4 | 5,
             targetBuild: build(),
             branchId: crypto.randomUUID(),
             parentRevision: null,
@@ -675,7 +678,7 @@ export function continuityPanel(): HTMLElement {
               game: 'hearsay',
               build: build(),
               engine: '2.14.1',
-              rules: '4',
+              rules: '5',
             },
           });
           if (held.scope === 'file') {
@@ -690,7 +693,7 @@ export function continuityPanel(): HTMLElement {
           };
           const g = newGame(
             held.seed,
-            4,
+            5,
             { [admission.person.id]: admission.person },
             { entries: [entry], rows: [row(entry, claim, 'admitted')] },
           );

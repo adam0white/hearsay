@@ -149,6 +149,7 @@ describe('one-cast Hearsay boundary', () => {
     expect(a.person).not.toEqual(admission.person);
     expect(() => encounterOneCast(admission.person, admission, 'support', 420)).toThrow(/loop/);
     const returned = await createOneCastReturn(a.person, admission, {
+      rules: 4,
       targetBuild: 'test',
       parentRevision: envelope.revision,
       encounter: a.encounter,
