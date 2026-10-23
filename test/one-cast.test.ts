@@ -4,13 +4,14 @@ import { describe, expect, it } from 'vitest';
 import {
   checkpointPerson,
   createAuthoredDeryaCheckpoint,
+  createOneCastOpening,
   createOneCastReturn,
   encounterOneCast,
   makeDilanOpening,
   prepareOneCastAdmission,
 } from '../src/sim/one-cast.ts';
 
-async function fixture() {
+async function fixture(fitness = 0.5) {
   const source = createPerson({
     id: 'dilan',
     name: 'Dilan',
@@ -20,6 +21,7 @@ async function fixture() {
     sex: 'female',
     traits: { honesty: 0.68 },
   });
+  source.body.fitness = fitness;
   source.memory.episodes.push({
     id: 'e1',
     at: 150,
@@ -76,6 +78,20 @@ describe('one-cast Hearsay boundary', () => {
     envelope.transfer.history = [];
     expect(admission.history).toHaveLength(1);
     expect(JSON.stringify(admission.envelope)).not.toContain('sourceTrust');
+  });
+  it('admits ordinary carried fitness without changing clinical health or the authored source', async () => {
+    const { source, projection, envelope, opening } = await fixture(0.4918778653212349);
+    const before = snapshot(opening);
+    const compatible = createOneCastOpening('hf.cast.dilan.murmur', opening, projection);
+    const admission = await prepareOneCastAdmission(envelope, compatible, { targetBuild: 'test' });
+    expect(admission.person.body.fitness).toBe(source.body.fitness);
+    expect(opening).toEqual(before);
+    const injured = snapshot(opening);
+    injured.body.health = 0.5;
+    expect(() => createOneCastOpening('hf.cast.dilan.murmur', injured, projection)).toThrow(/health/);
+    const shifted = snapshot(opening);
+    shifted.body.circadianPeak += 1;
+    expect(() => createOneCastOpening('hf.cast.dilan.murmur', shifted, projection)).toThrow(/health/);
   });
   it('rejects altered envelope and unsupported source fields', async () => {
     const { envelope, opening } = await fixture();

@@ -436,7 +436,7 @@ export async function createAuthoredDeryaCheckpoint(
   });
 }
 
-/** The cast fixes age; the transfer fixes its exact calendar offset within that age. */
+/** The cast fixes age and clinical health. Approved fitness and the exact birth offset travel. */
 export function createOneCastOpening(castId: OneCastId, opening: Person, input: unknown): Person {
   const projection = validatePersonaProjection(input);
   const contract = ONE_CAST[castId];
@@ -449,7 +449,13 @@ export function createOneCastOpening(castId: OneCastId, opening: Person, input: 
     opening.id !== contract.targetId
   )
     fail('canonical opening identity conflict');
+  if (
+    projection.health.health !== opening.body.health ||
+    projection.health.circadianPeak !== opening.body.circadianPeak
+  )
+    fail('canonical opening health compatibility conflict');
   const target = snapshot(opening);
   target.life.bornAt = projection.life.bornAt + target.now - projection.source.now;
+  target.body.fitness = projection.health.fitness;
   return target;
 }
