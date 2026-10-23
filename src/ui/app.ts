@@ -22,6 +22,7 @@ import {
   continuityPanel,
   gateContinuity,
   installContinuity,
+  invalidateContinuity,
   shelf,
   validateContinuity,
 } from './continuity';
@@ -147,6 +148,7 @@ function bindTopbar(): void {
   host.querySelector('#game-menu')?.addEventListener('click', gameMenu);
 }
 async function beginFortnight(fresh = false): Promise<void> {
+  invalidateContinuity();
   saved = null;
   game = await arrive(crypto.getRandomValues(new Uint32Array(1))[0] ?? 1, fresh);
   await gateContinuity(
@@ -179,6 +181,7 @@ function title(): void {
           await beginFortnight();
           return;
         }
+        invalidateContinuity();
         game = saved;
         await gateContinuity(game);
         firstStart = false;
@@ -1278,6 +1281,7 @@ function importFile(): void {
     const file = input.files?.[0];
     if (!file) return;
     try {
+      invalidateContinuity();
       const imported = verifyImport(await file.text());
       await validateContinuity(imported);
       game = imported;
@@ -1557,6 +1561,7 @@ export async function start(): Promise<void> {
     () => game,
     save,
     async (incoming) => {
+      invalidateContinuity();
       game = incoming;
       await gateContinuity(
         game,
