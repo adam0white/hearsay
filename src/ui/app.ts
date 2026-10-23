@@ -149,6 +149,10 @@ function bindTopbar(): void {
 async function beginFortnight(fresh = false): Promise<void> {
   saved = null;
   game = await arrive(crypto.getRandomValues(new Uint32Array(1))[0] ?? 1, fresh);
+  await gateContinuity(
+    game,
+    game.continuity?.entries.some((e) => e.scope === 'file'),
+  );
   firstStart = true;
   resetScene();
   await persistJournal();
@@ -1554,6 +1558,10 @@ export async function start(): Promise<void> {
     save,
     async (incoming) => {
       game = incoming;
+      await gateContinuity(
+        game,
+        game.continuity?.entries.some((e) => e.scope === 'file'),
+      );
       saved = game;
       resetScene();
       await persistJournal();

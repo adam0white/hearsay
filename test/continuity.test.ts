@@ -16,6 +16,7 @@ const recording = vi.hoisted(() => ({
   build: () => ({ c: 'test' }),
   milestone: vi.fn(),
   personaRecordingAllowed: false,
+  playerId: 'epoch-a',
 }));
 vi.mock('@adam0white/lab-client', async (importOriginal) => ({
   ...(await importOriginal<object>()),
@@ -34,15 +35,27 @@ async function source() {
     bornAt: -33 * 365 * 1440,
     sex: 'female',
   });
-  const projection = projectPersona(person, { version: 'murmur-hearsay/1', skills: {} });
+  const projection = projectPersona(person, {
+    version: 'murmur-hearsay/1',
+    skills: {},
+  });
   return createPersona({
     format: 'hf-persona/1',
     castId: 'hf.cast.dilan.murmur',
     castRevision: '1',
     branchId: 'branch',
     parentRevision: null,
-    source: { game: 'murmur', build: 'test', engine: person.engine, rules: '1' },
-    transfer: { person: projection, history: [], checkpoint: await checkpointPerson(person) },
+    source: {
+      game: 'murmur',
+      build: 'test',
+      engine: person.engine,
+      rules: '1',
+    },
+    transfer: {
+      person: projection,
+      history: [],
+      checkpoint: await checkpointPerson(person),
+    },
     limitations: projection.limitations,
   });
 }
@@ -60,9 +73,13 @@ it('claims before loading and records the real source checkpoint as admission pa
   });
   const game = await arrive(12);
   expect(claimed).toBe(true);
-  expect((game.continuity?.entries[0]?.head.transfer.admission as { claimId?: string })?.claimId).toMatch(
-    /^[a-f0-9-]{36}$/,
-  );
+  expect(
+    (
+      game.continuity?.entries[0]?.head.transfer.admission as {
+        claimId?: string;
+      }
+    )?.claimId,
+  ).toMatch(/^[a-f0-9-]{36}$/);
   expect(game.continuity?.rows[0]?.parentRevision).toBe(envelope.revision);
   expect(game.initialPeople?.['dilan-delivery']).toEqual(game.continuity?.entries[0]?.admission.person);
   expect(game.initialContinuity?.entries[0]?.encounter).toBeUndefined();
@@ -102,4 +119,69 @@ it('refuses a competing old admission even when its earlier claim is retained', 
   const stale = await arrive(12);
   expect(stale.initialPeople).toBeUndefined();
   expect(state.heads[envelope.castId]).toBe(accepted);
+});
+
+it('does not authorize a new recording identity from an older in-flight sameEpoch reply', async () => {
+  const envelope = await source();
+  fake.request.mockImplementation(async (req) =>
+    req.action === 'get'
+      ? req.castId === envelope.castId
+        ? envelope
+        : null
+      : req.action === 'recording'
+        ? { sameEpoch: false }
+        : req.envelope,
+  );
+  const game = await arrive(12);
+  let answer: (value: { sameEpoch: boolean }) => void = () => {};
+  let queried: () => void = () => {};
+  const seen = new Promise<void>((resolve) => {
+    queried = resolve;
+  });
+  fake.request.mockImplementation(
+    () =>
+      new Promise((resolve) => {
+        answer = resolve;
+        queried();
+      }),
+  );
+  recording.allowPersonaRecording.mockClear();
+  const old = gateContinuity(game);
+  await seen;
+  recording.playerId = 'epoch-b';
+  fake.request.mockResolvedValue({ sameEpoch: false });
+  await gateContinuity(game);
+  answer({ sameEpoch: true });
+  await old;
+  expect(recording.allowPersonaRecording).not.toHaveBeenCalledWith(true);
+});
+
+it('accepts sameEpoch when closing the gate hides the public recording identity', async () => {
+  const envelope = await source();
+  fake.request.mockImplementation(async (req) =>
+    req.action === 'get'
+      ? req.castId === envelope.castId
+        ? envelope
+        : null
+      : req.action === 'recording'
+        ? { sameEpoch: true }
+        : req.envelope,
+  );
+  const game = await arrive(12);
+  let allowed = true;
+  const descriptor = Object.getOwnPropertyDescriptor(recording, 'playerId')!;
+  Object.defineProperty(recording, 'playerId', {
+    configurable: true,
+    get: () => (allowed ? 'epoch-a' : null),
+  });
+  recording.allowPersonaRecording.mockImplementation((value: boolean) => {
+    allowed = value;
+  });
+  try {
+    await gateContinuity(game);
+    expect(allowed).toBe(true);
+  } finally {
+    Object.defineProperty(recording, 'playerId', descriptor);
+    recording.allowPersonaRecording.mockReset();
+  }
 });
