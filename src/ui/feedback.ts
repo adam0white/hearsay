@@ -47,7 +47,7 @@ export function openFeedback(getRun: () => unknown, onClose: () => void): HTMLDi
   const recordingOff = () =>
     stored('hf-lab-recording-off') === '1' || stored('hf-lab-events-off:hearsay') === '1';
   const privacyOnly = () => !recordingOff() && lab.privacySignalOn && !lab.privacyOverride;
-  const blocked = () => recordingOff() || (privacyOnly() && !consent);
+  const blocked = () => !lab.personaRecordingAllowed || recordingOff() || (privacyOnly() && !consent);
   const offNotice = document.createElement('p');
   const recordingLabel = document.createElement('label');
   const recordingToggle = document.createElement('input');

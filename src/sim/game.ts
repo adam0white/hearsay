@@ -2689,6 +2689,11 @@ export function load(data: string): Game {
   const g = JSON.parse(data) as Game;
   if (![1, 2, 3, 4, 5].includes(g.s?.version) || !Array.isArray(g.inputs))
     throw new Error('Unsupported Hearsay save');
+  if (
+    g.fileHistory !== undefined &&
+    (typeof g.fileHistory !== 'string' || !/^[a-f0-9-]{36}$/.test(g.fileHistory))
+  )
+    throw new Error('Invalid file history provenance.');
   g.s.silence ??= {};
   g.s.confronted ??= [];
   g.s.greetings ??= {};

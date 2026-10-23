@@ -174,6 +174,8 @@ export interface State {
   days?: { day: number; summary: string[]; question: string; tomorrow?: string }[];
 }
 export interface Game {
+  /** Persistent local provenance for a played run opened from a file. Not HF state. */
+  fileHistory?: string;
   /** Pinned host-admitted initial people. Replay never consults a live shelf. */
   initialPeople?: Record<string, Person>;
   initialContinuity?: import('./one-cast.ts').ContinuityState;

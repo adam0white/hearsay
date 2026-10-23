@@ -78,6 +78,7 @@ const message = (error: unknown) =>
   error instanceof Error ? error.message : 'Continuity unavailable. Keep a local file.';
 const recordingKey = (g: ContinuityGame) =>
   [
+    ...(g.fileHistory ? ['file-history:' + g.fileHistory] : []),
     ...(g.continuity?.entries.map((e) => e.head.branchId) ?? []),
     ...(g.continuity?.source ? [g.continuity.source.head.branchId] : []),
   ]
@@ -94,9 +95,7 @@ const headsOf = (g: ContinuityGame) => [
   ...(g.continuity?.source ? [g.continuity.source.head] : []),
 ];
 const selected = (g: ContinuityGame) =>
-  headsOf(g)
-    .map((h) => `${h.castId}/${h.branchId}/${h.revision}`)
-    .join(':');
+  [g.fileHistory ?? '', ...headsOf(g).map((h) => `${h.castId}/${h.branchId}/${h.revision}`)].join(':');
 const echoes = (reply: RecordingReply, head: PersonaEnvelope) =>
   reply.branchId === head.branchId && reply.revision === head.revision;
 const owns = (serial: number, g: ContinuityGame, pin: string) =>
@@ -108,7 +107,8 @@ const sharedHeads = (g: ContinuityGame) => [
 export async function gateContinuity(g: ContinuityGame | undefined, file = false): Promise<void> {
   const serial = ++gateSerial;
   gatedGame = g;
-  gatedFile = file;
+  if (g && file) g.fileHistory ??= crypto.randomUUID();
+  gatedFile = file || Boolean(g?.fileHistory);
   const key = g ? recordingKey(g) : 'pending-history';
   lab.setPersonaRecording(key || null);
   const localAssociation = lab.personaRecordingAllowed;
@@ -119,9 +119,13 @@ export async function gateContinuity(g: ContinuityGame | undefined, file = false
   if (serial !== gateSerial) return;
   if (!g?.continuity?.entries.length && !g?.continuity?.source) {
     if (g?.initialPeople) lab.setPersonaRecording('invalid-history');
+    else if (g?.fileHistory && localAssociation && !file && manualDenied !== g) {
+      linkageKnown = true;
+      lab.allowPersonaRecording(true);
+    }
     return;
   }
-  if (file || manualDenied === g) return;
+  if (file || manualDenied === g || (g.fileHistory && !localAssociation)) return;
   const shared = sharedHeads(g);
   const hasLocal = headsOf(g).length !== shared.length;
   if (hasLocal && !localAssociation) return;
@@ -194,6 +198,36 @@ export function chooseContinuityRecording(value: boolean): Promise<void> {
     });
   choices = task.catch(() => {});
   return task;
+}
+/** Migrate prior explicit file consent, never inferred authored status, to its first head. */
+async function linkFirstFileHead(
+  g: ContinuityGame,
+  head: PersonaEnvelope,
+  serial: number,
+  epoch: { recordingEpoch?: string | null } | undefined,
+): Promise<boolean> {
+  const valid = () => current() === g && gatedGame === g && serial === gateSerial && manualDenied !== g;
+  if (!valid() || !epoch || !('recordingEpoch' in epoch)) return false;
+  try {
+    const selectedEpoch = await shelf.request<RecordingReply>({
+      action: 'recording',
+      castId: head.castId,
+      envelope: head,
+    });
+    if (!valid() || !echoes(selectedEpoch, head) || selectedEpoch.recordingEpoch !== epoch.recordingEpoch)
+      return false;
+    const request = {
+      action: 'recording' as const,
+      castId: head.castId,
+      envelope: head,
+      allowRecording: true,
+      recordingEpoch: epoch.recordingEpoch,
+    };
+    const reply = await shelf.request<RecordingReply>(request);
+    return valid() && echoes(reply, head) && reply.sameEpoch;
+  } catch {
+    return false;
+  }
 }
 export async function validateContinuity(g: ContinuityGame): Promise<void> {
   if (!g.continuity) {
@@ -376,7 +410,21 @@ export function checkpointContinuity(): Promise<void> {
         const attempt = gateSerial;
         const prior = g.continuity?.source?.head;
         const author =
-          !prior && current() === g && gatedGame === g && lab.personaRecordingAllowed && lab.telemetryOn;
+          !prior &&
+          !g.fileHistory &&
+          !gatedFile &&
+          current() === g &&
+          gatedGame === g &&
+          lab.personaRecordingAllowed &&
+          lab.telemetryOn;
+        const inheritFileChoice =
+          !prior &&
+          Boolean(g.fileHistory) &&
+          current() === g &&
+          gatedGame === g &&
+          manualDenied !== g &&
+          lab.personaRecordingAllowed &&
+          lab.telemetryOn;
         const epoch =
           !prior && shelf.enabled
             ? await shelf.request<{ recordingEpoch?: string | null }>({ action: 'recording' })
@@ -431,7 +479,7 @@ export function checkpointContinuity(): Promise<void> {
             v: 1,
             probe: 'derya',
             arm: 'fresh',
-            scope,
+            scope: g.fileHistory ? 'file' : scope,
             castId: envelope.castId,
             branchId: envelope.branchId,
             revision: envelope.revision,
@@ -440,7 +488,25 @@ export function checkpointContinuity(): Promise<void> {
             outcome: 'accepted',
           });
           prefix.continuity = structuredClone(record.continuity);
+          // The new composite key stays blocked until the exact selected-head grant succeeds.
+          if (owner && inheritFileChoice) {
+            lab.setPersonaRecording(recordingKey(g));
+            lab.allowPersonaRecording(false);
+          }
           await put('persona-departure:' + envelope.branchId, prefix);
+          if (
+            owner &&
+            inheritFileChoice &&
+            scope === 'shared' &&
+            (await linkFirstFileHead(g, envelope, attempt, epoch)) &&
+            current() === g &&
+            gatedGame === g &&
+            attempt === gateSerial &&
+            manualDenied !== g
+          ) {
+            lab.setPersonaRecording(recordingKey(g));
+            lab.allowPersonaRecording(true);
+          }
           if (owner && current() === g && attempt === gateSerial) await gateContinuity(g, scope === 'file');
           if (owner && current() === g && gatedGame === g) store();
           bridgeStatus =
@@ -491,7 +557,9 @@ export function checkpointContinuity(): Promise<void> {
         } else await shelf.request({ action: 'put', envelope });
         entry.head = envelope;
         entry.lastCheckpoint = structuredClone(person);
-        g.continuity?.rows.push(row(entry, envelope, 'checkpoint'));
+        const checkpointRow = row(entry, envelope, 'checkpoint');
+        if (g.fileHistory) checkpointRow.scope = 'file';
+        g.continuity?.rows.push(checkpointRow);
         prefix.continuity = structuredClone(g.continuity);
         await put('persona-departure:' + envelope.branchId, prefix);
 
@@ -536,7 +604,7 @@ export function continuityPanel(): HTMLElement {
       shelf.setEnabled(value);
     },
     recordingAllowed:
-      !(current()?.continuity?.entries.length || current()?.continuity?.source) ||
+      !(current()?.fileHistory || current()?.continuity?.entries.length || current()?.continuity?.source) ||
       linkageKnown ||
       lab.personaRecordingAllowed,
     allowRecording(value) {
@@ -727,7 +795,9 @@ export function continuityPanel(): HTMLElement {
           if (held.entry) {
             held.entry.head = fork;
             if (held.checkpoint) held.entry.lastCheckpoint = structuredClone(held.checkpoint);
-            held.game.continuity?.rows.push(row(held.entry, fork, 'checkpoint'));
+            const forkRow = row(held.entry, fork, 'checkpoint');
+            if (held.game.fileHistory) forkRow.scope = 'file';
+            held.game.continuity?.rows.push(forkRow);
           } else {
             held.game.continuity ??= { entries: [], rows: [] };
             held.game.continuity.source = {
@@ -739,7 +809,7 @@ export function continuityPanel(): HTMLElement {
               v: 1,
               probe: 'derya',
               arm: 'fresh',
-              scope,
+              scope: held.game.fileHistory ? 'file' : scope,
               castId: fork.castId,
               branchId: fork.branchId,
               revision: fork.revision,

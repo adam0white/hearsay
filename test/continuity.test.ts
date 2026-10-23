@@ -425,3 +425,122 @@ it('cannot restore file permission from an existing central association after lo
   expect(fake.request).not.toHaveBeenCalled();
   expect(recording.allowPersonaRecording).not.toHaveBeenCalledWith(true);
 });
+
+it('keeps an ordinary played file source gated before its first head and never relabels it authored', async () => {
+  const { advance, load, save } = await import('../src/sim/game');
+  const { exportRun, verifyImport } = await import('../src/ui/export');
+  const ordinary = newGame(7);
+  advance(ordinary, 19110);
+  let game = verifyImport(JSON.stringify(exportRun(ordinary)));
+  expect(game.initialPeople).toBeUndefined();
+  expect(game.continuity).toBeUndefined();
+  installContinuity(
+    () => game,
+    () => {},
+  );
+  let associated = false;
+  fake.request.mockImplementation(async (req) => {
+    if (req.action !== 'recording') return req.envelope;
+    if (req.allowRecording !== undefined) associated = req.allowRecording;
+    return reply(req, associated);
+  });
+  recording.setPersonaRecording.mockClear();
+  recording.allowPersonaRecording.mockClear();
+  recording.personaRecordingAllowed = false;
+  await gateContinuity(game, true);
+  expect(recording.setPersonaRecording).not.toHaveBeenCalledWith(null);
+  expect(recording.allowPersonaRecording).not.toHaveBeenCalledWith(true);
+  const key = recording.setPersonaRecording.mock.lastCall?.[0];
+  expect(key).toMatch(/file-history:/);
+  game = load(save(game));
+  game = verifyImport(JSON.stringify(exportRun(game)));
+  await gateContinuity(game);
+  expect(recording.setPersonaRecording).toHaveBeenLastCalledWith(key);
+  await chooseContinuityRecording(true); // Explicit local file consent before a portable head exists.
+  recording.personaRecordingAllowed = true;
+  fake.request.mockClear();
+  await checkpointContinuity();
+  const put = fake.request.mock.calls.find(([req]) => req.action === 'put')?.[0];
+  expect(put).toBeDefined();
+  expect(put.authored).toBe(false);
+  expect(game.continuity?.rows.at(-1)?.scope).toBe('file');
+  const migration = fake.request.mock.calls.find(([req]) => req.allowRecording === true)?.[0];
+  expect(migration.envelope.revision).toBe(game.continuity?.source?.head.revision);
+  expect(migration.recordingEpoch).toBe('opaque-epoch');
+  expect(recording.allowPersonaRecording).toHaveBeenLastCalledWith(true);
+  recording.personaRecordingAllowed = false;
+});
+
+it('a latest denial wins while first-file-head linkage is awaiting its selected epoch', async () => {
+  const { advance } = await import('../src/sim/game');
+  const game = newGame(7);
+  advance(game, 19110);
+  installContinuity(
+    () => game,
+    () => {},
+  );
+  recording.personaRecordingAllowed = false;
+  await gateContinuity(game, true);
+  await chooseContinuityRecording(true);
+  recording.personaRecordingAllowed = true;
+  let release!: (value: ReturnType<typeof reply>) => void;
+  let selected!: () => void;
+  const queried = new Promise<void>((r) => {
+    selected = r;
+  });
+  let heldHead: Parameters<typeof reply>[0];
+  let hold = true;
+  fake.request.mockImplementation(async (req) => {
+    if (req.action === 'put') return req.envelope;
+    if (req.envelope && req.allowRecording === undefined && hold) {
+      hold = false;
+      heldHead = req;
+      selected();
+      return new Promise((r) => {
+        release = r;
+      });
+    }
+    return reply(req, req.allowRecording === true);
+  });
+  fake.request.mockClear();
+  const checkpoint = checkpointContinuity();
+  await queried;
+  await chooseContinuityRecording(false);
+  recording.allowPersonaRecording.mockClear();
+  release(reply(heldHead!, false));
+  await checkpoint;
+  expect(fake.request.mock.calls.some(([req]) => req.allowRecording === true)).toBe(false);
+  expect(recording.allowPersonaRecording).not.toHaveBeenCalledWith(true);
+  expect(game.continuity?.rows.at(-1)?.scope).toBe('file');
+  recording.personaRecordingAllowed = false;
+});
+
+it('cannot reopen after reset between the first-head grant helper and its caller', async () => {
+  const { advance } = await import('../src/sim/game');
+  const game = newGame(7);
+  advance(game, 19110);
+  installContinuity(
+    () => game,
+    () => {},
+  );
+  recording.personaRecordingAllowed = false;
+  await gateContinuity(game, true);
+  await chooseContinuityRecording(true);
+  recording.personaRecordingAllowed = true;
+  fake.request.mockImplementation(async (req) => {
+    if (req.action === 'put') return req.envelope;
+    if (req.allowRecording === true) {
+      // Reset after helper validation but before its awaiting caller resumes.
+      queueMicrotask(() =>
+        queueMicrotask(() => {
+          invalidateContinuity();
+          recording.allowPersonaRecording.mockClear();
+        }),
+      );
+    }
+    return reply(req, req.allowRecording === true);
+  });
+  await checkpointContinuity();
+  expect(recording.allowPersonaRecording).not.toHaveBeenCalledWith(true);
+  recording.personaRecordingAllowed = false;
+});

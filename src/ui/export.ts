@@ -4,6 +4,7 @@ import type { Game, LoggedInput, State } from '../sim/types.ts';
 
 export interface RunExport {
   game: 'hearsay';
+  fileHistory?: string;
   version: State['version'];
   seed: number;
   minute: number;
@@ -18,6 +19,7 @@ export interface RunExport {
 export function exportRun(game: Game): RunExport {
   return {
     game: 'hearsay',
+    ...(game.fileHistory ? { fileHistory: game.fileHistory } : {}),
     version: game.s.version,
     seed: game.s.seed,
     minute: game.s.minute,
@@ -132,6 +134,11 @@ export function verifyImport(text: string): Game {
     (Object.hasOwn(d, 'state') && (!d.state || fingerprint(d.state) !== d.fingerprint))
   )
     throw new Error('Replay did not match this run. Your current garden is unchanged.');
+  if (d.fileHistory !== undefined) {
+    if (typeof d.fileHistory !== 'string' || !/^[a-f0-9-]{36}$/.test(d.fileHistory))
+      throw new Error('Invalid file history provenance.');
+    game.fileHistory = d.fileHistory;
+  }
   if (d.continuity) game.continuity = structuredClone(d.continuity);
   return game;
 }

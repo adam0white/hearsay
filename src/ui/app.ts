@@ -88,6 +88,7 @@ let stripObserver: ResizeObserver | null = null;
 let sceneObserver: ResizeObserver | null = null;
 let pendingJournal: Promise<boolean> | null = null;
 type Journal = {
+  fileHistory?: Game['fileHistory'];
   version: State['version'];
   seed: number;
   minute: number;
@@ -99,6 +100,7 @@ type Journal = {
 function persistJournal(): Promise<boolean> {
   const writing = putImmediate('run-log', {
     version: game.s.version,
+    ...(game.fileHistory ? { fileHistory: game.fileHistory } : {}),
     seed: game.s.seed,
     minute: game.s.minute,
     inputs: game.inputs,
@@ -1541,6 +1543,7 @@ export async function start(): Promise<void> {
           journal.initialContinuity,
         );
       if (saved && journal.continuity) saved.continuity = journal.continuity;
+      if (saved && journal.fileHistory) saved.fileHistory = journal.fileHistory;
     } catch {
       /* Keep a valid full-state cache if a recovery journal was damaged. */
     }

@@ -67,3 +67,20 @@ it('keeps the consent fallback in the modal active layer and preserves the note'
   await page.getByRole('button', { name: 'Not now', exact: true }).click();
   expect(await page.locator('.hflab-veil').count()).toBe(0);
 });
+it('blocks note and explicit run paths while historical linkage is absent', async () => {
+  await page.reload();
+  await page.evaluate(`(async()=>{
+    const {lab}=await import('/src/ui/lab.ts');
+    lab.personaRecordingAllowed=false;
+    lab.privacySignalOn=false;
+    localStorage.removeItem('hf-lab-recording-off');
+    localStorage.removeItem('hf-lab-events-off:hearsay');
+    window.linkageSends=0;
+    lab.sendFeedback=lab.sendRun=async()=>{window.linkageSends++;};
+    const {openFeedback}=await import('/src/ui/feedback.ts');
+    openFeedback(()=>({game:'hearsay',seed:1,inputs:[]}),()=>{});
+  })()`);
+  expect(await page.getByRole('button', { name: 'Send', exact: true }).isDisabled()).toBe(true);
+  await page.getByRole('button', { name: 'Send', exact: true }).dispatchEvent('click');
+  expect(await page.evaluate('window.linkageSends')).toBe(0);
+});
