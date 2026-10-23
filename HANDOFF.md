@@ -12,8 +12,10 @@ Dilan uses a dedicated delivery visitor. Her sister Aylin, colleague Ece and dep
 
 Return into an already departed Hearsay branch is unavailable; its completed fortnight is not restarted as continuation. Fresh authored play remains available. A Murmur/Stairwell receiving adapter must use its own saved departure prefix before simulating a return suffix. Peer contracts and delivery receipts live under `~/code/.lab-scratch/universe/`.
 
-HF is pinned to2.15.0, lab-client0.3.0 and lab-kit0.4.0 to checked vendor tarballs. Compare hashes with `universe/artifacts.json`. No workspace dependency symlinks.
+HF is pinned to2.15.0, lab-client0.3.1 and lab-kit0.4.0 to checked vendor tarballs. Compare hashes with `universe/artifacts.json`. No workspace dependency symlinks.
 
 One independent Codex correctness/game-design review was completed. Its verified return-evidence, source-checkpoint and file-scope findings were corrected. Validation/deployment/browser receipts are in `~/code/.lab-scratch/universe/hearsay.md` and `hearsay-review.md`. They are the evidence for delivery status.
 
 The quiet Day14 Derya control ends her job assignment but still holds HF's active `make-friend` goal. Export correctly refuses it as an active goal. No goal is erased or marked achieved to make a positive receipt. Peer return verification must use a genuinely eligible chapter, or add an explicit source-side resolution with its own replayed fiction. The existing transfer functions remain strict.
+
+The lead required client0.3.1 before delivery after reproducing stale retained-revision acknowledgement in0.3.0. Its exact vendor tarball is pinned and matches the updated artifacts.json. The central shelf patch is already live at b78b644eb99d7bd3893c2bc9713aa12704ae1489.

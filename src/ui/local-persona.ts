@@ -50,6 +50,8 @@ export function reduceLocalPersona(
       envelope.parentRevision !== arrival.revision
     )
       throw new Error('The file claim does not continue its selected arrival.');
+    // Retry the current accepted claim without replaying its now-historical source insertion.
+    if (state.heads[envelope.castId] === envelope.revision) return acceptPersona(state, envelope);
     // A file starts its local chain at an imported checkpoint. Its earlier revisions remain in the source.
     // This bootstrap is allowed only when this origin has no active continuation for that person.
     if (!Object.hasOwn(state.heads, arrival.castId) && arrival.parentRevision !== null)
