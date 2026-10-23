@@ -2,7 +2,7 @@ import { credence, trustOf } from '@adam0white/human-framework';
 import { expect, it } from 'vitest';
 import { runPolicy } from '../scripts/policy.ts';
 import { act, advance, newGame, PEOPLE, spokenClaim } from '../src/sim/game.ts';
-import { DAILY_INCIDENTS, EMRE_INCIDENTS } from '../src/sim/incidents.ts';
+import { dailyIncidents, EMRE_INCIDENTS } from '../src/sim/incidents.ts';
 
 it('witnesses the promised scene in plain words at 06:30', () => {
   const g = newGame(1);
@@ -21,7 +21,7 @@ it('offers a new witnessed incident and a table question every day', () => {
     advance(g, day * 1440 + 405);
     const scenes = g.s.log.filter((l) => l.kind === 'overheard');
     expect(scenes).toHaveLength(day + 1 + EMRE_INCIDENTS.filter((scene) => scene.day <= day).length);
-    const scene = DAILY_INCIDENTS[day]!;
+    const scene = dailyIncidents(g.s.version)[day]!;
     const belief = credence(g.s.people.hatice!, `${scene.target}:${scene.trait}`);
     expect(scene.value ? belief : 1 - belief).toBeGreaterThan(0.9);
     expect(new Set(scenes.map((l) => l.target)).size).toBe(day + 1);

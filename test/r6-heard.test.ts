@@ -3,7 +3,7 @@ import { act, advance, fingerprint, newGame } from '../src/sim/game';
 import { heardLines } from '../src/ui/heard';
 
 it('collapses only unfamiliar ambient promises per day and preserves the full replay record', () => {
-  const g = newGame(1);
+  const g = newGame(1, 3);
   advance(g, 1440 + 1379);
   const before = fingerprint(g.s);
   const lines = heardLines(g);

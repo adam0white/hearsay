@@ -1,4 +1,4 @@
-import type { Neighbor } from './types.ts';
+import type { Neighbor, State } from './types.ts';
 export const PLACES = [
   ['garden', 'Hatice’s tea garden', 0.46, 0.65],
   ['fountain', 'Hill fountain', 0.55, 0.55],
@@ -145,3 +145,28 @@ export const SCHEDULES: Record<string, readonly string[]> = {
   meryem: ['fountain', 'grocer', 'garden', 'doorsteps', 'fountain', 'courtyard', 'home'],
   halil: ['courtyard', 'coffee', 'fountain', 'courtyard', 'garden', 'courtyard', 'home'],
 };
+
+/** Edition 4 reconciles only the canonical nurse; other local identities stay authored. */
+export function neighborNorm(s: Pick<State, 'version'>, id: string): Neighbor['norm'] | undefined {
+  return s.version >= 4 && id === 'derya' ? 'forbidden' : PEOPLE.find((p) => p.id === id)?.norm;
+}
+
+export const DERYA_CANONICAL = {
+  castId: 'hf.cast.derya.stairwell',
+  call: 'Derya Hanım',
+  district: 'Istanbul',
+  permanentHome: 'Flat 5, floor 2, Lale Apartmanı, Istanbul',
+  temporaryHome: 'home-7',
+  single: true,
+} as const;
+
+/** Breakfast after rounds, morning sleep, afternoon errands, night work. */
+export const DERYA_NIGHT_SCHEDULE = [
+  'fountain',
+  'home-7',
+  'home-7',
+  'grocer',
+  'hospital',
+  'hospital',
+  'hospital',
+] as const;

@@ -4,7 +4,7 @@ import { telemetryNotice, telemetryToggle } from '@adam0white/lab-kit';
 import {
   act,
   advance,
-  newGame,
+  load as loadGame,
   REPUTATION_TRAITS,
   replay,
   spokenClaim,
@@ -15,6 +15,16 @@ import { storyScene } from '../sim/incidents';
 import type { Game, Input, Line, LoggedInput, State, Trait } from '../sim/types';
 import { claimText, knownIncidentClaim } from '../sim/voices';
 import { PEOPLE } from '../sim/world';
+import {
+  arrive,
+  type ContinuityGame,
+  checkpointContinuity,
+  continuityPanel,
+  gateContinuity,
+  installContinuity,
+  shelf,
+  validateContinuity,
+} from './continuity';
 import { exportRun, verifyImport } from './export';
 import { openFeedback } from './feedback';
 import { heardLines } from './heard';
@@ -30,8 +40,8 @@ if (notice) Object.assign(notice.style, { position: 'static', transform: 'none',
 const root = document.querySelector<HTMLDivElement>('#app');
 if (!root) throw new Error('Missing app');
 const host = root;
-let game: Game;
-let saved: Game | null = null;
+let game: ContinuityGame;
+let saved: ContinuityGame | null = null;
 let chosenSpeed = 0;
 let skipping = false;
 let replyOpen = false;
@@ -76,13 +86,24 @@ let refreshConversation: (() => void) | null = null;
 let stripObserver: ResizeObserver | null = null;
 let sceneObserver: ResizeObserver | null = null;
 let pendingJournal: Promise<boolean> | null = null;
-type Journal = { version: 1 | 2 | 3; seed: number; minute: number; inputs: LoggedInput[] };
+type Journal = {
+  version: State['version'];
+  seed: number;
+  minute: number;
+  inputs: LoggedInput[];
+  initialPeople?: Game['initialPeople'];
+  initialContinuity?: Game['initialContinuity'];
+  continuity?: Game['continuity'];
+};
 function persistJournal(): Promise<boolean> {
   const writing = putImmediate('run-log', {
     version: game.s.version,
     seed: game.s.seed,
     minute: game.s.minute,
     inputs: game.inputs,
+    ...(game.initialPeople ? { initialPeople: game.initialPeople } : {}),
+    ...(game.initialContinuity ? { initialContinuity: game.initialContinuity } : {}),
+    ...(game.continuity ? { continuity: game.continuity } : {}),
   } satisfies Journal);
   pendingJournal = writing;
   void writing.then(() => {
@@ -95,7 +116,8 @@ const html = (s: string) =>
     /[&<>"']/g,
     (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c] ?? c,
   );
-const name = (id: string) => PEOPLE.find((p) => p.id === id)?.name ?? id;
+const name = (id: string) =>
+  PEOPLE.find((p) => p.id === id)?.name ?? (id === 'dilan-delivery' ? 'Dilan' : id);
 const weekdays = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
 const dayLabel = (day: number) => `Day ${day}, ${weekdays[(day - 1) % 7]}`;
 const dateLabel = (m: number) =>
@@ -124,9 +146,9 @@ function bindTopbar(): void {
   host.querySelector('#game-info')?.addEventListener('click', information);
   host.querySelector('#game-menu')?.addEventListener('click', gameMenu);
 }
-async function beginFortnight(): Promise<void> {
+async function beginFortnight(fresh = false): Promise<void> {
   saved = null;
-  game = newGame(crypto.getRandomValues(new Uint32Array(1))[0] ?? 1);
+  game = await arrive(crypto.getRandomValues(new Uint32Array(1))[0] ?? 1, fresh);
   firstStart = true;
   resetScene();
   await persistJournal();
@@ -154,6 +176,7 @@ function title(): void {
           return;
         }
         game = saved;
+        await gateContinuity(game);
         firstStart = false;
         resetScene();
         await persistJournal();
@@ -165,6 +188,7 @@ function title(): void {
       'primary',
     ),
   );
+  actions?.append(button('Start a fresh authored fortnight', () => void beginFortnight(true)));
   if (saved) {
     actions?.append(
       Object.assign(document.createElement('p'), {
@@ -200,6 +224,7 @@ function title(): void {
     body.innerHTML =
       '<p>A run must replay exactly before it replaces your garden.</p><p class="import-status" role="status"></p>';
     body.prepend(button('Load a playtest run', importFile));
+    body.append(continuityPanel());
     d.append(body);
   });
   bindTopbar();
@@ -318,11 +343,11 @@ function selectedBelief(subject: string): void {
     : null;
 }
 function storySentence(incident: Story): string {
-  const scene = storyScene(incident.id);
+  const scene = storyScene(incident.id, game.s.version);
   return scene ? `${'detail' in scene ? scene.detail : knownIncidentClaim(scene)}.` : incident.title;
 }
 function storyPreview(incident: Story): string {
-  const scene = storyScene(incident.id);
+  const scene = storyScene(incident.id, game.s.version);
   const settled =
     scene?.target === 'emre' &&
     scene.value &&
@@ -445,7 +470,7 @@ function preview(kind: 'tell' | 'defend'): string {
   return `You'll say: ${sentence} ${believed ? 'You believe it.' : "You don't believe this. It would be a lie."}`;
 }
 function askTrait(): Trait {
-  return trait ?? (story === null ? undefined : storyScene(story)?.trait) ?? 'honest';
+  return trait ?? (story === null ? undefined : storyScene(story, game.s.version)?.trait) ?? 'honest';
 }
 function askPreview(): string {
   const questions: Record<Trait, string> = {
@@ -747,6 +772,47 @@ function weddingDetails(): void {
   update();
   render();
 }
+
+function visitorEncounter(): void {
+  const entry = game?.continuity?.entries.find(
+    (e) =>
+      !e.encounter &&
+      ['garden', 'fountain'].includes(game.s.locations[e.admission.person.id] ?? '') &&
+      !game.s.people[e.admission.person.id]?.activity,
+  );
+  if (!entry || game.s.minute < 1440) return;
+  lab.milestone('one cast encounter');
+  const d = dialog(
+    entry.admission.castId === 'hf.cast.dilan.murmur' ? 'A delivery at the garden' : 'After the night shift',
+  );
+  d.dataset.systemMenu = 'true';
+  const body = document.createElement('div');
+  body.className = 'lk-sheet-body';
+  const p = document.createElement('p');
+  p.textContent =
+    entry.admission.castId === 'hf.cast.dilan.murmur'
+      ? 'Dilan brings a parcel. Her route passes this Istanbul district. She has a little time before continuing. Her sister Aylin, colleague Ece and depot supervisor Murat are people from her own life.'
+      : 'Derya stops after her night shift. She is lodging temporarily at home 7 with Zeynep and Ali during her relief assignment. Her permanent home is flat 5 in Lale Apartmanı. She needs to sleep this morning.';
+  body.append(p);
+  for (const [label, choice] of [
+    ['Offer a short, respectful exchange', 'support'],
+    ['Press her for private details', 'pry'],
+    ['Let her continue', 'leave'],
+  ] as const)
+    body.append(
+      button(label, async () => {
+        d.close();
+        await perform({ type: 'one-cast-encounter', person: entry.admission.person.id, choice });
+        if (entry.encounter) {
+          reply = entry.encounter.text;
+          lab.milestone('one cast trial');
+          await checkpointContinuity();
+          render();
+        }
+      }),
+    );
+  d.append(body);
+}
 function render(): void {
   if (!playing || pendingJournal) return;
   noticeVisitors();
@@ -756,7 +822,13 @@ function render(): void {
     return;
   }
   lab.screen('play');
+  const previousDay = Math.floor(shownMinute / 1440);
   shownMinute = game.s.minute;
+  if (
+    (previousDay >= 0 && Math.floor(shownMinute / 1440) > previousDay) ||
+    (game.s.deryaAssignmentReleased && !game.continuity?.source)
+  )
+    void checkpointContinuity();
   const present = v.present.filter((id) => id !== 'hatice');
   if (!present.includes(listener)) listener = '';
   const incident = tableIncident();
@@ -790,6 +862,24 @@ function render(): void {
   host.innerHTML = `<main class="game lk-stage" data-sheet="fit" data-phase="${openSheet ? phase : 'garden'}"><div class="lk-strip">${topbar(
     dateLabel(game.s.minute),
   )}<div class="state-status" role="status">${slowReason ? html(slowReason) : skipping ? 'Waiting for someone to come by' : fortnightTrack()}</div>${weddingStrip()}</div><div class="map-wrap lk-scene"><canvas id="map" aria-label="The neighbourhood. Tap a person near the tea garden or fountain to call them over."></canvas>${reply ? `<button type="button" class="speech-overlay">${html(reply)}</button>` : ''}</div><section class="garden lk-sheet" aria-label="Your tea garden"><div class="lk-sheet-body">${body}</div><div class="lk-sheet-actions garden-actions"><button type="button" id="call" ${unavailable(callReason)}><strong>Call over</strong>${callReason ? `<small>${callReason}</small>` : ''}</button>${!game.s.scene && !question && !incident ? '<button type="button" id="skip" aria-label="Skip to the next event">Skip ⏩</button>' : ''}</div></section></main>`;
+  const visitor = game.continuity?.entries.find(
+    (e) =>
+      !e.encounter &&
+      game.s.minute >= 1440 &&
+      ['garden', 'fountain'].includes(game.s.locations[e.admission.person.id] ?? '') &&
+      !game.s.people[e.admission.person.id]?.activity,
+  );
+  if (visitor)
+    host
+      .querySelector('.garden-actions')
+      ?.prepend(
+        button(
+          visitor.admission.castId === 'hf.cast.dilan.murmur'
+            ? 'A parcel from Dilan'
+            : 'Derya after her shift',
+          visitorEncounter,
+        ),
+      );
   measureStrip();
   if (openSheet) mountSheet(openSheet);
   bindTopbar();
@@ -1164,7 +1254,7 @@ function gameMenu(): void {
   toggle.querySelector('label')?.childNodes.forEach((node) => {
     if (node.nodeType === Node.TEXT_NODE) node.textContent = ' Record play for the lab';
   });
-  body.append(toggle);
+  body.append(toggle, continuityPanel());
   const privacy = document.createElement('a');
   privacy.href = 'https://human.adamwhite.work/lab/privacy/';
   privacy.target = '_blank';
@@ -1185,7 +1275,9 @@ function importFile(): void {
     if (!file) return;
     try {
       const imported = verifyImport(await file.text());
+      await validateContinuity(imported);
       game = imported;
+      await gateContinuity(game, true);
       sceneMemory = null;
       await putImmediate('run-ui', null);
       firstStart = false;
@@ -1399,6 +1491,80 @@ function frame(now: number): void {
   requestAnimationFrame(frame);
 }
 export async function start(): Promise<void> {
+  await shelf.ready;
+  const [row, journalRow, sceneRow] = await Promise.all([
+    get<Game>('run'),
+    get<Journal>('run-log'),
+    get<SceneMemory>('run-ui'),
+  ]);
+  const remembered = sceneRow?.value;
+  sceneMemory =
+    remembered && Number.isSafeInteger(remembered.seed) && Number.isSafeInteger(remembered.dismissedIncident)
+      ? remembered
+      : null;
+  saved =
+    [1, 2, 3, 4].includes(row?.value?.s?.version ?? 0) && Array.isArray(row?.value?.inputs)
+      ? (row?.value ?? null)
+      : null;
+  const journal = journalRow?.value;
+  if (
+    journal &&
+    [1, 2, 3, 4].includes(journal.version) &&
+    Number.isSafeInteger(journal.seed) &&
+    Number.isSafeInteger(journal.minute) &&
+    journal.minute >= 360 &&
+    journal.minute <= 20160 &&
+    Array.isArray(journal.inputs)
+  ) {
+    try {
+      if (
+        !saved ||
+        saved.s.version !== journal.version ||
+        saved.s.seed !== journal.seed ||
+        saved.s.minute !== journal.minute ||
+        JSON.stringify(saved.inputs) !== JSON.stringify(journal.inputs)
+      )
+        saved = replay(
+          journal.seed,
+          journal.inputs,
+          journal.minute,
+          journal.version,
+          journal.initialPeople,
+          journal.initialContinuity,
+        );
+      if (saved && journal.continuity) saved.continuity = journal.continuity;
+    } catch {
+      /* Keep a valid full-state cache if a recovery journal was damaged. */
+    }
+  }
+  if (saved) {
+    try {
+      const pinned = saved.initialContinuity
+        ? verifyImport(JSON.stringify(exportRun(saved)))
+        : loadGame(JSON.stringify(saved));
+      await validateContinuity(pinned);
+      saved = pinned;
+    } catch {
+      saved = null;
+    }
+  }
+  await gateContinuity(saved ?? undefined);
+  installContinuity(
+    () => game,
+    save,
+    async (incoming) => {
+      game = incoming;
+      saved = game;
+      resetScene();
+      await persistJournal();
+      save();
+      playing = true;
+      document.querySelectorAll('dialog').forEach((d) => {
+        d.remove();
+      });
+      render();
+    },
+  );
   lab.trackRun(
     async () => {
       const current = game;
@@ -1419,43 +1585,6 @@ export async function start(): Promise<void> {
       getLogs: () => game?.s.log.slice(-40).map((line) => line.text) ?? [],
     },
   );
-  const [row, journalRow, sceneRow] = await Promise.all([
-    get<Game>('run'),
-    get<Journal>('run-log'),
-    get<SceneMemory>('run-ui'),
-  ]);
-  const remembered = sceneRow?.value;
-  sceneMemory =
-    remembered && Number.isSafeInteger(remembered.seed) && Number.isSafeInteger(remembered.dismissedIncident)
-      ? remembered
-      : null;
-  saved =
-    [1, 2, 3].includes(row?.value?.s?.version ?? 0) && Array.isArray(row?.value?.inputs)
-      ? (row?.value ?? null)
-      : null;
-  const journal = journalRow?.value;
-  if (
-    journal &&
-    [1, 2, 3].includes(journal.version) &&
-    Number.isSafeInteger(journal.seed) &&
-    Number.isSafeInteger(journal.minute) &&
-    journal.minute >= 360 &&
-    journal.minute <= 20160 &&
-    Array.isArray(journal.inputs)
-  ) {
-    try {
-      if (
-        !saved ||
-        saved.s.version !== journal.version ||
-        saved.s.seed !== journal.seed ||
-        saved.s.minute !== journal.minute ||
-        JSON.stringify(saved.inputs) !== JSON.stringify(journal.inputs)
-      )
-        saved = replay(journal.seed, journal.inputs, journal.minute, journal.version);
-    } catch {
-      /* Keep a valid full-state cache if a recovery journal was damaged. */
-    }
-  }
   document.addEventListener(
     'click',
     (e) => {

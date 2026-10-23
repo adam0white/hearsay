@@ -12,6 +12,7 @@ export type Trait =
   | 'lazy'
   | 'owes';
 export type Input =
+  | { type: 'one-cast-encounter'; person: string; choice: import('./one-cast.ts').OneCastEncounterChoice }
   | { type: 'tell' | 'defend'; listener: string; target: string; trait: Trait }
   | { type: 'ask'; listener: string; target: string; trait?: Trait }
   | { type: 'tell-story'; listener: string; incident: number }
@@ -95,8 +96,10 @@ export interface QuickReply {
   options: { label: string; says: string; input: Input }[];
 }
 export interface State {
-  version: 1 | 2 | 3;
-  /** Edition 3 only: includes an open or queued Elif request. */
+  version: 1 | 2 | 3 | 4;
+  /** Edition 4: final relief shift completed; no further local duty is scheduled. */
+  deryaAssignmentReleased?: boolean;
+  /** Edition 3 onward: includes an open or queued Elif request. */
   elifAsked?: boolean;
   /** Only facts Hatice told, witnessed in conversation, or learned from a reply. */
   knownTellings?: Record<
@@ -169,6 +172,10 @@ export interface State {
   days?: { day: number; summary: string[]; question: string; tomorrow?: string }[];
 }
 export interface Game {
+  /** Pinned host-admitted initial people. Replay never consults a live shelf. */
+  initialPeople?: Record<string, Person>;
+  initialContinuity?: import('./one-cast.ts').ContinuityState;
+  continuity?: import('./one-cast.ts').ContinuityState;
   s: State;
   inputs: LoggedInput[];
 }

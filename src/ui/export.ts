@@ -1,4 +1,5 @@
 import { fingerprint, PEOPLE, REPUTATION_TRAITS, replay } from '../sim/engine.ts';
+import type { ContinuityState, OneCastRow } from '../sim/one-cast.ts';
 import type { Game, LoggedInput, State } from '../sim/types.ts';
 
 export interface RunExport {
@@ -9,6 +10,10 @@ export interface RunExport {
   inputs: LoggedInput[];
   state: State;
   fingerprint: string;
+  initialPeople?: Game['initialPeople'];
+  initialContinuity?: ContinuityState;
+  continuity?: ContinuityState;
+  oneCast?: OneCastRow[];
 }
 export function exportRun(game: Game): RunExport {
   return {
@@ -19,13 +24,19 @@ export function exportRun(game: Game): RunExport {
     inputs: structuredClone(game.inputs),
     state: structuredClone(game.s),
     fingerprint: fingerprint(game.s),
+    ...(game.initialPeople ? { initialPeople: structuredClone(game.initialPeople) } : {}),
+    ...(game.initialContinuity ? { initialContinuity: structuredClone(game.initialContinuity) } : {}),
+    ...(game.continuity
+      ? { continuity: structuredClone(game.continuity), oneCast: structuredClone(game.continuity.rows) }
+      : {}),
   };
 }
 export type CompactRunExport = Omit<RunExport, 'state'>;
 
 export function compactRun(run: RunExport): CompactRunExport {
   const { game, version, seed, minute, inputs, fingerprint } = run;
-  return { game, version, seed, minute, inputs: structuredClone(inputs), fingerprint };
+  const { state: _state, ...compact } = run;
+  return { ...compact, game, version, seed, minute, inputs: structuredClone(inputs), fingerprint };
 }
 
 function matchesReplay(state: State, expected: string): boolean {
@@ -44,7 +55,7 @@ export function verifyImport(text: string): Game {
   const d = data as Partial<RunExport>;
   if (
     d.game !== 'hearsay' ||
-    (d.version !== 1 && d.version !== 2 && d.version !== 3) ||
+    (d.version !== 1 && d.version !== 2 && d.version !== 3 && d.version !== 4) ||
     !Number.isSafeInteger(d.seed) ||
     !Number.isSafeInteger(d.minute) ||
     !Array.isArray(d.inputs) ||
@@ -54,6 +65,13 @@ export function verifyImport(text: string): Game {
   if ((d.minute as number) < 360 || (d.minute as number) > 14 * 1440)
     throw new Error('The run clock is outside the fortnight.');
   if (d.inputs.length > 20000) throw new Error('The run has too many inputs.');
+  if (
+    Boolean(d.initialPeople) !== Boolean(d.initialContinuity) ||
+    (d.initialPeople &&
+      (d.version !== 4 ||
+        Object.keys(d.initialPeople).some((id) => !['derya', 'dilan-delivery'].includes(id))))
+  )
+    throw new Error('The pinned continuity is incomplete.');
   let previous = 360;
   const ids = new Set(PEOPLE.map((p) => p.id));
   for (const entry of d.inputs) {
@@ -80,6 +98,7 @@ export function verifyImport(text: string): Game {
         'sit',
         'release',
         'choose',
+        'one-cast-encounter',
       ].includes(input.type)
     )
       throw new Error('Unknown choice in run.');
@@ -91,13 +110,28 @@ export function verifyImport(text: string): Game {
       throw new Error('Unknown claim in run.');
     if (input.type === 'choose' && (typeof input.scene !== 'string' || typeof input.choice !== 'string'))
       throw new Error('Invalid scene choice in run.');
+    if (
+      input.type === 'one-cast-encounter' &&
+      (d.version !== 4 ||
+        !['derya', 'dilan-delivery'].includes(input.person) ||
+        !['support', 'pry', 'leave'].includes(input.choice))
+    )
+      throw new Error('Invalid visitor choice.');
     if (input.type === 'call-over' && !ids.has(input.person)) throw new Error('Unknown passer-by in run.');
   }
-  const game = replay(d.seed as number, d.inputs, d.minute as number, d.version);
+  const game = replay(
+    d.seed as number,
+    d.inputs,
+    d.minute as number,
+    d.version,
+    d.initialPeople,
+    d.initialContinuity,
+  );
   if (
     !matchesReplay(game.s, d.fingerprint) ||
     (Object.hasOwn(d, 'state') && (!d.state || fingerprint(d.state) !== d.fingerprint))
   )
     throw new Error('Replay did not match this run. Your current garden is unchanged.');
+  if (d.continuity) game.continuity = structuredClone(d.continuity);
   return game;
 }

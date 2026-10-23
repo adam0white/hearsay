@@ -244,7 +244,7 @@ export const EMRE_INCIDENTS = [
 ];
 
 /** IDs stay fixed across saves. The basket is an extra witnessed scene on day one. */
-export function storyScene(id: number) {
+export function storyScene(id: number, version = 3) {
   if (id === 18)
     return {
       id,
@@ -270,6 +270,22 @@ export function storyScene(id: number) {
       value: true,
       detail: 'Kemal carried Safiye’s heavy basket up the hill and stopped to help her',
     };
-  const scene = DAILY_INCIDENTS.find((scene) => scene.day === id);
+  const scene = dailyIncidents(version).find((scene) => scene.day === id);
   return scene ? { ...scene, id, title: TITLES[id - 1]! } : undefined;
+}
+
+const CANONICAL_DAILY_INCIDENTS = DAILY_INCIDENTS.map((scene) =>
+  scene.day === 4
+    ? {
+        ...scene,
+        text: 'Elif opens her own breakfast parcel at the fountain. When Derya arrives after her night shift and says she has not eaten, Elif gives her both cheese rolls and keeps the small apple.',
+        question:
+          'Hatice, Derya came back from her night shift without eating. Did you see her get any breakfast at the fountain?',
+      }
+    : scene,
+);
+
+/** The edition stamp selects the authored incident; old saves never change meaning. */
+export function dailyIncidents(version: number): readonly DailyIncident[] {
+  return version >= 4 ? CANONICAL_DAILY_INCIDENTS : DAILY_INCIDENTS;
 }

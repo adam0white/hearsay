@@ -849,7 +849,13 @@ export function say(
   const key = `voice:${Math.floor(s.minute / 1440)}:${id}`;
   s.voiceUsed[key] ??= [];
   const used = s.voiceUsed[key];
-  const stem = pool.find((p) => !used.includes(p));
+  const stems =
+    s.version >= 4 && id === 'derya' && kind === 'opening'
+      ? pool.map((stem) =>
+          stem === 'My shift starts a bit later.' ? 'My night shift is over. I need to sleep soon.' : stem,
+        )
+      : pool;
+  const stem = stems.find((p) => !used.includes(p));
   if (!stem) return undefined;
   used.push(stem);
   return detail ? `${stem} ${detail}` : stem;

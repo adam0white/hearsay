@@ -5,6 +5,8 @@
 import { lab } from './lab';
 
 function captureStored(key: string, text: string): void {
+  // Departure prefixes are local recovery data; the active run owns its gated uploads.
+  if (key.startsWith('persona-departure:')) return;
   try {
     lab.captureSave({ key, value: JSON.parse(text) });
   } catch {}

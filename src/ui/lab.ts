@@ -14,6 +14,9 @@ export const notebookRunOptions = {
 const quiet: Lab | null =
   typeof navigator !== 'undefined' && navigator.webdriver
     ? ({
+        setPersonaRecording() {},
+        allowPersonaRecording() {},
+        personaRecordingAllowed: true,
         milestone() {},
         screen() {},
         flush() {},
@@ -41,3 +44,6 @@ const quiet: Lab | null =
     : null;
 
 export const lab: Lab = quiet ?? createLab({ game: 'hearsay' });
+
+// Close the upload gate until startup validates saved history and reads central consent.
+lab.setPersonaRecording('pending-history');

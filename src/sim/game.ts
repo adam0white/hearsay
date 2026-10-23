@@ -1,4 +1,4 @@
-import type { Affordance, Percept } from '@adam0white/human-framework';
+import type { Affordance, Percept, Person } from '@adam0white/human-framework';
 import {
   applyReputationBelief,
   begin,
@@ -24,7 +24,7 @@ export * from './types.ts';
 export { PEOPLE, PLACES } from './world.ts';
 export { REPUTATION_TRAITS };
 
-import { PEOPLE, PLACES, SCHEDULES } from './world.ts';
+import { DERYA_NIGHT_SCHEDULE, neighborNorm, PEOPLE, PLACES, SCHEDULES } from './world.ts';
 
 function confirm(...args: Parameters<typeof hfConfirm>) {
   const [p, proposition, , at] = args;
@@ -56,7 +56,8 @@ const bad: Record<string, Trait> = {
 };
 
 import { hash } from './hash.ts';
-import { DAILY_INCIDENTS, EMRE_INCIDENTS, storyScene } from './incidents.ts';
+import { dailyIncidents, EMRE_INCIDENTS, storyScene } from './incidents.ts';
+import { type ContinuityState, encounterOneCast, ONE_CAST } from './one-cast.ts';
 import { completeClaims, OPPOSITE, receiveTestimony } from './testimony.ts';
 import { claimText, knownIncidentClaim, say } from './voices.ts';
 
@@ -121,8 +122,8 @@ function ensureRiza(s: State) {
     for (const step of s.riza.steps) step.status = s.engagement === 'accepted' ? 'met' : 'missed';
   return s.riza;
 }
-function routeAccount(route: Route, trait: Trait) {
-  const scene = route.incident ? storyScene(route.incident) : undefined;
+function routeAccount(s: State, route: Route, trait: Trait) {
+  const scene = route.incident ? storyScene(route.incident, s.version) : undefined;
   return scene
     ? 'detail' in scene
       ? scene.detail
@@ -158,7 +159,7 @@ function marriageView(s: State) {
         ((route.trait === trait && !route.value) || (route.trait === OPPOSITE[trait] && route.value)),
     );
     const seen = Object.entries(s.incidentWitnesses ?? {}).find(([id, witnesses]) => {
-      const scene = storyScene(Number(id));
+      const scene = storyScene(Number(id), s.version);
       return scene?.target === 'emre' && scene.trait === trait && scene.value && witnesses.includes('riza');
     });
     const status = score < 0.4 ? 'worse' : score > 0.7 && (supporting || seen) ? 'settled' : 'open';
@@ -172,8 +173,8 @@ function marriageView(s: State) {
               ? `${nameOf(opposing.from)} told him ${claimText('Emre', opposing.trait, opposing.value)}.`
               : `What Rıza has heard about Emre being ${trait} troubles him.`
             : seen
-              ? `Rıza saw Emre in “${storyScene(Number(seen[0]))!.title}”.`
-              : `${nameOf(supporting!.from)} told him ${routeAccount(supporting!, trait)}.`;
+              ? `Rıza saw Emre in “${storyScene(Number(seen[0]), s.version)!.title}”.`
+              : `${nameOf(supporting!.from)} told him ${routeAccount(s, supporting!, trait)}.`;
       changedCause = doubt.because ?? `Rıza needs another account of whether Emre is ${trait}.`;
     }
   }
@@ -250,7 +251,7 @@ function concernedMatter(
   incident?: number,
   at = s.minute,
 ) {
-  const scene = incident ? storyScene(incident) : DAILY_INCIDENTS[Math.floor(at / 1440)];
+  const scene = incident ? storyScene(incident, s.version) : dailyIncidents(s.version)[Math.floor(at / 1440)];
   const aboutMatter =
     scene &&
     scene.target === target &&
@@ -314,7 +315,7 @@ function reaction(
   const trust = trustOf(p, 'hatice');
   const refused =
     !concerned &&
-    PEOPLE.find((p) => p.id === listener)!.norm === 'forbidden' &&
+    neighborNorm(s, listener) === 'forbidden' &&
     isUnfavourableTrait(trait, value) &&
     !present(s).some((p) => p.id === target);
   const mother = listener === 'riza' && target === 'emre' && !isUnfavourableTrait(trait, value);
@@ -354,11 +355,7 @@ function reaction(
   else if (believes === 'no') will = 'I won’t repeat that.';
   else if (changed && confidence > 0.6 && damaging && avoidsShop(s, listener, target))
     will = target === 'kemal' ? 'I’ll buy my flour elsewhere.' : 'I’ll buy my bread elsewhere.';
-  else if (
-    changed &&
-    confidence >= 0.7 &&
-    (!damaging || PEOPLE.find((p) => p.id === listener)?.norm !== 'forbidden')
-  )
+  else if (changed && confidence >= 0.7 && (!damaging || neighborNorm(s, listener) !== 'forbidden'))
     will = 'I’ll pass on what you told me.';
   else if (believes === 'doubt') will = 'I won’t repeat that until I have seen more.';
   if (will === 'I’ll pass on what you told me.' && target === 'emre' && listener !== 'riza') {
@@ -518,7 +515,7 @@ function contradict(s: State, listener: string, proposition: string, truth: bool
 
 function observe(s: State, id: string, target: string, trait: Trait, truth: boolean) {
   for (const r of s.routes.filter((r) => r.to === id && r.incident && !r.confirmedAt && !r.retractedAt)) {
-    const scene = storyScene(r.incident!);
+    const scene = storyScene(r.incident!, s.version);
     if (
       scene &&
       scene.target === target &&
@@ -572,7 +569,7 @@ export function spokenClaim(
   trait: string,
   value: boolean,
 ): string {
-  const scene = DAILY_INCIDENTS.findLast(
+  const scene = dailyIncidents(s.version).findLast(
     (scene) =>
       scene.target === target &&
       (scene.day - 1) * 1440 + scene.at <= s.minute &&
@@ -596,7 +593,7 @@ function visibleClaim(s: State, from: string, to: string, target: string, trait:
   const account = s.routes.findLast(
     (r) => r.from === from && r.to === to && r.target === target && r.at === s.minute && r.incident,
   );
-  const scene = account?.incident ? storyScene(account.incident) : undefined;
+  const scene = account?.incident ? storyScene(account.incident, s.version) : undefined;
   const exactStory =
     scene &&
     ((scene.trait === trait && scene.value === value) ||
@@ -685,7 +682,14 @@ function confrontHatice(s: State, root: Route, recipient: string) {
   markWordHurt(s, root.target);
 }
 
-export function newGame(seed: number, version: State['version'] = 3): Game {
+export function newGame(
+  seed: number,
+  version: State['version'] = 4,
+  initialPeople?: Record<string, Person>,
+  initialContinuity?: ContinuityState,
+): Game {
+  if (initialPeople && version < 4) throw new Error('Legacy editions cannot admit canonical people');
+  const pinned = initialPeople ? structuredClone(initialPeople) : undefined;
   const s: State = {
     version,
     seed,
@@ -713,6 +717,22 @@ export function newGame(seed: number, version: State['version'] = 3): Game {
     days: [],
   };
   for (const [i, p] of PEOPLE.entries()) {
+    if (version >= 4 && p.id === 'derya') {
+      s.people.derya = createPerson({
+        id: 'derya',
+        name: 'Derya',
+        seed: seed ^ 0x55,
+        now: 360,
+        bornAt: 360 - 44 * 365 * 1440,
+        sex: 'female',
+        voices: [{ voiceId: 'kapici', trust: 0.5 }],
+        traits: { honesty: 0.7, extraversion: 0.35, agreeableness: 0.6, emotionality: 0.5, openness: 0.55 },
+        norms: [{ normId: 'backbiting', standing: 'forbidden', conviction: 0.5 }],
+      });
+      understandNorm(s.people.derya, 'backbiting', 'forbidden', 0.5);
+      seedSourceTrust(s.people.derya, 'hatice', 0.72);
+      continue;
+    }
     s.people[p.id] = createPerson({
       id: p.id,
       name: p.name,
@@ -731,6 +751,8 @@ export function newGame(seed: number, version: State['version'] = 3): Game {
       ],
       retention: { trace: 0, chronicleDays: 2 },
     });
+    // The legacy serialization stamp is part of published replay fingerprints.
+    if (version < 4) s.people[p.id]!.engine = '2.10.0';
     understandNorm(s.people[p.id]!, 'backbiting', p.norm, p.norm === 'forbidden' ? 1 : 0.65);
     understandNorm(s.people[p.id]!, 'lying', p.norm === 'permitted' ? 'disliked' : 'forbidden', 0.8);
     // Preserve the historical serialized self entry; HF correctly refuses to seed self trust.
@@ -776,6 +798,13 @@ export function newGame(seed: number, version: State['version'] = 3): Game {
   confirm(s.people.hatice!, 'emre:reliable', true, 360);
   seedSourceTrust(s.people.riza!, 'kemal', 0.88);
   seedSourceTrust(s.people.riza!, 'cem', 0.85);
+  // Incoming people already contain their approved current profile. Local familiarity
+  // initialization must not overwrite their memory, norms, transient state or RNG.
+  if (pinned)
+    for (const [id, person] of Object.entries(pinned)) {
+      if (person.id !== id) throw new Error('Admitted Person id does not match its local mapping');
+      s.people[id] = structuredClone(person);
+    }
   place(s);
   ensureRiza(s);
   s.riza!.line = marriageView(s).line;
@@ -785,12 +814,32 @@ export function newGame(seed: number, version: State['version'] = 3): Game {
     'arrival',
     'The samovar, a tea urn, warms. Emre sets two cups aside. Rıza has still not given an answer about Elif.',
   );
-  return { s, inputs: [] };
+  return {
+    s,
+    inputs: [],
+    ...(pinned ? { initialPeople: pinned } : {}),
+    ...(initialContinuity
+      ? {
+          initialContinuity: structuredClone(initialContinuity),
+          continuity: structuredClone(initialContinuity),
+        }
+      : {}),
+  };
 }
 function scheduledLocation(s: State, p: (typeof PEOPLE)[number]) {
   const t = s.minute % 1440;
   const slot = t < 480 ? 0 : t < 660 ? 1 : t < 780 ? 2 : t < 1020 ? 3 : t < 1140 ? 4 : t < 1260 ? 5 : 6;
-  let location = t < 360 || t >= 1380 ? p.home : (SCHEDULES[p.id]?.[slot] ?? p.home);
+  const canonicalNurse = s.version >= 4 && p.id === 'derya';
+  if (canonicalNurse && s.deryaAssignmentReleased) return 'flat-5';
+  let location = canonicalNurse
+    ? t < 360 || t >= 1020
+      ? 'hospital'
+      : DERYA_NIGHT_SCHEDULE[slot]!
+    : t < 360 || t >= 1380
+      ? p.home
+      : (SCHEDULES[p.id]?.[slot] ?? p.home);
+  // Sleep and paid night work constrain invitations and interrupted tea visits.
+  if (canonicalNurse && (t < 360 || (t >= 480 && t < 780) || t >= 1020)) return location;
   if (location === 'home') location = p.home;
   if (s.scene?.who.includes(p.id)) return 'garden';
   if (s.morningVisits?.some((v) => v.who === p.id && s.minute >= v.at && s.minute < v.until)) return 'garden';
@@ -812,6 +861,10 @@ function release(s: State) {
 function place(s: State) {
   if (s.held && s.held.until <= s.minute) release(s);
   for (const p of PEOPLE) s.locations[p.id] = scheduledLocation(s, p);
+  if (s.version >= 4 && s.people['dilan-delivery']) {
+    const t = s.minute % 1440;
+    s.locations['dilan-delivery'] = s.minute >= 1440 && t >= 390 && t < 420 ? 'garden' : 'delivery-route';
+  }
 }
 export function present(s: State) {
   return PEOPLE.filter((p) => ['garden', 'fountain'].includes(s.locations[p.id]!));
@@ -884,7 +937,7 @@ function talk(s: State, from: string, to: string) {
     at: s.minute,
     placeId: s.locations[from],
     maxClaims: 1,
-    topics: [DAILY_INCIDENTS[Math.min(13, Math.floor(s.minute / 1440))]!.target, 'emre'],
+    topics: [dailyIncidents(s.version)[Math.min(13, Math.floor(s.minute / 1440))]!.target, 'emre'],
     temptations: a.traits.honesty < 0.3 ? [{ prop: 'kemal:cruel', value: true, gain: 0.9 }] : [],
   });
 
@@ -972,10 +1025,10 @@ function quickReplies(s: State): import('./types.ts').QuickReply | undefined {
 function questionReplies(s: State, question: Line): import('./types.ts').QuickReply {
   const listener = question.speaker!;
   const story = s.stories?.findLast((story) => {
-    const scene = storyScene(story.id);
+    const scene = storyScene(story.id, s.version);
     return story.target === question.target && scene && (scene.day - 1) * 1440 + scene.at <= question.at;
   });
-  const scene = story ? storyScene(story.id) : undefined;
+  const scene = story ? storyScene(story.id, s.version) : undefined;
   const target = question.target ?? 'kemal';
   return {
     listener,
@@ -1669,7 +1722,7 @@ export function tellingUnavailable(s: State, input: Input): string | undefined {
     )
       record = { source: prior.from, at: prior.at };
     if ('incident' in claim) {
-      const scene = storyScene(claim.incident!);
+      const scene = storyScene(claim.incident!, s.version);
       const detail = scene && ('detail' in scene ? scene.detail : knownIncidentClaim(scene));
       // A legacy already-heard reply follows Hatice's exact story line.
       for (let index = s.log.length - 1; index > 0; index--) {
@@ -1721,7 +1774,7 @@ export function act(g: Game, input: Input): boolean {
     (input.target === input.listener || input.target === 'hatice')
   )
     return false;
-  const story = input.type === 'tell-story' ? storyScene(input.incident) : undefined;
+  const story = input.type === 'tell-story' ? storyScene(input.incident, s.version) : undefined;
   if (
     input.type === 'tell-story' &&
     (!story ||
@@ -1733,7 +1786,23 @@ export function act(g: Game, input: Input): boolean {
   if (s.version >= 2 && tellingUnavailable(s, input)) return false;
   const idsHere = present(s).map((p) => p.id);
   if ('listener' in input && (input.listener === 'hatice' || !idsHere.includes(input.listener))) return false;
-  if (input.type === 'choose') {
+  if (input.type === 'one-cast-encounter') {
+    if (s.version < 4 || s.minute < 1440 || !['support', 'pry', 'leave'].includes(input.choice)) return false;
+    const entry = g.continuity?.entries.find((e) => ONE_CAST[e.admission.castId].targetId === input.person);
+    const person = s.people[input.person];
+    if (
+      !entry ||
+      entry.encounter ||
+      !person ||
+      person.activity ||
+      !['garden', 'fountain'].includes(s.locations[input.person] ?? '')
+    )
+      return false;
+    const result = encounterOneCast(person, entry.admission, input.choice, s.minute);
+    s.people[input.person] = result.person;
+    entry.encounter = result.encounter;
+    line(s, 'one-cast-encounter', result.encounter.text, input.person);
+  } else if (input.type === 'choose') {
     if (!s.scene || s.scene.id !== input.scene || !s.scene.choices.some((c) => c.id === input.choice))
       return false;
     resolveScene(s, input.choice, g.inputs.length);
@@ -1781,7 +1850,7 @@ export function act(g: Game, input: Input): boolean {
         ? `${spokenClaim(s, input.listener, input.target, best, c > 0.5)}. That is what I believe.`
         : `${PEOPLE.find((p) => p.id === input.target)!.name} lives here with us. I have seen too little to be sure about that.`;
     const refusal =
-      PEOPLE.find((person) => person.id === input.listener)?.norm === 'forbidden' &&
+      neighborNorm(s, input.listener) === 'forbidden' &&
       isUnfavourableTrait(best, c > 0.5) &&
       !idsHere.includes(input.target);
     const emre = input.listener === 'riza' && input.target === 'emre';
@@ -2040,7 +2109,25 @@ function step(s: State) {
       finish(p, { affordanceId: p.activity.affordanceId, action, status: 'completed', at: s.minute, needs });
     }
     const minute = s.minute % 1440;
-    const sleeping = minute >= 1380 || minute < 360;
+    if (s.version >= 4 && p.id === 'derya' && s.minute >= 13 * 1440 + 390) {
+      if (!s.deryaAssignmentReleased) {
+        s.deryaAssignmentReleased = true;
+        line(
+          s,
+          'one-cast-release',
+          'Derya’s short relief assignment has ended. She returns to flat 5 in Lale Apartmanı.',
+          'derya',
+        );
+      }
+      s.locations.derya = 'flat-5';
+      // The final local activity completed above. The next chapter owns her next duty.
+      continue;
+    }
+    // A short post-shift / delivery pause makes the ordinary encounter playable.
+    // The prior activity was completed above; no running activity is discarded.
+    if (s.version >= 4 && ['derya', 'dilan-delivery'].includes(p.id) && minute === 390) continue;
+    const sleeping =
+      s.version >= 4 && p.id === 'derya' ? minute >= 480 && minute < 780 : minute >= 1380 || minute < 360;
     const offers: Affordance[] = [
       {
         id: 'rest',
@@ -2094,7 +2181,7 @@ function step(s: State) {
   const waiting = waitingQuestion(s);
   if (waiting && s.minute >= waiting.at + 120) giveUpQuestion(s);
   if (s.scene) for (const id of s.scene.who) s.locations[id] = 'garden';
-  const incident = DAILY_INCIDENTS[day];
+  const incident = dailyIncidents(s.version)[day];
   const incidentReady =
     incident &&
     t >= incident.at &&
@@ -2110,7 +2197,7 @@ function step(s: State) {
       s.stories.push({
         id: incident.day,
         day: incident.day,
-        title: storyScene(incident.day)!.title,
+        title: storyScene(incident.day, s.version)!.title,
         target: incident.target,
         truth: true,
       });
@@ -2224,7 +2311,7 @@ function step(s: State) {
     // Only people at the fountain actually see the helpful act.
     s.locations.kemal = 'fountain';
     s.stories ??= [];
-    s.stories.push({ id: 15, day: 1, title: storyScene(15)!.title, target: 'kemal', truth: true });
+    s.stories.push({ id: 15, day: 1, title: storyScene(15, s.version)!.title, target: 'kemal', truth: true });
     for (const p of present(s)) {
       observe(s, p.id, 'kemal', 'kind', true);
     }
@@ -2453,8 +2540,15 @@ export function advance(g: Game, toMinute: number) {
     if (boundary === quarter) step(g.s);
   }
 }
-export function replay(seed: number, inputs: LoggedInput[], minute: number, version: State['version'] = 3) {
-  const g = newGame(seed, version);
+export function replay(
+  seed: number,
+  inputs: LoggedInput[],
+  minute: number,
+  version: State['version'] = 4,
+  initialPeople?: Record<string, Person>,
+  initialContinuity?: ContinuityState,
+) {
+  const g = newGame(seed, version, initialPeople, initialContinuity);
   for (const entry of inputs) {
     advance(g, entry.at);
     act(g, entry.input);
@@ -2467,7 +2561,7 @@ export function save(g: Game) {
 }
 export function load(data: string): Game {
   const g = JSON.parse(data) as Game;
-  if (![1, 2, 3].includes(g.s?.version) || !Array.isArray(g.inputs))
+  if (![1, 2, 3, 4].includes(g.s?.version) || !Array.isArray(g.inputs))
     throw new Error('Unsupported Hearsay save');
   g.s.silence ??= {};
   g.s.confronted ??= [];
@@ -2476,17 +2570,23 @@ export function load(data: string): Game {
   g.s.pendingConfrontations ??= [];
   g.s.heardClaims ??= {};
   if (!g.s.stories) {
-    g.s.stories = [...DAILY_INCIDENTS, ...EMRE_INCIDENTS]
+    g.s.stories = [...dailyIncidents(g.s.version), ...EMRE_INCIDENTS]
       .filter((scene) => g.s.incidentWitnesses?.['id' in scene ? scene.id : scene.day]?.includes('hatice'))
       .map((scene) => ({
         id: 'id' in scene ? scene.id : scene.day,
         day: scene.day,
-        title: storyScene('id' in scene ? scene.id : scene.day)!.title,
+        title: storyScene('id' in scene ? scene.id : scene.day, g.s.version)!.title,
         target: scene.target,
         truth: true,
       }));
     if (g.s.log.some((l) => l.kind === 'truth' && /heavy basket/.test(l.text)))
-      g.s.stories.push({ id: 15, day: 1, title: storyScene(15)!.title, target: 'kemal', truth: true });
+      g.s.stories.push({
+        id: 15,
+        day: 1,
+        title: storyScene(15, g.s.version)!.title,
+        target: 'kemal',
+        truth: true,
+      });
   }
   g.s.days ??= [];
   ensureRiza(g.s);
@@ -2522,8 +2622,8 @@ export function view(s: State) {
     held: s.held,
     concerned:
       s.incidentWitnesses?.[Math.floor(s.minute / 1440) + 1]?.includes('hatice') &&
-      present(s).some((p) => p.id === DAILY_INCIDENTS[Math.floor(s.minute / 1440)]?.listener)
-        ? DAILY_INCIDENTS[Math.floor(s.minute / 1440)]?.listener
+      present(s).some((p) => p.id === dailyIncidents(s.version)[Math.floor(s.minute / 1440)]?.listener)
+        ? dailyIncidents(s.version)[Math.floor(s.minute / 1440)]?.listener
         : undefined,
     households: Object.fromEntries(PEOPLE.map((p) => [p.id, String(p.household)])),
     riza: s.riza,
