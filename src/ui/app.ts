@@ -76,7 +76,7 @@ let refreshConversation: (() => void) | null = null;
 let stripObserver: ResizeObserver | null = null;
 let sceneObserver: ResizeObserver | null = null;
 let pendingJournal: Promise<boolean> | null = null;
-type Journal = { version: 1 | 2; seed: number; minute: number; inputs: LoggedInput[] };
+type Journal = { version: 1 | 2 | 3; seed: number; minute: number; inputs: LoggedInput[] };
 function persistJournal(): Promise<boolean> {
   const writing = putImmediate('run-log', {
     version: game.s.version,
@@ -1430,13 +1430,13 @@ export async function start(): Promise<void> {
       ? remembered
       : null;
   saved =
-    [1, 2].includes(row?.value?.s?.version ?? 0) && Array.isArray(row?.value?.inputs)
+    [1, 2, 3].includes(row?.value?.s?.version ?? 0) && Array.isArray(row?.value?.inputs)
       ? (row?.value ?? null)
       : null;
   const journal = journalRow?.value;
   if (
     journal &&
-    [1, 2].includes(journal.version) &&
+    [1, 2, 3].includes(journal.version) &&
     Number.isSafeInteger(journal.seed) &&
     Number.isSafeInteger(journal.minute) &&
     journal.minute >= 360 &&

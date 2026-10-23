@@ -97,7 +97,7 @@ A pending witnessed incident, question, family choice or confrontation keeps Slo
 
 ## Deferred
 
-- **2026-10-27 — A dilemma scene with Elif herself (Joanna, round 5)**
+- **Implemented 2026-10-23 — A dilemma scene with Elif herself (Joanna, round 5).** Rules edition 3; owner play acceptance remains open.
 - **2026-10-27 — Emre's kindness evidence earlier in the fortnight if playtests show it is hard to find (Tom, round 5)**
 
 - **Done 2026-10-20 — Public build, games page and lab dashboard.** Live at https://hearsay.adamwhite.work from commit `34bad4c` (HF 2.9.0, lab client 0.1.1); listed on https://human.adamwhite.work/games/ and the lab dashboard. Later docs-only commits do not change the deployed app; `/release.json` names the deployed source.
@@ -109,3 +109,9 @@ A pending witnessed incident, question, family choice or confrontation keeps Slo
 ## Clock presentation (2026-10-21)
 
 The UI offers Slow, Walk, Trot and Gallop clock speeds, starting at Walk. Pending questions, incidents, scenes and open conversations hold time. Game menu and day cards keep their existing pause. Each minute still runs through the unchanged simulation; the UI stops immediately when a response appears and discards timing carry. Composer disclosures remain gameplay. The recorded-route tally appears only behind See tally at the end; no menu preference is needed. Simulation versions, inputs, replay and HF remain unchanged. Adam accepts feel by playing.
+
+## Elif’s confidence (rules edition 3, 2026-10-23)
+
+New fortnights use edition 3. On Day 6 at 18:00, Elif asks Hatice to keep her request to speak with Emre private before Rıza gives his word. Keeping her confidence raises Elif’s trust in Hatice by 0.06. Calling Rıza over and repeating the request raises his trust by 0.06 and lowers Elif’s by 0.06. Asking Elif to speak with him together leaves trust unchanged; she is not ready today. That is also the unanswered scene’s fallback. The scene changes no wedding doubt, evidence or acceptance threshold. Its risk lines name the trust tradeoff before the answer.
+
+This is an implementation choice for the open Elif-dilemma route, not an owner play verdict. The existing owner acceptance requirement still applies. Editions 1 and 2 never schedule the scene or acquire its marker. Their saves and full or compact playtest exports retain the original edition and replay exactly. Edition 3 inherits edition 2’s telling-memory limits.

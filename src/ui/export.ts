@@ -3,7 +3,7 @@ import type { Game, LoggedInput, State } from '../sim/types.ts';
 
 export interface RunExport {
   game: 'hearsay';
-  version: 1 | 2;
+  version: State['version'];
   seed: number;
   minute: number;
   inputs: LoggedInput[];
@@ -44,7 +44,7 @@ export function verifyImport(text: string): Game {
   const d = data as Partial<RunExport>;
   if (
     d.game !== 'hearsay' ||
-    (d.version !== 1 && d.version !== 2) ||
+    (d.version !== 1 && d.version !== 2 && d.version !== 3) ||
     !Number.isSafeInteger(d.seed) ||
     !Number.isSafeInteger(d.minute) ||
     !Array.isArray(d.inputs) ||

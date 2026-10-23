@@ -685,7 +685,7 @@ function confrontHatice(s: State, root: Route, recipient: string) {
   markWordHurt(s, root.target);
 }
 
-export function newGame(seed: number, version: State['version'] = 2): Game {
+export function newGame(seed: number, version: State['version'] = 3): Game {
   const s: State = {
     version,
     seed,
@@ -1143,6 +1143,38 @@ function openScene(s: State, scene: Scene) {
   for (const id of scene.who) s.locations[id] = 'garden';
   line(s, scene.kind === 'confrontation' ? 'confrontation' : 'wedding-step', scene.text, scene.who[0]);
 }
+/** Edition 3 adds one confidence dilemma; earlier editions never enter it. */
+function elifScene(s: State) {
+  openScene(s, {
+    id: 'elif-6',
+    kind: 'elif',
+    who: ['elif'],
+    text: 'Elif sits beside you. “Before Father gives his word, I want to speak with Emre about what our life would be. Please keep this between us for now. Can you help?”',
+    choices: [
+      {
+        id: 'private',
+        label: 'Keep her confidence',
+        says: 'I will keep your request between us. Speak to Emre yourself.',
+        risk: 'Elif will trust you more. Rıza will hear no reassurance from you.',
+      },
+      {
+        id: 'father',
+        label: 'Bring Rıza into the conversation',
+        says: 'I want your father to hear this too. Rıza, will you sit with us?',
+        risk: 'Rıza will trust your openness more. Elif will trust you less for sharing her request.',
+      },
+      {
+        id: 'together',
+        label: 'Ask her to speak to Rıza together',
+        says: 'Will you tell your father with me beside you?',
+        risk: 'She may not be ready. Neither trust nor the wedding doubts will improve today.',
+      },
+    ],
+    since: s.minute,
+    until: s.minute + 120,
+    fallback: 'together',
+  });
+}
 function familyScene(s: State, day: number, met: boolean) {
   const kind = day === 4 ? 'coffee' : 'word';
   if (!met) {
@@ -1292,6 +1324,21 @@ function resolveScene(s: State, choiceId: string, to = -1, fallback = false) {
       outcome = root.lie
         ? 'Then we will see whether your account holds. I will not forget this.'
         : 'You may have your believers. Do not expect me to sit warmly with you.';
+    }
+  } else if (scene.kind === 'elif') {
+    const elif = s.people.elif!;
+    if (choiceId === 'private') {
+      elif.memory.sourceTrust.hatice = Math.min(1, trustOf(elif, 'hatice') + 0.06);
+      outcome =
+        'Thank you for keeping my confidence. I will speak to Emre myself. Father still has his own questions.';
+    } else if (choiceId === 'father') {
+      s.locations.riza = 'garden';
+      s.people.riza!.memory.sourceTrust.hatice = Math.min(1, trustOf(s.people.riza!, 'hatice') + 0.06);
+      elif.memory.sourceTrust.hatice = Math.max(0, trustOf(elif, 'hatice') - 0.06);
+      outcome =
+        'You call Rıza over and repeat her request. Rıza says, “Thank you for speaking openly. I still need answers about Emre.” Elif says, “I asked you to keep that between us.”';
+    } else {
+      outcome = 'Not today. I need to find my own words first. I will speak to him myself when I am ready.';
     }
   } else if (scene.kind.endsWith('-missed')) {
     if (choiceId === 'bread') {
@@ -1489,7 +1536,7 @@ function makeAmends(s: State, listener: string, target: string) {
   for (const r of wrongs) {
     believe(p, prop(r.target, r.trait), !r.value, 0.95, 'hatice', s.minute);
     r.retractedAt = s.minute;
-    if (s.version === 2) {
+    if (s.version >= 2) {
       const known = s.knownTellings?.[listener];
       if (known) {
         delete known.claims[assertionKey(r.target, r.trait, r.value).key];
@@ -1557,7 +1604,7 @@ function rememberTelling(
   claim: NonNullable<ReturnType<typeof tellingClaim>>,
   source: string,
 ) {
-  if (s.version !== 2) return;
+  if (s.version < 2) return;
   s.knownTellings ??= {};
   s.knownTellings[listener] ??= { claims: {}, incidents: {} };
   const known = s.knownTellings[listener];
@@ -1683,7 +1730,7 @@ export function act(g: Game, input: Input): boolean {
       story.target === 'hatice')
   )
     return false;
-  if (s.version === 2 && tellingUnavailable(s, input)) return false;
+  if (s.version >= 2 && tellingUnavailable(s, input)) return false;
   const idsHere = present(s).map((p) => p.id);
   if ('listener' in input && (input.listener === 'hatice' || !idsHere.includes(input.listener))) return false;
   if (input.type === 'choose') {
@@ -1757,7 +1804,7 @@ export function act(g: Game, input: Input): boolean {
         : input.type === 'defend'
           ? (good[input.trait] ?? input.trait)
           : input.trait;
-    if (s.version === 2) {
+    if (s.version >= 2) {
       const claim = tellingClaim(input)!;
       const assertion = assertionKey(target, trait, claim.value);
       const latest = s.routes.findLast((r) => {
@@ -2380,6 +2427,10 @@ function step(s: State) {
       familyScene(s, milestone.day, met);
     }
   }
+  if (s.version >= 3 && !s.elifAsked && s.minute >= 5 * 1440 + 1080) {
+    s.elifAsked = true;
+    elifScene(s);
+  }
   updateRiza(s);
   if (t === 1380) closeDay(s);
   if (s.minute >= 14 * 1440) {
@@ -2402,7 +2453,7 @@ export function advance(g: Game, toMinute: number) {
     if (boundary === quarter) step(g.s);
   }
 }
-export function replay(seed: number, inputs: LoggedInput[], minute: number, version: State['version'] = 2) {
+export function replay(seed: number, inputs: LoggedInput[], minute: number, version: State['version'] = 3) {
   const g = newGame(seed, version);
   for (const entry of inputs) {
     advance(g, entry.at);
@@ -2416,7 +2467,8 @@ export function save(g: Game) {
 }
 export function load(data: string): Game {
   const g = JSON.parse(data) as Game;
-  if (![1, 2].includes(g.s?.version) || !Array.isArray(g.inputs)) throw new Error('Unsupported Hearsay save');
+  if (![1, 2, 3].includes(g.s?.version) || !Array.isArray(g.inputs))
+    throw new Error('Unsupported Hearsay save');
   g.s.silence ??= {};
   g.s.confronted ??= [];
   g.s.greetings ??= {};

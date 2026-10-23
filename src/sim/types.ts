@@ -71,7 +71,7 @@ export interface Route {
 }
 export interface Scene {
   id: string;
-  kind: 'confrontation' | 'coffee' | 'coffee-missed' | 'word' | 'word-missed';
+  kind: 'elif' | 'confrontation' | 'coffee' | 'coffee-missed' | 'word' | 'word-missed';
   who: string[];
   text: string;
   choices: { id: string; label: string; says: string; risk?: string }[];
@@ -95,7 +95,9 @@ export interface QuickReply {
   options: { label: string; says: string; input: Input }[];
 }
 export interface State {
-  version: 1 | 2;
+  version: 1 | 2 | 3;
+  /** Edition 3 only: includes an open or queued Elif request. */
+  elifAsked?: boolean;
   /** Only facts Hatice told, witnessed in conversation, or learned from a reply. */
   knownTellings?: Record<
     string,
