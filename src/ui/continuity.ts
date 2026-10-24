@@ -27,13 +27,11 @@ let current: () => ContinuityGame | undefined = () => undefined;
 let store: () => void = () => {};
 let pending: Promise<void> = Promise.resolve();
 let bridgeStatus = '';
-// Central historical consent remains known while DNT/GPC suppresses a recording identity.
+// Historical metadata does not create a separate recording choice.
 let linkageKnown = false;
 let gateSerial = 0;
 let gatedGame: ContinuityGame | undefined;
 let gatedFile = false;
-let manualDenied: ContinuityGame | undefined;
-let choices: Promise<void> = Promise.resolve();
 /** Invalidate before any asynchronous run/load/reset work. Never consult gated playerId. */
 export function invalidateContinuity(): void {
   ++gateSerial;
@@ -44,19 +42,15 @@ export function invalidateContinuity(): void {
   lab.allowPersonaRecording(false);
 }
 if (typeof window !== 'undefined') {
-  const identityChanged = () => {
+  const shelfChanged = () => {
     const g = gatedGame;
     const file = gatedFile || Boolean(g?.continuity?.entries.some((e) => e.scope === 'file'));
     invalidateContinuity();
     void gateContinuity(g, file).catch(() => {});
   };
-  window.addEventListener('hf-lab-preference', identityChanged);
+  window.addEventListener('hf-persona-preference', shelfChanged);
   window.addEventListener('storage', (event) => {
-    if (
-      event.key === null ||
-      ['hf-lab-player', 'hf-lab-recording-off', 'hf-lab-events-off:hearsay'].includes(event.key)
-    )
-      identityChanged();
+    if (event.key === null || event.key === 'hf-persona-opt-in') shelfChanged();
   });
 }
 let pendingArrival: {
@@ -84,151 +78,16 @@ const recordingKey = (g: ContinuityGame) =>
   ]
     .sort()
     .join(':') || null;
-type RecordingReply = {
-  sameEpoch: boolean;
-  branchId?: string;
-  revision?: string;
-  recordingEpoch?: string | null;
-};
-const headsOf = (g: ContinuityGame) => [
-  ...(g.continuity?.entries.map((e) => e.head) ?? []),
-  ...(g.continuity?.source ? [g.continuity.source.head] : []),
-];
-const selected = (g: ContinuityGame) =>
-  [g.fileHistory ?? '', ...headsOf(g).map((h) => `${h.castId}/${h.branchId}/${h.revision}`)].join(':');
-const echoes = (reply: RecordingReply, head: PersonaEnvelope) =>
-  reply.branchId === head.branchId && reply.revision === head.revision;
-const owns = (serial: number, g: ContinuityGame, pin: string) =>
-  serial === gateSerial && gatedGame === g && selected(g) === pin;
-const sharedHeads = (g: ContinuityGame) => [
-  ...(g.continuity?.entries.filter((e) => e.scope === 'shared').map((e) => e.head) ?? []),
-  ...(g.continuity?.source?.scope === 'shared' ? [g.continuity.source.head] : []),
-];
+/** Bind history metadata without consulting recording identity or consent. */
 export async function gateContinuity(g: ContinuityGame | undefined, file = false): Promise<void> {
-  const serial = ++gateSerial;
+  ++gateSerial;
   gatedGame = g;
   if (g && file) g.fileHistory ??= crypto.randomUUID();
   gatedFile = file || Boolean(g?.fileHistory);
-  const key = g ? recordingKey(g) : 'pending-history';
-  lab.setPersonaRecording(key || null);
-  const localAssociation = lab.personaRecordingAllowed;
-  linkageKnown = false;
-  if (key) lab.allowPersonaRecording(false);
-  const pin = g ? selected(g) : '';
-  await shelf.ready;
-  if (serial !== gateSerial) return;
-  if (!g?.continuity?.entries.length && !g?.continuity?.source) {
-    if (g?.initialPeople) lab.setPersonaRecording('invalid-history');
-    else if (g?.fileHistory && localAssociation && !file && manualDenied !== g) {
-      linkageKnown = true;
-      lab.allowPersonaRecording(true);
-    }
-    return;
-  }
-  if (file || manualDenied === g || (g.fileHistory && !localAssociation)) return;
-  const shared = sharedHeads(g);
-  const hasLocal = headsOf(g).length !== shared.length;
-  if (hasLocal && !localAssociation) return;
-  if (!shared.length) {
-    if (localAssociation) {
-      linkageKnown = true;
-      lab.allowPersonaRecording(true);
-    }
-    return;
-  }
-  try {
-    const heads = shared;
-    const associations = await Promise.all(
-      heads.map((head) =>
-        shelf.request<RecordingReply>({ action: 'recording', castId: head.castId, envelope: head }),
-      ),
-    );
-    if (!owns(serial, g, pin) || manualDenied === g) return;
-    if (associations.every((a, i) => a.sameEpoch && echoes(a, heads[i]!))) {
-      linkageKnown = true;
-      lab.allowPersonaRecording(true);
-    }
-  } catch {
-    /* A failed association keeps every upload blocked. */
-  }
+  linkageKnown = true;
+  lab.setPersonaRecording(g ? recordingKey(g) : null);
 }
-/** Choices are FIFO; a newer choice invalidates every older local callback immediately. */
-export function chooseContinuityRecording(value: boolean): Promise<void> {
-  const serial = ++gateSerial;
-  const g = current();
-  gatedGame = g;
-  linkageKnown = false;
-  if (!g) return Promise.resolve();
-  manualDenied = value ? undefined : g;
-  lab.setPersonaRecording(recordingKey(g));
-  lab.allowPersonaRecording(false);
-  const pin = selected(g);
-  const heads = sharedHeads(g);
-  const valid = () => owns(serial, g, pin) && current() === g;
-  const task = choices
-    .catch(() => {})
-    .then(async () => {
-      if (!valid()) return;
-      await shelf.ready;
-      if (!valid()) return;
-      for (const head of heads) {
-        const epoch = await shelf.request<RecordingReply>({
-          action: 'recording',
-          castId: head.castId,
-          envelope: head,
-        });
-        if (!valid()) return;
-        if (!echoes(epoch, head) || !('recordingEpoch' in epoch))
-          throw new Error('Recording choice could not verify the pinned history.');
-        const request = {
-          action: 'recording' as const,
-          castId: head.castId,
-          envelope: head,
-          allowRecording: value,
-          recordingEpoch: epoch.recordingEpoch ?? undefined,
-        };
-        const reply = await shelf.request<RecordingReply>(request);
-        if (!valid()) return;
-        if (!echoes(reply, head) || reply.sameEpoch !== value)
-          throw new Error('Recording identity changed. Choose again.');
-      }
-      if (!valid()) return;
-      linkageKnown = value;
-      lab.allowPersonaRecording(value);
-    });
-  choices = task.catch(() => {});
-  return task;
-}
-/** Migrate prior explicit file consent, never inferred authored status, to its first head. */
-async function linkFirstFileHead(
-  g: ContinuityGame,
-  head: PersonaEnvelope,
-  serial: number,
-  epoch: { recordingEpoch?: string | null } | undefined,
-): Promise<boolean> {
-  const valid = () => current() === g && gatedGame === g && serial === gateSerial && manualDenied !== g;
-  if (!valid() || !epoch || !('recordingEpoch' in epoch)) return false;
-  try {
-    const selectedEpoch = await shelf.request<RecordingReply>({
-      action: 'recording',
-      castId: head.castId,
-      envelope: head,
-    });
-    if (!valid() || !echoes(selectedEpoch, head) || selectedEpoch.recordingEpoch !== epoch.recordingEpoch)
-      return false;
-    const request = {
-      action: 'recording' as const,
-      castId: head.castId,
-      envelope: head,
-      allowRecording: true,
-      recordingEpoch: epoch.recordingEpoch ?? undefined,
-    };
-    const reply = await shelf.request<RecordingReply>(request);
-    return valid() && echoes(reply, head) && reply.sameEpoch;
-  } catch {
-    return false;
-  }
-}
+export async function chooseContinuityRecording(_value: boolean): Promise<void> {}
 export async function validateContinuity(g: ContinuityGame): Promise<void> {
   if (!g.continuity) {
     if (g.initialPeople || g.initialContinuity) throw new Error('The pinned continuity is missing.');
@@ -409,26 +268,7 @@ export function checkpointContinuity(): Promise<void> {
       try {
         const attempt = gateSerial;
         const prior = g.continuity?.source?.head;
-        const author =
-          !prior &&
-          !g.fileHistory &&
-          !gatedFile &&
-          current() === g &&
-          gatedGame === g &&
-          lab.personaRecordingAllowed &&
-          lab.telemetryOn;
-        const inheritFileChoice =
-          !prior &&
-          Boolean(g.fileHistory) &&
-          current() === g &&
-          gatedGame === g &&
-          manualDenied !== g &&
-          lab.personaRecordingAllowed &&
-          lab.telemetryOn;
-        const epoch =
-          !prior && shelf.enabled
-            ? await shelf.request<{ recordingEpoch?: string | null }>({ action: 'recording' })
-            : undefined;
+        const author = !prior && !g.fileHistory && !gatedFile && current() === g && gatedGame === g;
         if (attempt !== gateSerial || current() !== g) return;
         const prefix = structuredClone(g);
         attemptedPrefix = prefix;
@@ -454,15 +294,7 @@ export function checkpointContinuity(): Promise<void> {
             const request = {
               action: 'put' as const,
               envelope,
-              authored: Boolean(
-                author &&
-                  attempt === gateSerial &&
-                  current() === g &&
-                  gatedGame === g &&
-                  epoch &&
-                  'recordingEpoch' in epoch,
-              ),
-              recordingEpoch: epoch?.recordingEpoch ?? undefined,
+              authored: Boolean(author && attempt === gateSerial && current() === g && gatedGame === g),
             };
             await shelf.request(request);
           }
@@ -488,25 +320,7 @@ export function checkpointContinuity(): Promise<void> {
             outcome: 'accepted',
           });
           prefix.continuity = structuredClone(record.continuity);
-          // The new composite key stays blocked until the exact selected-head grant succeeds.
-          if (owner && inheritFileChoice) {
-            lab.setPersonaRecording(recordingKey(g));
-            lab.allowPersonaRecording(false);
-          }
           await put('persona-departure:' + envelope.branchId, prefix);
-          if (
-            owner &&
-            inheritFileChoice &&
-            scope === 'shared' &&
-            (await linkFirstFileHead(g, envelope, attempt, epoch)) &&
-            current() === g &&
-            gatedGame === g &&
-            attempt === gateSerial &&
-            manualDenied !== g
-          ) {
-            lab.setPersonaRecording(recordingKey(g));
-            lab.allowPersonaRecording(true);
-          }
           if (owner && current() === g && attempt === gateSerial) await gateContinuity(g, scope === 'file');
           if (owner && current() === g && gatedGame === g) store();
           bridgeStatus =
@@ -819,34 +633,14 @@ export function continuityPanel(): HTMLElement {
   return box;
 }
 
-/** Optional linkage choice; feedback itself never requires it. */
-export function feedbackPersonaControls(status: HTMLElement): HTMLElement {
+/** Fictional continuity remains a separate menu setting from recording. */
+export function feedbackPersonaControls(_status: HTMLElement): HTMLElement {
   return personaControls({
     enabled: shelf.enabled,
+    recordingAllowed: true,
+    allowRecording() {},
     setEnabled(value) {
       shelf.setEnabled(value);
-    },
-    recordingAllowed:
-      !(current()?.fileHistory || current()?.continuity?.entries.length || current()?.continuity?.source) ||
-      linkageKnown ||
-      lab.personaRecordingAllowed,
-    allowRecording(value) {
-      if (!lab.telemetryOn) {
-        if (!value) {
-          gateSerial++;
-          linkageKnown = false;
-          manualDenied = current();
-          lab.allowPersonaRecording(false);
-          store();
-        }
-        status.textContent = value
-          ? 'Recording is off. Your note still sends without history linkage.'
-          : 'This history stays local. Your note can still be sent.';
-        return;
-      }
-      void chooseContinuityRecording(value).catch((error) => {
-        status.textContent = message(error);
-      });
     },
   });
 }

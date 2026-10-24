@@ -45,5 +45,5 @@ const quiet: Lab | null =
 
 export const lab: Lab = quiet ?? createLab({ game: 'hearsay' });
 
-// Close the upload gate until startup validates saved history and reads central consent.
+// Keep a legacy history key while startup restores the saved run. Recording follows the lab switch.
 lab.setPersonaRecording('pending-history');

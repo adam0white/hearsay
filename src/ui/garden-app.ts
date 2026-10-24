@@ -470,13 +470,9 @@ export async function startGarden() {
     recordingGuard.invalidate();
     if (recordingBinding) void recordingGuard.bind(recordingBinding).catch(() => {});
   };
-  window.addEventListener('hf-lab-preference', invalid);
+  window.addEventListener('hf-persona-preference', invalid);
   window.addEventListener('storage', (e) => {
-    if (
-      e.key === null ||
-      ['hf-lab-player', 'hf-lab-recording-off', 'hf-lab-events-off:hearsay'].includes(e.key)
-    )
-      invalid();
+    if (e.key === null || e.key === 'hf-persona-opt-in') invalid();
   });
   watchPersonaCheckpoint(() => checkpoint());
   window.addEventListener('pagehide', () => {
