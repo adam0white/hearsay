@@ -19,27 +19,26 @@ afterAll(async () => {
   await browser?.close();
   await server?.close();
 });
-it('holds time throughout feedback and requires run consent under a privacy signal', async () => {
+it('holds time throughout same-sheet feedback under a privacy signal', async () => {
   await page.evaluate(`(async () => {
     const {lab}=await import('/src/ui/lab.ts');
     lab.privacySignalOn=true;
-    lab.sendRun=async(run,extra)=>{window.sentRun={run,extra};return 'local';};
+    lab.sendFeedback=async(note,options)=>{window.sentRun={...options,note};return 'local';};
   })()`);
   await page.locator('#game-menu').click();
   const before = await page.locator('#clock').innerText();
   await page.getByRole('button', { name: 'Send word ▸', exact: true }).click();
   await page.clock.runFor(12000);
   expect(await page.locator('#clock').innerText()).toBe(before);
-  expect(await page.getByRole('button', { name: 'Send', exact: true }).isDisabled()).toBe(true);
-  await page.getByRole('checkbox', { name: 'Send this run with my note' }).check();
+  expect(await page.getByRole('button', { name: 'Send', exact: true }).isEnabled()).toBe(true);
   await page.getByRole('textbox', { name: 'Your word', exact: true }).fill('Let me read.');
   await page.getByRole('button', { name: 'Send', exact: true }).click();
-  expect(await page.getByRole('status').last().innerText()).toBe('Sent. Thank you.');
+  expect(await page.getByRole('status').last().innerText()).toContain('Note and verdict queued');
   const sent = (await page.evaluate('window.sentRun')) as {
-    extra: { note: string };
+    note: string;
     run: { game: string; state: unknown; fingerprint: string };
   };
-  expect(sent.extra.note).toBe('Let me read.');
+  expect(sent.note).toBe('Let me read.');
   expect(sent.run.game).toBe('hearsay');
   expect(sent.run.state).toBeDefined();
   expect(sent.run.fingerprint).toBeDefined();

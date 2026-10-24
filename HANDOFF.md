@@ -12,7 +12,7 @@ Dilan uses a dedicated delivery visitor. Her sister Aylin, colleague Ece and dep
 
 Return into an already departed Hearsay branch is unavailable; its completed fortnight is not restarted as continuation. Fresh authored play remains available. A Murmur/Stairwell receiving adapter must use its own saved departure prefix before simulating a return suffix. Peer contracts and delivery receipts live under `~/code/.lab-scratch/universe/`.
 
-HF is pinned to2.15.0, lab-client0.3.1 and lab-kit0.4.0 to checked vendor tarballs. Compare hashes with `universe/artifacts.json`. No workspace dependency symlinks.
+Current pins are HF2.18.0, lab-client0.4.2 and lab-kit0.5.2 from immutable vendor tarballs. No workspace dependency symlinks. Feedback sends in one sheet; recording off sends the note without run or history linkage.
 
 One independent Codex correctness/game-design review was completed. Its verified return-evidence, source-checkpoint and file-scope findings were corrected. Validation/deployment/browser receipts are in `~/code/.lab-scratch/universe/hearsay.md` and `hearsay-review.md`. They are the evidence for delivery status.
 

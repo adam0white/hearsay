@@ -1173,14 +1173,14 @@ function heardSheet(): void {
   d.append(actions);
 }
 function sendWord(): void {
-  if (game)
-    openFeedback(
-      () => exportRun(game),
-      () => {
-        last = performance.now();
-        accumulator = 0;
-      },
-    );
+  openFeedback(
+    () => (game ? exportRun(game) : undefined),
+    () => {
+      last = performance.now();
+      accumulator = 0;
+    },
+    !!game,
+  );
 }
 function downloadRun(): void {
   const url = URL.createObjectURL(

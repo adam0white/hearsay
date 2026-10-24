@@ -598,22 +598,8 @@ export function installContinuity(
 export function continuityPanel(): HTMLElement {
   const box = document.createElement('section');
   box.className = 'continuity-panel';
-  const controls = personaControls({
-    enabled: shelf.enabled,
-    setEnabled(value) {
-      shelf.setEnabled(value);
-    },
-    recordingAllowed:
-      !(current()?.fileHistory || current()?.continuity?.entries.length || current()?.continuity?.source) ||
-      linkageKnown ||
-      lab.personaRecordingAllowed,
-    allowRecording(value) {
-      void chooseContinuityRecording(value).catch((error) => {
-        status.textContent = message(error);
-      });
-    },
-  });
   const status = document.createElement('p');
+  const controls = feedbackPersonaControls(status);
   status.setAttribute('role', 'status');
   status.textContent = bridgeStatus || 'Continuity uses this browser. A fresh fortnight is always available.';
   box.append(controls, status);
@@ -831,4 +817,36 @@ export function continuityPanel(): HTMLElement {
         }),
     );
   return box;
+}
+
+/** Optional linkage choice; feedback itself never requires it. */
+export function feedbackPersonaControls(status: HTMLElement): HTMLElement {
+  return personaControls({
+    enabled: shelf.enabled,
+    setEnabled(value) {
+      shelf.setEnabled(value);
+    },
+    recordingAllowed:
+      !(current()?.fileHistory || current()?.continuity?.entries.length || current()?.continuity?.source) ||
+      linkageKnown ||
+      lab.personaRecordingAllowed,
+    allowRecording(value) {
+      if (!lab.telemetryOn) {
+        if (!value) {
+          gateSerial++;
+          linkageKnown = false;
+          manualDenied = current();
+          lab.allowPersonaRecording(false);
+          store();
+        }
+        status.textContent = value
+          ? 'Recording is off. Your note still sends without history linkage.'
+          : 'This history stays local. Your note can still be sent.';
+        return;
+      }
+      void chooseContinuityRecording(value).catch((error) => {
+        status.textContent = message(error);
+      });
+    },
+  });
 }

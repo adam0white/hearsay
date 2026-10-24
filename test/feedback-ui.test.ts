@@ -16,71 +16,83 @@ afterAll(async () => {
   await browser?.close();
   await server?.close();
 });
-it('blocks recording-off sends, preserves names, and sends the note with the selected verdict', async () => {
+it('opens and sends feedback from the title before a run exists', async () => {
+  await page.evaluate(`(async () => {
+    const {lab}=await import('/src/ui/lab.ts');
+    lab.sendFeedback=async(note,options)=>{window.titleFeedback={note,...options};return 'queued';};
+  })()`);
+  await page.getByRole('button', { name: 'Game menu', exact: true }).click();
+  await page.getByRole('button', { name: 'Send word ▸', exact: true }).click();
+  await page.getByRole('textbox', { name: 'Your word', exact: true }).fill('I have not started yet.');
+  await page.getByRole('button', { name: 'Send', exact: true }).click();
+  expect(await page.evaluate('window.titleFeedback')).toEqual({
+    note: 'I have not started yet.',
+    name: '',
+    run: undefined,
+  });
+  await page.getByRole('button', { name: 'Back to the game', exact: true }).click();
+});
+it('sends recording-off feedback in one sheet and remembers the optional name', async () => {
   await page.evaluate(`(async () => {
     const {lab} = await import('/src/ui/lab.ts');
-    lab.setTelemetryOff = (off) => localStorage.setItem('hf-lab-recording-off', off ? '1' : '0');
+    lab.telemetryOn = false;
     lab.sendFeedback = async (note, options) => { window.feedbackSent = {note, ...options}; return 'queued'; };
     localStorage.setItem('hf-lab-recording-off', '1');
     const {openFeedback} = await import('/src/ui/feedback.ts');
     openFeedback(() => ({game:'hearsay',seed:1,inputs:[]}), () => {});
   })()`);
-  expect(await page.getByRole('button', { name: 'Send', exact: true }).isDisabled()).toBe(true);
-  await page.getByRole('checkbox', { name: 'Record play for the lab' }).check();
+  expect(await page.getByRole('button', { name: 'Send', exact: true }).isEnabled()).toBe(true);
   await page.getByRole('button', { name: 'Not sure', exact: true }).click();
   await page.getByRole('textbox', { name: 'Your word', exact: true }).fill('I wanted to talk.');
   await page.getByText('+ Add a name or tester id', { exact: true }).click();
   await page.getByRole('textbox', { name: 'Your name or tester id', exact: true }).fill(' Hatice ');
   await page.getByRole('button', { name: 'Send', exact: true }).click();
-  expect(await page.getByRole('status').last().innerText()).toBe('Sent. Thank you.');
+  expect(await page.getByRole('status').last().innerText()).toBe(
+    'Note and verdict queued without a run or history linkage.',
+  );
   expect(await page.evaluate('window.feedbackSent')).toEqual({
     note: 'Verdict: mixed\n\nI wanted to talk.',
     name: 'Hatice',
+    run: { game: 'hearsay', seed: 1, inputs: [] },
   });
+  expect(await page.locator('.hflab-veil').count()).toBe(0);
   expect(await page.evaluate(() => localStorage.getItem('hf-lab-feedback-name'))).toBe('Hatice');
 });
-it('reveals privacy consent after recording is enabled under a privacy signal', async () => {
-  await page.getByRole('button', { name: 'Back to the game', exact: true }).click();
+it('keeps privacy and unanswered historical linkage from blocking the note', async () => {
+  await page.reload();
   await page.evaluate(`(async () => {
     const {lab}=await import('/src/ui/lab.ts');
     lab.privacySignalOn=true;
-    localStorage.setItem('hf-lab-recording-off','1');
+    lab.personaRecordingRequired=true;
+    lab.personaRecordingAllowed=false;
+    window.linkageSends=0;
+    lab.sendFeedback=async()=>{window.linkageSends++; return 'queued';};
+    lab.openSendDialog=()=>{throw new Error('A second sheet must not open');};
     const {openFeedback}=await import('/src/ui/feedback.ts');
     openFeedback(()=>({game:'hearsay',seed:1,inputs:[]}),()=>{});
   })()`);
-  await page.getByRole('checkbox', { name: 'Record play for the lab' }).check();
-  expect(await page.getByRole('button', { name: 'Send', exact: true }).isDisabled()).toBe(true);
-  expect(await page.getByRole('checkbox', { name: 'Send this run with my note' }).isVisible()).toBe(true);
-});
-it('keeps the consent fallback in the modal active layer and preserves the note', async () => {
-  await page.evaluate(`(async()=>{
-    const {lab}=await import('/src/ui/lab.ts');
-    const {openSendDialog}=await import('/node_modules/@adam0white/lab-client/dist/index.js');
-    lab.sendRun=async()=>{throw new Error('local fallback');};
-    lab.openSendDialog=options=>openSendDialog({...options,lab});
-  })()`);
-  await page.getByRole('checkbox', { name: 'Send this run with my note' }).check();
+  expect(await page.getByRole('button', { name: 'Send', exact: true }).isEnabled()).toBe(true);
   await page.getByRole('textbox', { name: 'Your word', exact: true }).fill('Keep my words.');
   await page.getByRole('button', { name: 'Send', exact: true }).click();
-  expect(await page.locator('.feedback-dialog .hflab-veil').count()).toBe(1);
-  expect(await page.locator('#hflab-note').inputValue()).toContain('Keep my words.');
-  await page.getByRole('button', { name: 'Not now', exact: true }).click();
+  expect(await page.evaluate('window.linkageSends')).toBe(1);
   expect(await page.locator('.hflab-veil').count()).toBe(0);
 });
-it('blocks note and explicit run paths while historical linkage is absent', async () => {
+it('keeps a transport failure in the same sheet and permits retry', async () => {
   await page.reload();
   await page.evaluate(`(async()=>{
     const {lab}=await import('/src/ui/lab.ts');
-    lab.personaRecordingAllowed=false;
-    lab.privacySignalOn=false;
-    localStorage.removeItem('hf-lab-recording-off');
-    localStorage.removeItem('hf-lab-events-off:hearsay');
     window.linkageSends=0;
-    lab.sendFeedback=lab.sendRun=async()=>{window.linkageSends++;};
+    lab.sendFeedback=async()=>{if(!window.linkageSends++) throw new Error('offline'); return 'queued';};
     const {openFeedback}=await import('/src/ui/feedback.ts');
-    openFeedback(()=>({game:'hearsay',seed:1,inputs:[]}),()=>{});
+    openFeedback(()=>{throw new Error('export unavailable');},()=>{});
   })()`);
-  expect(await page.getByRole('button', { name: 'Send', exact: true }).isDisabled()).toBe(true);
-  await page.getByRole('button', { name: 'Send', exact: true }).dispatchEvent('click');
-  expect(await page.evaluate('window.linkageSends')).toBe(0);
+  await page.getByRole('textbox', { name: 'Your word', exact: true }).fill('Keep my words.');
+  await page.getByRole('button', { name: 'Send', exact: true }).click();
+  expect(await page.getByRole('status').last().innerText()).toContain('could not be sent');
+  expect(await page.getByRole('textbox', { name: 'Your word', exact: true }).inputValue()).toBe(
+    'Keep my words.',
+  );
+  await page.getByRole('button', { name: 'Send', exact: true }).click();
+  expect(await page.evaluate('window.linkageSends')).toBe(2);
+  expect(await page.locator('.hflab-veil').count()).toBe(0);
 });
