@@ -33,6 +33,7 @@ import {
 } from '../sim/garden-continuity.ts';
 import { exportGarden, importGarden } from '../sim/garden-export.ts';
 import { actualGardenLocation, type PlanChoice, type ReputationTrait } from '../sim/garden-stakes.ts';
+import { openGardenFeedback } from './garden-feedback.ts';
 import { GardenRecordingGuard, type RecordingBinding } from './garden-recording.ts';
 import { lab } from './lab.ts';
 import { get, put, putNow } from './store.ts';
@@ -147,7 +148,7 @@ async function useRun(
   render();
 }
 function renderTitle() {
-  root.innerHTML = `<main class="cg-title"><p class="eyebrow">A fortnight in the neighbourhood</p><h1>Hearsay</h1><p class="cg-subtitle">Someone will hear.</p><p>You are Hatice, keeper of a tea garden in Istanbul. People stop between shifts, deliveries and appointments.</p><p class="goal">Open a paid workers’ lunch on Day 13. Agree supplies on Day 4 and paid cooking on Day 8. Earn four reservations by keeping your word good.</p><p>Fourteen days. Your words change who stays.</p>${notice ? `<p role="status">${esc(notice)}</p>` : ''}<p>Browser continuity: ${shelf.enabled ? 'on. The whole available cast must be compatible before play starts.' : 'off. This garden stays independent.'}</p>${button(shelf.enabled ? 'Begin with the saved cast' : 'Begin a fresh fortnight', 'start', starting)}${button(shelf.enabled ? 'Turn browser continuity off' : 'Turn browser continuity on', 'continuity')}${shelf.enabled ? button('Play a separate local fortnight', 'local') : ''}<label class="cg-file">Open a run file<input type="file" id="import-run" accept=".json,application/json"></label><p class="fine">Earlier local saves are kept. This edition starts a new garden with eight canonical people.</p></main>`;
+  root.innerHTML = `<main class="cg-title"><p class="eyebrow">A fortnight in the neighbourhood</p><h1>Hearsay</h1><p class="cg-subtitle">Someone will hear.</p><p>You are Hatice, keeper of a tea garden in Istanbul. People stop between shifts, deliveries and appointments.</p><p class="goal">Open a paid workers’ lunch on Day 13. Agree supplies on Day 4 and paid cooking on Day 8. Earn four reservations by keeping your word good.</p><p>Fourteen days. Your words change who stays.</p>${notice ? `<p role="status">${esc(notice)}</p>` : ''}<p>Browser continuity: ${shelf.enabled ? 'on. The whole available cast must be compatible before play starts.' : 'off. This garden stays independent.'}</p>${button(shelf.enabled ? 'Begin with the saved cast' : 'Begin a fresh fortnight', 'start', starting)}${button(shelf.enabled ? 'Turn browser continuity off' : 'Turn browser continuity on', 'continuity')}${button('Send word', 'send')}${shelf.enabled ? button('Play a separate local fortnight', 'local') : ''}<label class="cg-file">Open a run file<input type="file" id="import-run" accept=".json,application/json"></label><p class="fine">Earlier local saves are kept. This edition starts a new garden with eight canonical people.</p></main>`;
 }
 function render() {
   ++uiGeneration;
@@ -334,6 +335,15 @@ async function action(key: string) {
     render();
     return;
   }
+  if (key === 'send') {
+    openGardenFeedback(
+      lab,
+      () => (run ? exportGarden(run) : undefined),
+      (allow) => recordingGuard.choose(allow),
+      !!run,
+    );
+    return;
+  }
   if (!run) return;
   if (key === 'menu' || key === 'back') {
     menu = key === 'menu';
@@ -351,10 +361,6 @@ async function action(key: string) {
   }
   if (key === 'export') {
     downloadJson(`hearsay-day-${Math.floor(run.minute / 1440) + 1}.json`, exportGarden(run));
-    return;
-  }
-  if (key === 'send') {
-    lab.openSendDialog({ getRun: () => exportGarden(run!) });
     return;
   }
   if (key === 'allow-file' || key === 'deny-file') {
