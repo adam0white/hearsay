@@ -70,14 +70,6 @@ let conflict: {
 const build = () => lab.build().c ?? 'development';
 const message = (error: unknown) =>
   error instanceof Error ? error.message : 'Continuity unavailable. Keep a local file.';
-const recordingKey = (g: ContinuityGame) =>
-  [
-    ...(g.fileHistory ? ['file-history:' + g.fileHistory] : []),
-    ...(g.continuity?.entries.map((e) => e.head.branchId) ?? []),
-    ...(g.continuity?.source ? [g.continuity.source.head.branchId] : []),
-  ]
-    .sort()
-    .join(':') || null;
 /** Bind history metadata without consulting recording identity or consent. */
 export async function gateContinuity(g: ContinuityGame | undefined, file = false): Promise<void> {
   ++gateSerial;
@@ -85,7 +77,7 @@ export async function gateContinuity(g: ContinuityGame | undefined, file = false
   if (g && file) g.fileHistory ??= crypto.randomUUID();
   gatedFile = file || Boolean(g?.fileHistory);
   linkageKnown = true;
-  lab.setPersonaRecording(g ? recordingKey(g) : null);
+  lab.setPersonaRecording(null);
 }
 export async function chooseContinuityRecording(_value: boolean): Promise<void> {}
 export async function validateContinuity(g: ContinuityGame): Promise<void> {

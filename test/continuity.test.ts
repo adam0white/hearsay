@@ -229,14 +229,15 @@ it('preserves ordinary played file provenance and never relabels it authored', a
   recording.allowPersonaRecording.mockClear();
   recording.personaRecordingAllowed = false;
   await gateContinuity(game, true);
-  expect(recording.setPersonaRecording).not.toHaveBeenCalledWith(null);
+  expect(game.fileHistory).toBeDefined();
   expect(recording.allowPersonaRecording).not.toHaveBeenCalledWith(true);
-  const key = recording.setPersonaRecording.mock.lastCall?.[0];
-  expect(key).toMatch(/file-history:/);
+  const fileHistory = game.fileHistory;
+  expect(recording.setPersonaRecording).toHaveBeenLastCalledWith(null);
   game = load(save(game));
   game = verifyImport(JSON.stringify(exportRun(game)));
   await gateContinuity(game);
-  expect(recording.setPersonaRecording).toHaveBeenLastCalledWith(key);
+  expect(game.fileHistory).toBe(fileHistory);
+  expect(recording.setPersonaRecording).toHaveBeenLastCalledWith(null);
   await chooseContinuityRecording(true); // Explicit local file consent before a portable head exists.
   recording.personaRecordingAllowed = true;
   fake.request.mockClear();
@@ -265,4 +266,32 @@ it('run replacement still cancels a queued source publication', async () => {
   game = newGame(43, 4);
   await pending;
   expect(fake.request).not.toHaveBeenCalled();
+});
+
+it('legacy multihead file metadata creates no obsolete SDK recording scope', async () => {
+  const game = newGame(42, 4);
+  game.fileHistory = crypto.randomUUID();
+  const head = await source();
+  // Synthetic metadata control, not an admitted or played history.
+  game.continuity = {
+    entries: [
+      { head: { ...head, branchId: crypto.randomUUID() } },
+      { head: { ...head, branchId: crypto.randomUUID() } },
+    ],
+    rows: [],
+    source: { head: { ...head, branchId: crypto.randomUUID() } },
+  } as never;
+  fake.request.mockClear();
+  recording.setPersonaRecording.mockClear();
+  await recording.setPersonaRecording.withImplementation(
+    (key: string | null) => {
+      if (key !== null) throw new Error('Per-person recording scope is obsolete');
+    },
+    async () => {
+      await gateContinuity(game, true);
+    },
+  );
+  expect(recording.setPersonaRecording).toHaveBeenLastCalledWith(null);
+  expect(fake.request).not.toHaveBeenCalled();
+  expect(game.fileHistory).toBeDefined();
 });
