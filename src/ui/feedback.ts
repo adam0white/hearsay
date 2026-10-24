@@ -1,6 +1,5 @@
 /** Send word uses the same remembered-name and consent paths as Night Watch. */
-import { telemetryToggle } from '@adam0white/lab-kit';
-import { feedbackPersonaControls } from './continuity';
+import { feedbackPersonaControl, feedbackSharePlay } from '@adam0white/lab-kit';
 import { lab } from './lab';
 
 const NAME_KEY = 'hf-lab-feedback-name';
@@ -33,7 +32,7 @@ export function openFeedback(getRun: () => unknown, onClose: () => void, hasRun 
     <details class="feedback-name"><summary>+ Add a name or tester id</summary><label>Your name or tester id<input type="text" maxlength="60" autocomplete="nickname"></label><p class="fine">A sent name labels your past and future play on this device. Leave it empty to stay pseudonymous.</p></details>
     <details class="feedback-preview"><summary>What is sent</summary><p>Your note and optional name. Your run is attached only when recording is allowed.</p><pre></pre><a href="https://human.adamwhite.work/lab/privacy/">Lab privacy</a></details>
     <button type="button" class="feedback-download">Keep a copy of this run</button><p role="status"></p></div>
-    <div class="feedback-actions lk-sheet-actions"><button type="button" class="primary feedback-send">Send</button></div>`;
+    <div class="feedback-actions lk-sheet-actions"><button type="button" class="primary feedback-send">Submit</button></div>`;
   const note = d.querySelector('textarea')!;
   const name = d.querySelector<HTMLInputElement>('.feedback-name input')!;
   const send = d.querySelector<HTMLButtonElement>('.feedback-send')!;
@@ -44,11 +43,8 @@ export function openFeedback(getRun: () => unknown, onClose: () => void, hasRun 
   let verdict = '';
   let busy = false;
   let sent = false;
-  const optional = document.createElement('details');
-  optional.innerHTML = '<summary>Optional recording and people between games</summary>';
-  optional.append(telemetryToggle(lab));
-  if (lab.personaRecordingRequired) optional.append(feedbackPersonaControls(status));
-  preference.append(optional);
+  const share = feedbackPersonaControl(lab);
+  if (share) preference.append(share);
   const update = () => {
     send.disabled = !sent && busy;
   };
@@ -62,7 +58,7 @@ export function openFeedback(getRun: () => unknown, onClose: () => void, hasRun 
     sent = true;
     status.textContent = noteOnly
       ? 'Note and verdict queued without a run or history linkage.'
-      : 'Note queued; run included when available. Persona history linked only if approved.';
+      : 'Note queued with available run and linked play.';
     send.textContent = 'Back to the game';
     update();
   };
@@ -97,8 +93,13 @@ export function openFeedback(getRun: () => unknown, onClose: () => void, hasRun 
       } catch {
         // An unavailable optional run does not block the note.
       }
-      const noteOnly = !lab.telemetryOn || (lab.privacySignalOn && !lab.privacyOverride);
-      await lab.sendFeedback(message, { name: name.value.trim(), run });
+      const sharePlay = feedbackSharePlay(share);
+      const noteOnly = !lab.telemetryOn && !sharePlay;
+      await lab.sendFeedback(message, {
+        name: name.value.trim(),
+        run,
+        sharePlay,
+      });
       success(noteOnly);
     } catch {
       status.textContent = 'Your word could not be sent. Please try again.';

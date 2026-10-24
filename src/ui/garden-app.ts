@@ -13,7 +13,7 @@ import {
   validatePersona,
   watchPersonaCheckpoint,
 } from '@adam0white/lab-client';
-import { downloadJson, telemetryToggle } from '@adam0white/lab-kit';
+import { downloadJson, telemetryNotice, telemetryToggle } from '@adam0white/lab-kit';
 import {
   advanceGarden,
   chooseGarden,
@@ -68,6 +68,7 @@ let fileOrigin = false;
 let uiGeneration = 0;
 let loadGeneration = 0;
 const root = document.getElementById('app')!;
+let recordingNotice: HTMLElement | null = null;
 function clock() {
   const m = run?.minute ?? 360,
     t = m % 1440;
@@ -78,7 +79,13 @@ function button(label: string, key: string, disabled = false) {
 }
 async function save(): Promise<boolean> {
   return run
-    ? put('garden-cast6', { export: exportGarden(run), fileOrigin, fileKey, ownedHeads, archives })
+    ? put('garden-cast6', {
+        export: exportGarden(run),
+        fileOrigin,
+        fileKey,
+        ownedHeads,
+        archives,
+      })
     : false;
 }
 function input(value: GardenInput) {
@@ -149,6 +156,10 @@ async function useRun(
 }
 function renderTitle() {
   root.innerHTML = `<main class="cg-title"><p class="eyebrow">A fortnight in the neighbourhood</p><h1>Hearsay</h1><p class="cg-subtitle">Someone will hear.</p><p>You are Hatice, keeper of a tea garden in Istanbul. People stop between shifts, deliveries and appointments.</p><p class="goal">Open a paid workers’ lunch on Day 13. Agree supplies on Day 4 and paid cooking on Day 8. Earn four reservations by keeping your word good.</p><p>Fourteen days. Your words change who stays.</p>${notice ? `<p role="status">${esc(notice)}</p>` : ''}<p>Browser continuity: ${shelf.enabled ? 'on. The whole available cast must be compatible before play starts.' : 'off. This garden stays independent.'}</p>${button(shelf.enabled ? 'Begin with the saved cast' : 'Begin a fresh fortnight', 'start', starting)}${button(shelf.enabled ? 'Turn browser continuity off' : 'Turn browser continuity on', 'continuity')}${button('Send word', 'send')}${shelf.enabled ? button('Play a separate local fortnight', 'local') : ''}<label class="cg-file">Open a run file<input type="file" id="import-run" accept=".json,application/json"></label><p class="fine">Earlier local saves are kept. This edition starts a new garden with eight canonical people.</p></main>`;
+  if (recordingNotice && !recordingNotice.dataset.shown) {
+    root.querySelector('.cg-title h1')?.after(recordingNotice);
+    recordingNotice.dataset.shown = '1';
+  }
 }
 function render() {
   ++uiGeneration;
@@ -168,7 +179,7 @@ function render() {
   const running = run.chat;
   let panel = '';
   if (menu) {
-    panel = `<h2>Game menu</h2><p>The clock is stopped. Garden cash: ${run.lunch.cash} lira. Unpaid invoices: ${run.lunch.debt} lira.</p>${button('Save this garden', 'save')}${button('Download this run', 'export')}<label class="cg-file">Import a run<input type="file" id="import-run" accept=".json,application/json"></label>${button('Send this run to the notebook', 'send')}<div id="cg-recording"></div>${fileOrigin || run.chapter?.claims.length ? '<p>Recording this complete history is a separate choice. One denied person keeps it local.</p>' + button('Allow recording this complete history', 'allow-file') + button('Keep this history local', 'deny-file') : ''}<details><summary>Browser continuity</summary><p>${shelf.enabled ? 'Continuity is on. Existing runs keep their pinned people; a new chapter checks all eight together.' : 'Continuity is off. Local play and export still work.'}</p>${button(shelf.enabled ? 'Turn browser continuity off' : 'Turn browser continuity on', 'continuity')}<label>Person to checkpoint<select id="cg-checkpoint-person">${GARDEN_IDS.map((p) => `<option value="${p}">${esc(GARDEN_CAST[p].name)}</option>`).join('')}</select></label>${button('Save their eligible closing chapter', 'checkpoint')}${button('Create an explicit fresh browser branch', 'fork')}<p>A checkpoint keeps the exact accepted parent. Unfinished work, invoices and source duties may refuse. Export before replacing a branch.</p>${run.chapter?.inputs.map((p) => `<p>${esc(lifeAdmission(p, 'hearsay').line)}</p>`).join('') ?? ''}</details>${button('Begin another fresh fortnight', 'restart')}${button('Back to the garden', 'back')}`;
+    panel = `<h2>Game menu</h2><p>The clock is stopped. Garden cash: ${run.lunch.cash} lira. Unpaid invoices: ${run.lunch.debt} lira.</p>${button('Save this garden', 'save')}${button('Download this run', 'export')}<label class="cg-file">Import a run<input type="file" id="import-run" accept=".json,application/json"></label>${button('Send this run to the notebook', 'send')}<div id="cg-recording"></div><details><summary>Browser continuity</summary><p>${shelf.enabled ? 'Continuity is on. Existing runs keep their pinned people; a new chapter checks all eight together.' : 'Continuity is off. Local play and export still work.'}</p>${button(shelf.enabled ? 'Turn browser continuity off' : 'Turn browser continuity on', 'continuity')}<label>Person to checkpoint<select id="cg-checkpoint-person">${GARDEN_IDS.map((p) => `<option value="${p}">${esc(GARDEN_CAST[p].name)}</option>`).join('')}</select></label>${button('Save their eligible closing chapter', 'checkpoint')}${button('Create an explicit fresh browser branch', 'fork')}<p>A checkpoint keeps the exact accepted parent. Unfinished work, invoices and source duties may refuse. Export before replacing a branch.</p>${run.chapter?.inputs.map((p) => `<p>${esc(lifeAdmission(p, 'hearsay').line)}</p>`).join('') ?? ''}</details>${button('Begin another fresh fortnight', 'restart')}${button('Back to the garden', 'back')}`;
   } else if (run.lunch.pending) {
     panel = `<h2>${run.lunch.pending === 'trial' ? 'Day 4 · Reserve the supplies' : 'Day 8 · Agree paid cooking'}</h2><p>Garden cash: ${run.lunch.cash} lira. Unpaid invoices: ${run.lunch.debt} lira. Meals cost 100 lira; four paid-now meals cover 380 lira of sample, preparation and food. Credit raises the total to 410 lira, requiring five meals.</p><p>${run.lunch.pending === 'trial' ? 'Rıza will deliver counted bread. Osman will supply a written produce order. Pay for a sample now, take a dearer credit invoice, or decline.' : 'Aylin offers preparation after her school shift, with a clear leaving time. Her 180-lira fee is due before the Day 10, 17:00 preparation appointment. The free bench remains separate from paid food.'}</p>${run.lunch.pending === 'trial' ? button('Pay 120 lira for the sample now', 'plan-paid-trial') + button('Take credit · 150 lira due before lunch, five meals needed', 'plan-credit-trial') + button('Decline the sample · no supplies reserved', 'plan-decline-trial') : button('Pay 180 lira for a defined preparation session', 'plan-paid-prep') + button('Owe 180 lira · work waits for payment', 'plan-unpaid-prep') + button('Cancel the lunch preparation', 'plan-cancel')}${running ? button('Finish the current conversation first', 'finish') + button('Leave the current conversation', 'release') : ''}<p>The clock holds while you read. The terms cost real takings. A promise of payment is not a receipt.</p>`;
   } else if (run.ended) {
@@ -363,21 +374,6 @@ async function action(key: string) {
     downloadJson(`hearsay-day-${Math.floor(run.minute / 1440) + 1}.json`, exportGarden(run));
     return;
   }
-  if (key === 'allow-file' || key === 'deny-file') {
-    try {
-      await recordingGuard.choose(key === 'allow-file');
-    } catch (error) {
-      notice = error instanceof Error ? error.message : 'Recording remains blocked.';
-      render();
-      return;
-    }
-    notice =
-      key === 'allow-file'
-        ? 'Imported history stays local until it has an accepted, exactly pinned person checkpoint. You can choose recording after that.'
-        : 'This history stays local.';
-    render();
-    return;
-  }
   if (key === 'account') {
     root.querySelector<HTMLDetailsElement>('.cg-account')!.open = true;
     return;
@@ -398,7 +394,11 @@ async function action(key: string) {
     return;
   }
   if (key.startsWith('confront-')) {
-    input({ type: 'confront', person: selected, choice: key.slice(9) as 'own' | 'stand' });
+    input({
+      type: 'confront',
+      person: selected,
+      choice: key.slice(9) as 'own' | 'stand',
+    });
     return;
   }
   if (key === 'reserve') {
@@ -408,9 +408,17 @@ async function action(key: string) {
   if (key === 'silence') input({ type: 'silence' });
   if (key === 'release') input({ type: 'release', person: run.chat?.person ?? selected });
   if (key === 'listen' || key === 'pry')
-    input({ type: 'listen', person: selected, approach: key === 'pry' ? 'pry' : 'invite' });
+    input({
+      type: 'listen',
+      person: selected,
+      approach: key === 'pry' ? 'pry' : 'invite',
+    });
   if (['support', 'keep', 'spread'].includes(key))
-    input({ type: 'respond', person: selected, choice: key as 'support' | 'keep' | 'spread' });
+    input({
+      type: 'respond',
+      person: selected,
+      choice: key as 'support' | 'keep' | 'spread',
+    });
   if (['ask', 'defend', 'tell', 'amends'].includes(key))
     input({
       type: key as 'ask' | 'defend' | 'tell' | 'amends',
@@ -420,6 +428,9 @@ async function action(key: string) {
     });
 }
 export async function startGarden() {
+  recordingNotice = telemetryNotice();
+  if (recordingNotice)
+    Object.assign(recordingNotice.style, { position: 'static', transform: 'none', margin: '0 auto' });
   root.innerHTML =
     '<main class="cg-loading"><h1>Hearsay</h1><p role="status">Opening your garden…</p></main>';
   recordingGuard.invalidate();
@@ -469,7 +480,14 @@ export async function startGarden() {
   });
   watchPersonaCheckpoint(() => checkpoint());
   window.addEventListener('pagehide', () => {
-    if (run) putNow('garden-cast6', { export: exportGarden(run), fileOrigin, fileKey, ownedHeads, archives });
+    if (run)
+      putNow('garden-cast6', {
+        export: exportGarden(run),
+        fileOrigin,
+        fileKey,
+        ownedHeads,
+        archives,
+      });
   });
   document.addEventListener('visibilitychange', () => {
     carry = 0;
@@ -555,7 +573,11 @@ async function checkpoint(selected?: GardenPerson, fork = false) {
         }
         if (generation !== atGeneration || run !== captured)
           throw new Error('Run or identity changed. Checkpoint cancelled.');
-        await shelf.request({ action: 'put', envelope: next, ...(fork ? { fork: true } : {}) });
+        await shelf.request({
+          action: 'put',
+          envelope: next,
+          ...(fork ? { fork: true } : {}),
+        });
         if (generation !== atGeneration || run !== captured) return;
         ownedHeads[cast.castId] = next;
         const initial = captured.chapter?.claims ?? [];
