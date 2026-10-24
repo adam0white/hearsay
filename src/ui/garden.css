@@ -269,3 +269,98 @@ body:has(.cg-title),
 #app:has(.cg-title) {
   overflow: visible;
 }
+
+/* Width-based scaling applies to the actual text and controls, including SDK sheets. */
+:root {
+  font-size: clamp(17px, 14px + 0.65vw, 22px);
+}
+.cg-title {
+  max-width: 38rem;
+  padding: clamp(20px, 4vw, 48px) clamp(16px, 3vw, 32px);
+}
+.cg-title > button,
+.cg-title > a {
+  margin: 8px 8px 8px 0;
+}
+.cg-game {
+  max-width: 1366px;
+  grid-template-columns: minmax(0, 1fr) minmax(340px, 1.1fr);
+  align-items: start;
+}
+.cg-game small,
+.cg-gate span {
+  font-size: clamp(16px, 13px + 0.45vw, 19px);
+}
+.cg-tables {
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 140px), 1fr));
+}
+.cg-game .cg-person {
+  font-size: inherit;
+  padding: 10px 8px;
+}
+.cg-person small {
+  font-size: clamp(16px, 13px + 0.45vw, 19px);
+}
+.cg-header p {
+  font-size: inherit;
+}
+.cg-panel select {
+  display: block;
+  width: 100%;
+  margin: 8px 0;
+}
+.cg-panel label,
+.cg-title label {
+  display: block;
+  margin: 12px 0;
+}
+.cg-footer {
+  max-width: 1366px;
+  padding: 12px;
+  margin: auto;
+}
+.cg-footer:empty {
+  display: none;
+}
+body .hflab {
+  font-size: clamp(17px, 14px + 0.65vw, 22px);
+  --hflab-ink-soft: #665b4c;
+}
+body .hflab :is(input, textarea, button, label, .soft) {
+  font-size: inherit;
+}
+body .hflab :is(input, textarea) {
+  max-width: 100%;
+}
+@media (max-width: 900px) {
+  .cg-game {
+    display: flex;
+    flex-direction: column;
+  }
+  .cg-header {
+    order: 0;
+    position: static;
+  }
+  .cg-panel {
+    order: 1;
+    width: 100%;
+  }
+  .cg-scene {
+    order: 2;
+    width: 100%;
+  }
+  .cg-account {
+    order: 3;
+    width: 100%;
+  }
+}
+@media (max-width: 480px) {
+  .cg-tables {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+.cg-game .fine,
+.cg-title .fine {
+  font-size: clamp(16px, 13px + 0.45vw, 19px);
+  color: #665b4c;
+}

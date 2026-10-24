@@ -50,17 +50,25 @@ export async function put(key: string, value: unknown): Promise<boolean> {
     const revision = (revisions.get(key) ?? 0) + 1;
     revisions.set(key, revision);
     const text = JSON.stringify(value);
-    const blob = await gzip(text);
-    if (revisions.get(key) !== revision) return true;
     const db = await open();
+    const write = async (row: Row): Promise<void> => {
+      if (revisions.get(key) !== revision) return;
+      await new Promise<void>((res, rej) => {
+        const tx = db.transaction(STORE, 'readwrite');
+        tx.objectStore(STORE).put(row, key);
+        tx.oncomplete = () => res();
+        tx.onerror = () => rej(tx.error);
+        tx.onabort = () => rej(tx.error);
+      });
+    };
+    try {
+      await write({ blob: await gzip(text), at: Date.now() });
+    } catch {
+      // Some WebKit storage contexts reject Blob transactions. The reader already
+      // supports plain JSON. Keep the same revision guard and atomic transaction.
+      await write({ plain: text, at: Date.now() });
+    }
     if (revisions.get(key) !== revision) return true;
-    await new Promise<void>((res, rej) => {
-      const tx = db.transaction(STORE, 'readwrite');
-      tx.objectStore(STORE).put({ blob, at: Date.now() }, key);
-      tx.oncomplete = () => res();
-      tx.onerror = () => rej(tx.error);
-      tx.onabort = () => rej(tx.error);
-    });
     captureStored(key, text);
     return true;
   } catch {

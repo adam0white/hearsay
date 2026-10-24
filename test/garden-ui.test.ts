@@ -20,13 +20,15 @@ it.each([
   { width: 1280, height: 800 },
 ])('plays, saves and reloads the canonical UI at $width×$height', async (viewport) => {
   await page.setViewportSize(viewport);
-  await page.goto(server.resolvedUrls?.local[0] ?? '');
+  await page.goto(`${server.resolvedUrls?.local[0] ?? ''}?lab=1`);
   await page.locator('.cg-title, .cg-game').first().waitFor();
-  const start = page.getByRole('button', { name: 'Begin a fresh fortnight', exact: true });
+  if (await page.locator('.cg-title').count()) await page.getByText('Lab tools', { exact: true }).click();
+  const start = page.getByRole('button', { name: 'Play a separate local fortnight', exact: true });
   if (await start.isVisible()) await start.click();
   else {
     await page.getByRole('button', { name: 'Game menu', exact: true }).first().click();
-    await page.getByRole('button', { name: 'Begin another fresh fortnight', exact: true }).click();
+    await page.getByText('Lab tools', { exact: true }).click();
+    await page.getByRole('button', { name: 'Play a separate local fortnight', exact: true }).click();
   }
   await page.locator('[data-pace="0"]').click();
   expect(await page.locator('.cg-header').innerText()).toContain('Day 13 lunch');
@@ -35,7 +37,7 @@ it.each([
   await page.getByRole('button', { name: 'Let the conversation finish', exact: true }).click();
   expect(await page.locator('.cg-confidence').innerText()).toContain('doorway');
   const response = page.getByRole('button', {
-    name: 'Respect the confidence and leave it private',
+    name: 'Keep this private',
     exact: true,
   });
   const bounds = await response.boundingBox();
@@ -43,6 +45,9 @@ it.each([
   await response.click();
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
   await page.getByRole('button', { name: 'Game menu', exact: true }).first().click();
+  await page.locator('.cg-lab').evaluate((el) => {
+    (el as HTMLDetailsElement).open = true;
+  });
   await page.getByRole('button', { name: 'Save this garden', exact: true }).click();
   await page.getByRole('status').filter({ hasText: 'Garden saved' }).waitFor();
   await page.reload();

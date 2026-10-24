@@ -29,7 +29,7 @@ it('uses the active garden entry, scoped group choice and explicit title note wi
     lab.openSendDialog=()=>{throw Error('Raw lab dialog must not be used');};
     lab.sendFeedback=async(note,options)=>{window.gardenFeedback={note,...options};return 'queued';};
   })()`);
-  await page.getByRole('button', { name: 'Send word', exact: true }).click();
+  await page.getByRole('button', { name: 'Feedback', exact: true }).click();
   expect(await page.locator('#hflab-persona').count()).toBe(0);
   await page.locator('#hflab-note').fill('A garden title note.');
   await page.locator('.hflab button.send').click();
@@ -78,12 +78,15 @@ it.each([false, true])('shares active garden play only when its one checkbox is 
     sessionStorage.clear();
   });
   await page.reload();
-  await page
-    .getByRole('button', {
-      name: /Begin a fresh fortnight|Play a separate local fortnight/,
-    })
-    .first()
-    .click();
+  // A saved local fixture tests Feedback; it is not a shared admission receipt.
+  await page.evaluate(`(async()=>{
+    const {put}=await import('/src/ui/store.ts');
+    const {freshGarden}=await import('/src/sim/garden.ts');
+    const {exportGarden}=await import('/src/sim/garden-export.ts');
+    await put('garden-cast6',{export:exportGarden(freshGarden(17)),fileOrigin:false,ownedHeads:{},archives:[]});
+  })()`);
+  await page.reload();
+  await page.locator('[data-pace="0"]').click();
   await page.getByRole('button', { name: 'Game menu', exact: true }).click();
   await page.evaluate(`(async()=>{
     const {lab}=await import('/src/ui/lab.ts');
@@ -92,7 +95,7 @@ it.each([false, true])('shares active garden play only when its one checkbox is 
   })()`);
   await page
     .getByRole('button', {
-      name: 'Send this run to the notebook',
+      name: 'Feedback',
       exact: true,
     })
     .click();
