@@ -16,7 +16,7 @@ Dilan uses a dedicated delivery visitor. Her sister Aylin, colleague Ece and dep
 
 Return into an already departed Hearsay branch is unavailable; its completed fortnight is not restarted as continuation. Fresh authored play remains available. A Murmur/Stairwell receiving adapter must use its own saved departure prefix before simulating a return suffix. Peer contracts and delivery receipts live under `~/code/.lab-scratch/universe/`.
 
-Current pins are HF2.18.0, lab-client0.4.4 and lab-kit0.5.4 from immutable vendor tarballs. No workspace dependency symlinks. Feedback sends in one sheet; recording off sends the note without run or history linkage.
+Current pins are HF2.18.0, lab-client0.4.4 and lab-kit0.5.4 from immutable vendor tarballs. No workspace dependency symlinks. Feedback sends in one sheet. When recording is off, one unticked Share this run and my play with the lab checkbox controls explicit opt-in: checked Submit enables recording/linking and includes the run; unchecked Submit sends only the unlinked note (owner, 2026-10-23).
 
 One independent Codex correctness/game-design review was completed. Its verified return-evidence, source-checkpoint and file-scope findings were corrected. Validation/deployment/browser receipts are in `~/code/.lab-scratch/universe/hearsay.md` and `hearsay-review.md`. They are the evidence for delivery status.
 
