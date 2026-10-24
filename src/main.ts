@@ -1,4 +1,4 @@
 import './ui/style.css';
-import { start } from './ui/app';
+import { startGarden } from './ui/garden-app';
 
-void start();
+void startGarden();

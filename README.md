@@ -1,38 +1,25 @@
 # Hearsay
 
-A static web game about talk, trust and consequences in a hillside mahalle. You are Hatice, keeper of the tea garden. Your son hopes to marry the baker’s daughter. On the first morning, you overhear something true.
+A static web game about talk, trust and consequences in an Istanbul tea garden. You are Hatice. Open a paid workers’ lunch on Day 13: agree bread and produce on Day 4, pay for Aylin’s preparation on Day 8, and earn enough reservations. What people hear changes who comes, what they buy and whether the lunch can open.
 
-The authority is [docs/design.md](docs/design.md). Adam accepts the increment by playing it. Publication and owner acceptance remain deferred for his review.
+The current canonical edition is documented in [canonical adoption](docs/canonical-adoption.md). It uses Hatice, Derya, Dilan, Nermin, Aylin, Ece, Rıza and Osman. The old engagement and its 32-person household cast are historical. [The original design](docs/design.md) and [playtest records](docs/playtests/README.md) retain that history. Adam accepts the game by playing; technical delivery does not establish owner acceptance.
 
-Node 24 or newer:
+The canonical edition uses HF 2.18.0, lab-client 0.4.0 and lab-kit 0.5.0. Browser continuity admits every compatible allocated head in one atomic batch before starting. Voice Rıza and Osman have explicit calendar adapters. Unsupported source dialects and older cast revisions refuse the whole admission; separate local play remains available. Exact release and browser receipts are recorded in the worker report outside the repository.
 
-```sh
-npm ci
-npm run dev
-npm run check
-npm run build
-npm run preview
-```
-
-The six verbs act on neighbours at the garden or fountain. Tell repeats the selected claim; Defend states its favourable opposite. Both statements are previewed, including whether Hatice believes them. Call over can include an offer to pay for tea in exchange for silence. The clock moves briskly through quiet stretches and holds for questions, incidents and conversations. No time passes while the page is hidden or closed.
-
-The notebook downloads a seed, input history, full state and fingerprint. Import replays the choices and verifies both fingerprints before replacing the current run. Sending a run with a note is opt-in through the lab client. Saves use IndexedDB. A small seed/input/minute journal commits before each clock change is displayed. Full-state saves remain compressed during play, with an immediate full-state transaction when leaving.
-
-Headless tools:
+Use Homebrew Node 24 or newer:
 
 ```sh
-node scripts/drive.ts quiet 1 14
-node scripts/drive.ts reckless 42 14 out=scratch/run.json
-npm run measure
+PATH=/opt/homebrew/bin:$PATH npm ci
+PATH=/opt/homebrew/bin:$PATH npm run dev
+PATH=/opt/homebrew/bin:$PATH npm run check:lane
+PATH=/opt/homebrew/bin:$PATH npm run build
+PATH=/opt/homebrew/bin:$PATH npm run preview
 ```
 
-HF-character playtests use the existing local playtester checkout, read-only. Override its entrypoint with `HF_PLAYTESTER` if needed:
+On the shared lab machine, wrap a full check once with `node /Users/abdul/code/human-framework/scripts/suite-lock.ts -- npm run check:lane`. CI runs the full suite on every push.
 
-```sh
-node scripts/hf-playtest/run.ts run seeds=2 personas=commuter,mischief,rulesLawyer minutes=12 out=scratch/cohort.json
-node scripts/hf-playtest/run.ts session personas=mischief seed=1 out=scratch/session.json
-```
+Ask, tell, defend and withdraw a claim about honesty, reliability, kindness or generosity. A completed conversation may reveal a volunteered private fact. A refusal or interrupted conversation reveals none. Support it privately, leave it alone or repeat it to someone actually present. A contradicted rumour can be traced back to a confrontation. Owning it and correcting each listener differs from standing by it and losing a day of custom.
 
-Browser acceptance needs Playwright’s Chromium installed. Start `npm run preview -- --host 127.0.0.1 --port 4173`, then run `node scripts/verify-browser.ts`. It checks the phone layout, downloaded export, replayed import and pagehide/resume without sending telemetry.
+The clock offers Pause, Slow, Walk and Hurry. It holds while agreement choices or the menu are open. No time passes while the page is hidden or closed. Each current run exports full pinned initial people, seed, input history, state and a fingerprint. Import replays the captured opening and verifies the result. Older editions refuse plainly; their local save keys are preserved. IndexedDB stores compressed saves, and pagehide queues the current snapshot immediately. Recording history and browser continuity are separate choices; local play and file export remain available when recording is denied.
 
-[Playtest records and polish](docs/playtests/README.md) include two source-unread LLM runs and the raw HF output. [HF requests](docs/hf-requests.md) record integration gaps. Deployment is configured but has not been run.
+The current browser tests exercise both 360×690 and 1280×800 through start, a real timed conversation, save and reload. Historical browser tests explicitly load `test/fixtures/legacy.html`; that fixture is not built for production. The old `scripts/drive.ts`, `scripts/policy.ts`, `scripts/measure.ts`, `scripts/hf-playtest/` adapter and `scripts/verify-browser.ts` still describe editions 1–5. Their output is historical regression evidence, not a current-edition playtest. Reassess their current-edition replacement after owner review on 2026-11-03.

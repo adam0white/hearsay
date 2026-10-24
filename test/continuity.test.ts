@@ -72,7 +72,8 @@ async function source() {
     source: {
       game: 'murmur',
       build: 'test',
-      engine: person.engine,
+      // Frozen wave1 host stamp. These historical contracts do not become the current live edition.
+      engine: '2.14.1',
       rules: '1',
     },
     transfer: {

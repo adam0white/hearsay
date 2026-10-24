@@ -13,7 +13,7 @@ beforeAll(async () => {
   page = await browser.newPage({ viewport: { width: 360, height: 690 } });
   await page.clock.install();
   await page.clock.pauseAt(new Date());
-  await page.goto(server.resolvedUrls?.local[0] ?? '');
+  await page.goto(`${server.resolvedUrls?.local[0] ?? ''}test/fixtures/legacy.html`);
 });
 afterAll(async () => {
   await browser?.close();
@@ -21,7 +21,7 @@ afterAll(async () => {
 });
 async function load(minute = 479, clearQuestion = true) {
   await page.goto('about:blank');
-  await page.goto(server.resolvedUrls?.local[0] ?? '');
+  await page.goto(`${server.resolvedUrls?.local[0] ?? ''}test/fixtures/legacy.html`);
   await page.locator('.title-page').waitFor();
   const fixture = newGame(1);
   advance(fixture, minute);

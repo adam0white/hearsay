@@ -92,7 +92,7 @@ it('offers an admitted visitor an ordinary boundary encounter and replays the pi
     castRevision: '1',
     branchId: 'boundary-test',
     parentRevision: null,
-    source: { game: 'murmur', build: 'test', engine: source.engine, rules: '1' },
+    source: { game: 'murmur', build: 'test', engine: '2.14.1', rules: '1' },
     transfer: { person: projection, history: [], checkpoint: await checkpointPerson(source) },
     limitations: projection.limitations,
   });

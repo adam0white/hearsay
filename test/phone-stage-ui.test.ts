@@ -21,7 +21,7 @@ afterAll(async () => {
 });
 async function load(fixture: Game) {
   await page.goto('about:blank');
-  await page.goto(server.resolvedUrls?.local[0] ?? '');
+  await page.goto(`${server.resolvedUrls?.local[0] ?? ''}test/fixtures/legacy.html`);
   await page.locator('.title-page').waitFor();
   await page.evaluate(async (fixture) => {
     const db = await new Promise<IDBDatabase>((resolve) => {

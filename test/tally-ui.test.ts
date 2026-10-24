@@ -19,7 +19,7 @@ afterAll(async () => {
   await server?.close();
 });
 it('offers the tally only as a closed ending disclosure, without a menu preference', async () => {
-  await page.goto(server.resolvedUrls?.local[0] ?? '');
+  await page.goto(`${server.resolvedUrls?.local[0] ?? ''}test/fixtures/legacy.html`);
   await page.locator('.title-page').waitFor();
   const g = newGame(1);
   advance(g, 20160);

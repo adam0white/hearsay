@@ -1,4 +1,6 @@
-# Hearsay: design
+# Hearsay: historical design, editions 1–5
+
+The live entry in this tree now selects the eight-person canonical garden edition. Its current objective, complete cast disposition, discoveries and verification boundary are in [canonical-adoption.md](canonical-adoption.md). The engagement, fixed household cast and tool descriptions below are retained history; they do not describe the new edition. Owner acceptance still requires Adam to play.
 
 **What done means.** For this first increment: a public, playable build at https://hearsay.adamwhite.work with a playtest export that replays, HF-character playtester runs and two source-unread LLM playtester runs recorded verbatim in `docs/playtests/`, one polish round from them, and an entry on https://human.adamwhite.work/games/ and the lab dashboard. Adam (owner) accepts it by playing it. Later work goes in the Deferred list below, each item with a date.
 

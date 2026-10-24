@@ -43,7 +43,7 @@ async function fixture(fitness = 0.5) {
     castRevision: '1',
     branchId: 'test-branch',
     parentRevision: null,
-    source: { game: 'murmur', build: 'test', engine: source.engine, rules: '1' },
+    source: { game: 'murmur', build: 'test', engine: '2.14.1', rules: '1' },
     transfer: {
       person: projection,
       history: [

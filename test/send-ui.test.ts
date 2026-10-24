@@ -12,7 +12,7 @@ beforeAll(async () => {
   page = await browser.newPage({ viewport: { width: 360, height: 690 } });
   await page.clock.install();
   await page.clock.pauseAt(new Date());
-  await page.goto(server.resolvedUrls?.local[0] ?? '');
+  await page.goto(`${server.resolvedUrls?.local[0] ?? ''}test/fixtures/legacy.html`);
   await page.getByRole('button', { name: 'Start', exact: true }).click();
 });
 afterAll(async () => {

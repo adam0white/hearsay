@@ -185,7 +185,7 @@ export function chooseContinuityRecording(value: boolean): Promise<void> {
           castId: head.castId,
           envelope: head,
           allowRecording: value,
-          recordingEpoch: epoch.recordingEpoch,
+          recordingEpoch: epoch.recordingEpoch ?? undefined,
         };
         const reply = await shelf.request<RecordingReply>(request);
         if (!valid()) return;
@@ -221,7 +221,7 @@ async function linkFirstFileHead(
       castId: head.castId,
       envelope: head,
       allowRecording: true,
-      recordingEpoch: epoch.recordingEpoch,
+      recordingEpoch: epoch.recordingEpoch ?? undefined,
     };
     const reply = await shelf.request<RecordingReply>(request);
     return valid() && echoes(reply, head) && reply.sameEpoch;
@@ -462,7 +462,7 @@ export function checkpointContinuity(): Promise<void> {
                   epoch &&
                   'recordingEpoch' in epoch,
               ),
-              recordingEpoch: epoch?.recordingEpoch,
+              recordingEpoch: epoch?.recordingEpoch ?? undefined,
             };
             await shelf.request(request);
           }

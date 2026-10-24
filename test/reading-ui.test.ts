@@ -20,7 +20,7 @@ afterAll(async () => {
 });
 async function load(minute: number, dismiss = false) {
   await page.goto('about:blank');
-  await page.goto(server.resolvedUrls?.local[0] ?? '');
+  await page.goto(`${server.resolvedUrls?.local[0] ?? ''}test/fixtures/legacy.html`);
   await page.locator('.title-page').waitFor();
   const g = newGame(1);
   advance(g, minute);

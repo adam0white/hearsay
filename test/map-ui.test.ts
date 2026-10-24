@@ -12,7 +12,7 @@ beforeAll(async () => {
   await server.listen();
   browser = await chromium.launch();
   page = await browser.newPage({ viewport: { width: 360, height: 690 } });
-  await page.goto(server.resolvedUrls?.local[0] ?? '');
+  await page.goto(`${server.resolvedUrls?.local[0] ?? ''}test/fixtures/legacy.html`);
   await page.setContent('<canvas style="display:block;width:360px;height:60px"></canvas>');
 });
 afterAll(async () => {

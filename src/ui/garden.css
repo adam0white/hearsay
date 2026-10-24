@@ -1,0 +1,271 @@
+.cg-title,
+.cg-game {
+  color: #302b24;
+  font-family: Georgia, serif;
+  max-width: 1100px;
+  margin: auto;
+  box-sizing: border-box;
+}
+.cg-title {
+  max-width: 540px;
+  padding: 40px 24px;
+}
+.cg-title h1 {
+  font-size: clamp(3rem, 10vw, 5rem);
+  margin-bottom: 0;
+}
+.cg-subtitle {
+  font-style: italic;
+  font-size: 1.4rem;
+}
+.cg-game {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(300px, 420px);
+  gap: 16px;
+  padding: 14px;
+}
+.cg-header {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid #b7a78d;
+  padding-bottom: 10px;
+  gap: 8px;
+}
+.cg-header p {
+  width: 100%;
+  margin: 0;
+}
+.cg-header strong {
+  margin-right: 16px;
+}
+.cg-header .cg-paces {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.cg-game button,
+.cg-title button,
+.cg-file {
+  min-height: 44px;
+  border: 1px solid #a2947a;
+  background: #f8f1e3;
+  border-radius: 6px;
+  color: inherit;
+  font: inherit;
+  padding: 10px 12px;
+  cursor: pointer;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+.cg-game button:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+.cg-game button[aria-pressed="true"] {
+  border-color: #42634c;
+  background: #e1e9dd;
+  outline: 1px solid #42634c;
+}
+.cg-game small {
+  display: block;
+  font-size: 0.8rem;
+  line-height: 1.4;
+}
+.cg-gate {
+  border-top: 5px solid #8a714e;
+  padding: 14px 8px;
+  text-align: center;
+  letter-spacing: 0.1em;
+}
+.cg-gate span {
+  display: block;
+  letter-spacing: normal;
+  font-size: 0.85rem;
+  margin-top: 6px;
+}
+.cg-tables {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+}
+.cg-person {
+  display: flex;
+  align-items: center;
+  flex-direction: column;
+  gap: 8px;
+}
+.cg-person.away {
+  background: #eee7db;
+  border-style: dashed;
+}
+.cg-person.here {
+  background: #e8ebdf;
+}
+.cg-person > span {
+  font-size: 1.7rem;
+  color: #5e684c;
+}
+.cg-standing {
+  padding: 10px;
+  background: #e5e9dc;
+}
+.cg-panel {
+  padding: 16px;
+  border: 1px solid #c9bca6;
+  background: #fffbf2;
+  border-radius: 8px;
+  min-width: 0;
+}
+.cg-panel > button {
+  display: block;
+  width: 100%;
+  text-align: left;
+  margin: 8px 0;
+}
+.cg-panel h2 {
+  margin: 0 0 10px;
+}
+.cg-panel h2 small {
+  display: inline;
+}
+.cg-panel details {
+  margin-top: 16px;
+}
+.cg-panel details button {
+  display: block;
+  width: 100%;
+  margin-top: 8px;
+}
+.cg-panel p {
+  line-height: 1.5;
+}
+.cg-panel select {
+  max-width: 100%;
+  min-height: 44px;
+  font: inherit;
+  margin: 8px;
+}
+.cg-account {
+  grid-column: 1 / -1;
+  border-top: 1px solid #b7a78d;
+  padding: 12px 0;
+}
+.cg-account p {
+  line-height: 1.5;
+}
+.cg-account small {
+  display: inline;
+  color: #6d604e;
+}
+.cg-file {
+  display: block;
+  margin: 8px 0;
+}
+.cg-file input {
+  display: block;
+  width: 100%;
+  box-sizing: border-box;
+  margin-top: 10px;
+}
+.cg-notice {
+  padding: 10px;
+  border-left: 3px solid #90603a;
+}
+@media (max-width: 700px) {
+  .cg-game {
+    display: block;
+    padding: 10px;
+  }
+  .cg-header {
+    position: sticky;
+    top: 0;
+    background: #f5efdf;
+    z-index: 2;
+  }
+  .cg-header p {
+    font-size: 0.85rem;
+  }
+  .cg-scene {
+    margin: 12px 0;
+  }
+  .cg-tables {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 4px;
+  }
+  .cg-game .cg-person {
+    padding: 8px 3px;
+    font-size: 0.85rem;
+  }
+  .cg-person > span {
+    font-size: 1.2rem;
+  }
+  .cg-person small {
+    font-size: 0.65rem;
+  }
+  .cg-panel {
+    padding: 12px;
+  }
+  .cg-panel h2 {
+    font-size: 1.25rem;
+  }
+}
+/* The legacy shell fixes header height and page overflow. This edition owns its layout. */
+html:has(.cg-game),
+body:has(.cg-game),
+#app:has(.cg-game),
+html:has(.cg-title),
+body:has(.cg-title),
+#app:has(.cg-title) {
+  height: auto;
+  min-height: 100%;
+  overflow: auto;
+}
+.cg-header {
+  height: auto;
+  min-height: 44px;
+}
+.cg-game p,
+.cg-title p {
+  margin: 10px 0;
+}
+.cg-header p {
+  margin: 0;
+}
+.cg-game {
+  width: 100%;
+}
+@media (max-width: 700px) {
+  .cg-game {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+  .cg-header {
+    order: 0;
+  }
+  .cg-panel {
+    order: 1;
+  }
+  .cg-scene {
+    order: 2;
+  }
+  .cg-account {
+    order: 3;
+  }
+  .cg-header .cg-paces button {
+    padding: 7px 10px;
+  }
+}
+.cg-panel {
+  scroll-margin-top: 170px;
+}
+/* Keep one scrolling ancestor so the objective remains visible while reading. */
+body:has(.cg-game),
+#app:has(.cg-game),
+body:has(.cg-title),
+#app:has(.cg-title) {
+  overflow: visible;
+}
