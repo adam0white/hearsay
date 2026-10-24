@@ -96,3 +96,40 @@ it('keeps a transport failure in the same sheet and permits retry', async () => 
   expect(await page.evaluate('window.linkageSends')).toBe(2);
   expect(await page.locator('.hflab-veil').count()).toBe(0);
 });
+it.each([360, 1280])('keeps shared feedback readable at width %i under dark OS settings', async (width) => {
+  await page.goto(`${server.resolvedUrls?.local[0] ?? ''}test/fixtures/legacy.html`);
+  await page.setViewportSize({ width, height: 800 });
+  await page.emulateMedia({ colorScheme: 'dark' });
+  await page.evaluate(`(async () => {
+    const {openSendDialog}=await import('/node_modules/@adam0white/lab-client/dist/index.js');
+    const {lab}=await import('/src/ui/lab.ts');
+    openSendDialog({lab,getRun:()=>undefined});
+  })()`);
+  const colors = await page.locator('.hflab').evaluate((sheet) => {
+    const style = getComputedStyle(sheet);
+    const input = getComputedStyle(sheet.querySelector('textarea')!);
+    const soft = getComputedStyle(sheet.querySelector('.soft')!);
+    return { paper: style.backgroundColor, input: input.backgroundColor, ink: input.color, soft: soft.color };
+  });
+  expect(colors).toEqual({
+    paper: 'rgb(245, 239, 227)',
+    input: 'rgb(245, 239, 227)',
+    ink: 'rgb(38, 63, 59)',
+    soft: 'rgb(82, 99, 91)',
+  });
+  const luminance = (color: string): number => {
+    const channels = (color.match(/\d+/g) ?? []).slice(0, 3).map((value) => {
+      const channel = Number(value) / 255;
+      return channel <= 0.04045 ? channel / 12.92 : ((channel + 0.055) / 1.055) ** 2.4;
+    });
+    return 0.2126 * channels[0]! + 0.7152 * channels[1]! + 0.0722 * channels[2]!;
+  };
+  const contrast = (foreground: string, background: string): number => {
+    const levels = [luminance(foreground), luminance(background)].sort((a, b) => a - b);
+    return (levels[1]! + 0.05) / (levels[0]! + 0.05);
+  };
+  expect(contrast(colors.ink, colors.input)).toBeGreaterThanOrEqual(4.5);
+  expect(contrast(colors.soft, colors.paper)).toBeGreaterThanOrEqual(4.5);
+  await page.locator('.hflab').getByRole('button', { name: 'Not now', exact: true }).click();
+  await page.emulateMedia({ colorScheme: 'light' });
+});

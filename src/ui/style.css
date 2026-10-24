@@ -1262,3 +1262,13 @@ input[type="checkbox"] {
   font-size: 12px;
   line-height: 1.15;
 }
+
+/* Shared feedback follows Hearsay's light paper even under a dark OS preference.
+   Hearsay's root ink-soft is a border token, so give this sheet readable muted ink. */
+.hflab {
+  --paper-2: var(--paper);
+  --ink-soft: #52635b;
+  --rope: var(--rust);
+  --moss: var(--teal);
+  color-scheme: light;
+}
