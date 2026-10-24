@@ -1,5 +1,6 @@
 /** Current edition files replay the captured opening. Shelf state and wall time are never consulted. */
 import { restore } from '@adam0white/human-framework';
+import { canonicalPersona } from '@adam0white/lab-client';
 import { type GardenRun, replayGarden } from './garden.ts';
 import { GARDEN_CAST, GARDEN_EDITION, GARDEN_IDS } from './garden-cast.ts';
 import { hash } from './hash.ts';
@@ -22,7 +23,7 @@ export function exportGarden(g: GardenRun): GardenExport {
     initialPeople: structuredClone(g.initialPeople),
     inputs: structuredClone(g.inputs),
     state: structuredClone(g),
-    fingerprint: hash(JSON.stringify(g)).toString(16),
+    fingerprint: hash(canonicalPersona(g)).toString(16),
   };
 }
 export function importGarden(text: string): GardenRun {
@@ -58,8 +59,9 @@ export function importGarden(text: string): GardenRun {
   }
   const run = replayGarden(e.seed, e.inputs, e.minute, e.initialPeople, e.state.chapter);
   if (
-    hash(JSON.stringify(run)).toString(16) !== e.fingerprint ||
-    JSON.stringify(run) !== JSON.stringify(e.state)
+    (hash(canonicalPersona(run)).toString(16) !== e.fingerprint &&
+      hash(JSON.stringify(e.state)).toString(16) !== e.fingerprint) ||
+    canonicalPersona(run) !== canonicalPersona(e.state)
   )
     throw new Error('Replay did not match. Your current garden is unchanged.');
   return run;
