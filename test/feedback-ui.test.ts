@@ -50,9 +50,7 @@ it('sends recording-off feedback in one sheet and remembers the optional name', 
   await page.getByText('+ Add a name or tester ID', { exact: true }).click();
   await page.getByRole('textbox', { name: 'Your name or tester ID', exact: true }).fill(' Hatice ');
   await page.getByRole('button', { name: 'Submit', exact: true }).click();
-  expect(await page.getByRole('status').last().innerText()).toBe(
-    'Your note and answer are queued to send. Your game and play history are not attached.',
-  );
+  expect(await page.getByRole('status').last().innerText()).toBe('Sent. Your note is stored.');
   expect(await page.evaluate('window.feedbackSent')).toEqual({
     note: 'Verdict: mixed\n\nI wanted to talk.',
     name: 'Hatice',

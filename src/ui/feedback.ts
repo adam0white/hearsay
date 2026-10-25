@@ -48,7 +48,7 @@ export function openFeedback(getRun: () => unknown, onClose: () => void, hasRun 
   const update = () => {
     send.disabled = !sent && busy;
   };
-  const success = (noteOnly: boolean) => {
+  const success = () => {
     try {
       if (name.value.trim()) localStorage.setItem(NAME_KEY, name.value.trim());
       else localStorage.removeItem(NAME_KEY);
@@ -56,9 +56,7 @@ export function openFeedback(getRun: () => unknown, onClose: () => void, hasRun 
       /* Device storage is optional. */
     }
     sent = true;
-    status.textContent = noteOnly
-      ? 'Your note and answer are queued to send. Your game and play history are not attached.'
-      : 'Your note is queued to send with the available game and linked play history.';
+    status.textContent = 'Sent. Your note is stored.';
     send.textContent = 'Back to the game';
     update();
   };
@@ -94,13 +92,12 @@ export function openFeedback(getRun: () => unknown, onClose: () => void, hasRun 
         // An unavailable optional run does not block the note.
       }
       const sharePlay = feedbackSharePlay(share);
-      const noteOnly = !lab.telemetryOn && !sharePlay;
       await lab.sendFeedback(message, {
         name: name.value.trim(),
         run,
         sharePlay,
       });
-      success(noteOnly);
+      success();
     } catch {
       status.textContent = 'Your note could not be sent. Please try again.';
     } finally {

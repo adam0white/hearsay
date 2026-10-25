@@ -33,9 +33,7 @@ it('holds time throughout same-sheet feedback under a privacy signal', async () 
   expect(await page.getByRole('button', { name: 'Submit', exact: true }).isEnabled()).toBe(true);
   await page.getByRole('textbox', { name: 'Your note', exact: true }).fill('Let me read.');
   await page.getByRole('button', { name: 'Submit', exact: true }).click();
-  expect(await page.getByRole('status').last().innerText()).toContain(
-    'Your note and answer are queued to send',
-  );
+  expect(await page.getByRole('status').last().innerText()).toContain('Sent. Your note is stored.');
   const sent = (await page.evaluate('window.sentRun')) as {
     note: string;
     run: { game: string; state: unknown; fingerprint: string };
