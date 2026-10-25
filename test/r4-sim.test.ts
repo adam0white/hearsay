@@ -1,5 +1,5 @@
 import { trustOf } from '@adam0white/human-framework';
-import { describe, expect, it } from 'vitest';
+import { afterAll, describe, expect, it } from 'vitest';
 import { policyStep, runPolicy } from '../scripts/policy.ts';
 import { act, advance, fingerprint, load, newGame, replay, save, view } from '../src/sim/game.ts';
 import type { Input } from '../src/sim/types.ts';
@@ -10,10 +10,14 @@ const DAY = 1440;
 // These policies must earn their result through recorded player inputs, so replay is
 // checked on the same runs used to measure acceptance.
 describe('round-four visible engagement policies', () => {
-  it('careful relaying earns acceptance on at least two of the three fixed seeds', () => {
-    const games = SEEDS.map((seed) => runPolicy(seed, 'careful-relay'));
-    expect(games.filter((g) => g.s.engagement === 'accepted').length).toBeGreaterThanOrEqual(2);
-    for (const g of games) {
+  describe('careful relaying across all fixed seeds', () => {
+    const accepted = new Map<number, boolean>();
+    afterAll(() => {
+      expect(accepted.size).toBe(SEEDS.length);
+      expect([...accepted.values()].filter(Boolean).length).toBeGreaterThanOrEqual(2);
+    });
+    it.each(SEEDS)('checks and replays careful relaying for seed %i', (seed) => {
+      const g = runPolicy(seed, 'careful-relay');
       expect(g.s.ended).toBe(true);
       expect(fingerprint(replay(g.s.seed, g.inputs, g.s.minute).s)).toBe(fingerprint(g.s));
       expect(g.s.routes.some((r) => r.from === 'hatice' && r.target === 'emre')).toBe(true);
@@ -22,7 +26,8 @@ describe('round-four visible engagement policies', () => {
         expect(g.s.riza?.steps?.some((step) => step.status === 'met')).toBe(true);
         expect(g.s.riza?.steps?.some((step) => step.status === 'missed')).toBe(false);
       }
-    }
+      accepted.set(seed, g.s.engagement === 'accepted');
+    });
   });
 
   it('passive answers are honest but never relay Emre and do not earn acceptance', () => {

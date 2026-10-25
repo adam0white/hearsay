@@ -8,8 +8,9 @@ const DAY = 1440;
 const SEEDS = [1, 2, 3];
 
 describe('round-five policy outcomes', () => {
-  it('careful relays earn acceptance and passive play never does', () => {
-    for (const policy of ['careful-relay', 'passive'] as const) {
+  it.each(['careful-relay', 'passive'] as const)(
+    'preserves acceptance and recorded choices for the %s policy',
+    (policy) => {
       const games = SEEDS.map((seed) => runPolicy(seed, policy));
       const accepted = games.filter((game) => game.s.engagement === 'accepted');
       if (policy === 'careful-relay') expect(accepted.length).toBeGreaterThanOrEqual(2);
@@ -18,8 +19,8 @@ describe('round-five policy outcomes', () => {
         expect(game.s.ended).toBe(true);
         expect(game.inputs.some(({ input }) => input.type === 'choose')).toBe(true);
       }
-    }
-  });
+    },
+  );
 
   it('owning the lie can reach the day-eight step; standing by it cannot', () => {
     const owning = SEEDS.map((seed) => runPolicy(seed, 'lie-own', 7 * DAY + 1260));
@@ -147,7 +148,7 @@ describe('round-five conversation rules', () => {
     const routes = game.s.routes.length;
     expect(act(game, { type: 'tell', listener: 'cem', target: 'emre', trait: 'reliable' })).toBe(true);
     expect(game.s.routes).toHaveLength(routes);
-    expect(game.s.log.findLast((line) => line.kind === 'reply')?.text).toMatch(/seen|story|saint/i);
+    expect(game.s.log.findLast((line) => line.kind === 'reply')?.text).toMatch(/seen|story|good person/i);
   });
 
   it('answers Ask about the selected trait without a believes verdict', () => {

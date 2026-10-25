@@ -169,7 +169,7 @@ async function beginFortnight(fresh = false): Promise<void> {
 function title(): void {
   playing = false;
   lab.screen('title');
-  host.innerHTML = `<main class="title-page">${topbar('', true)}<div class="title-content lk-sheet-body"><p class="eyebrow">A fortnight in the neighbourhood</p><h1>Hearsay<span class="subtitle">Someone will hear.</span></h1><div class="title-illustration" aria-hidden="true"><i></i><i></i><i></i><b>☕</b></div><div id="title-notice"></div><p>You are Hatice. You keep the tea garden.<br>Your son hopes to marry the baker’s daughter.<br>This morning, you overhear something true.</p><p class="goal">Help Emre marry Elif by Day 13, and keep your word good.</p><p class="fine">Fourteen days. Six ways to answer.<br>Your words will find their way home.</p><button type="button" id="other-ways" class="menu-row">Other ways in <span>▸</span></button></div><div id="start" class="lk-sheet-actions"></div></main>`;
+  host.innerHTML = `<main class="title-page">${topbar('', true)}<div class="title-content lk-sheet-body"><p class="eyebrow">Fourteen days in the neighbourhood</p><h1>Hearsay<span class="subtitle">Someone will hear.</span></h1><div class="title-illustration" aria-hidden="true"><i></i><i></i><i></i><b>☕</b></div><div id="title-notice"></div><p>You are Hatice. You run the tea garden.<br>Your son hopes to marry the baker’s daughter.<br>This morning, you overhear something true.</p><p class="goal">Help Emre marry Elif by Day 13, and keep people’s trust in what you say.</p><p class="fine">You have fourteen days and six ways to answer.<br>What you say may reach the person you talk about.</p><button type="button" id="other-ways" class="menu-row">Other ways to start <span>▸</span></button></div><div id="start" class="lk-sheet-actions"></div></main>`;
   if (notice && !notice.dataset.shown) {
     host.querySelector('#title-notice')?.append(notice);
     notice.dataset.shown = '1';
@@ -197,7 +197,7 @@ function title(): void {
       'primary',
     ),
   );
-  actions?.append(button('Start a fresh authored fortnight', () => void beginFortnight(true)));
+  actions?.append(button('Start fourteen days with the original people', () => void beginFortnight(true)));
   if (saved) {
     actions?.append(
       Object.assign(document.createElement('p'), {
@@ -206,7 +206,7 @@ function title(): void {
       }),
     );
     actions?.append(
-      button('Begin a new fortnight', () => {
+      button('Begin a new fourteen-day game', () => {
         if (saved?.s.ended) {
           void beginFortnight();
           return;
@@ -215,7 +215,7 @@ function title(): void {
         confirmation.className = 'new-confirmation';
         confirmation.append(
           Object.assign(document.createElement('p'), {
-            textContent: 'This replaces the fortnight in progress.',
+            textContent: 'This replaces the game in progress.',
           }),
           button('Yes, begin', () => void beginFortnight()),
           button('No', () => confirmation.remove()),
@@ -226,13 +226,13 @@ function title(): void {
     );
   }
   host.querySelector('#other-ways')?.addEventListener('click', () => {
-    const d = dialog('Other ways in');
+    const d = dialog('Other ways to start');
     d.dataset.systemMenu = 'true';
     const body = document.createElement('div');
     body.className = 'lk-sheet-body';
     body.innerHTML =
-      '<p>A run must replay exactly before it replaces your garden.</p><p class="import-status" role="status"></p>';
-    body.prepend(button('Load a playtest run', importFile));
+      '<p>An imported game must replay the same choices with the same result before it replaces your garden.</p><p class="import-status" role="status"></p>';
+    body.prepend(button('Load a saved game file', importFile));
     body.append(continuityPanel());
     d.append(body);
   });
@@ -314,18 +314,18 @@ function noticeVisitors(): boolean {
   // Re-evaluate every pending response. Ending one must not clear another's slowdown.
   slowReason = game.s.scene
     ? game.s.scene.kind === 'confrontation'
-      ? 'Held · Someone is confronting you.'
-      : 'Held · A conversation needs your choice.'
+      ? 'The clock is paused. Someone is confronting you.'
+      : 'The clock is paused. Choose how to answer in this conversation.'
     : question
-      ? `Held · ${name(question.speaker ?? '')} is waiting for your answer.`
+      ? `The clock is paused. ${name(question.speaker ?? '')} is waiting for your answer.`
       : incident
-        ? 'Held · You overheard something. Choose whom to tell.'
+        ? 'The clock is paused. You overheard something. Choose whom to tell.'
         : talking?.open
-          ? `Held · You are talking with ${name(listener)}.`
+          ? `The clock is paused. You are talking with ${name(listener)}.`
           : replyOpen
-            ? 'Held · reading the reply'
+            ? 'The clock is paused while you read the reply.'
             : conversation?.open
-              ? 'Held · reading the wedding'
+              ? 'The clock is paused while you read about the wedding.'
               : '';
   speed = automaticPace(
     !!slowReason,
@@ -421,9 +421,12 @@ async function perform(input: Input): Promise<void> {
     const answer = lines.findLast((l) => l.kind === 'reply' && l.reply?.to === game.inputs.length - 1);
     const reaction =
       input.type !== 'ask' && answer?.reply?.believes
-        ? { yes: 'Believes you.', doubt: 'Doubts it.', no: 'Doesn’t believe you.', refuse: 'Won’t hear it.' }[
-            answer.reply.believes
-          ]
+        ? {
+            yes: 'They believe you.',
+            doubt: 'They doubt the claim.',
+            no: 'They do not believe you.',
+            refuse: 'They refuse to listen.',
+          }[answer.reply.believes]
         : '';
     const will =
       answer?.reply?.will && !answer.text.includes(answer.reply.will) ? ` “${answer.reply.will}”` : '';
@@ -454,9 +457,9 @@ async function perform(input: Input): Promise<void> {
 }
 const standing = () =>
   ({
-    full: 'The benches are full; people want your news.',
-    lively: 'One empty bench. People still come for tea and your news.',
-    quiet: 'Three empty benches. People are keeping their distance.',
+    full: 'The benches are full. People want to hear your news.',
+    lively: 'One bench is empty. People still come for tea and your news.',
+    quiet: 'Three benches are empty. People are keeping their distance.',
     empty: 'The benches are empty. Your neighbours are keeping away.',
   })[game.s.garden];
 function outwardLook(id: string): string {
@@ -470,7 +473,7 @@ function preview(kind: 'tell' | 'defend'): string {
     cruel: 'kind',
     lazy: 'hardworking',
   };
-  if (!trait) return 'Choose a word you want to say.';
+  if (!trait) return 'Choose a claim you want to make.';
   const word = kind === 'defend' ? (opposites[trait] ?? trait) : trait;
   const negative = kind === 'defend' && word === 'owes';
   const belief = game.s.people.hatice ? credence(game.s.people.hatice, `${target}:${word}`) : 0.5;
@@ -510,7 +513,7 @@ function chooseTalk(id: string): void {
   act(game, { type: 'sit', listener: id });
   speed = 0;
   accumulator = 0;
-  slowReason = `Held · You are talking with ${name(listener)}.`;
+  slowReason = `The clock is paused. You are talking with ${name(listener)}.`;
   void persistJournal().then(render);
   save();
   let fullList = false;
@@ -543,7 +546,7 @@ function chooseTalk(id: string): void {
       target === talkTo
         ? 'Tell someone else about this person.'
         : !trait && !selectedStory
-          ? 'Choose a word or a story first.'
+          ? 'Choose a claim or something you saw first.'
           : (tellingUnavailable(
               game.s,
               selectedStory
@@ -569,7 +572,7 @@ function chooseTalk(id: string): void {
     const otherSubjects = [...priorities.primary, ...priorities.others].filter(
       (id) => !shownSubjects.includes(id),
     );
-    body.innerHTML = `<div class="talk-choices lk-sheet-body"><p class="fine presence" role="status">${holdEnded ? 'Their tea is finished; they may leave.' : ''}</p><h3>About whom?</h3><div class="subject-chips">${(fullList ? [...shownSubjects, ...otherSubjects] : shownSubjects).map((p) => `<button type="button" data-target="${p}" aria-pressed="${target === p}">${html(personLabel(p))}</button>`).join('')}<button type="button" id="other-person">${fullList ? 'Fewer people' : `Everyone else (${otherSubjects.length})`}</button></div><div class="talk-segments"><button type="button" data-tab="word" aria-pressed="${!storyTab}">A word</button><button type="button" data-tab="story" aria-pressed="${storyTab}">What you saw (${stories.length})</button></div>${
+    body.innerHTML = `<div class="talk-choices lk-sheet-body"><p class="fine presence" role="status">${holdEnded ? 'They have finished their tea and may leave.' : ''}</p><h3>About whom?</h3><div class="subject-chips">${(fullList ? [...shownSubjects, ...otherSubjects] : shownSubjects).map((p) => `<button type="button" data-target="${p}" aria-pressed="${target === p}">${html(personLabel(p))}</button>`).join('')}<button type="button" id="other-person">${fullList ? 'Fewer people' : `Everyone else (${otherSubjects.length})`}</button></div><div class="talk-segments"><button type="button" data-tab="word" aria-pressed="${!storyTab}">A claim</button><button type="button" data-tab="story" aria-pressed="${storyTab}">What you saw (${stories.length})</button></div>${
       storyTab
         ? `<div class="story-chips">${stories.map((item) => `<button type="button" data-story="${item.id}" aria-pressed="${story === item.id}">${html(item.title)}</button>`).join('')}</div>${selectedStory ? `<p class="story-preview">${html(storyPreview(selectedStory))}</p>` : '<p>Choose something you saw.</p>'}`
         : `<div class="word-chips word-grid">${Object.keys(REPUTATION_TRAITS)
@@ -578,7 +581,7 @@ function chooseTalk(id: string): void {
                 `<button type="button" data-trait="${word}" aria-pressed="${trait === word}">${word === 'owes' ? 'owes money' : word}</button>`,
             )
             .join('')}</div>`
-    }</div><div class="talk-bar lk-sheet-actions talk-actions"><button type="button" class="verb-main" data-verb="tell" ${unavailable(tellReason)}><strong>Tell ${html(name(talkTo))}</strong><small class="tell-preview${!tellReason && !selectedStory && preview('tell').includes('It would be a lie') ? ' lie-warning' : ''}">${html(tellReason || (selectedStory ? storyPreview(selectedStory) : preview('tell').replace("You'll say: ", '')))}</small></button><button type="button" class="verb-main" data-verb="ask" ${unavailable(target === talkTo ? 'Ask someone else about this person.' : '')}><strong>Ask ${html(name(talkTo))}</strong><small class="ask-preview">${html(target === talkTo ? 'Ask someone else about this person.' : askPreview().replace("You'll ask: ", ''))}</small></button><div class="minor-verbs">${selectedStory || preview('tell') !== preview('defend') ? `<button type="button" class="verb-minor" data-verb="defend" ${unavailable(defendReason)}><strong>Defend ${html(name(target))}</strong><small>${html(defendReason || preview('defend').replace("You'll say: ", ''))}</small></button>` : ''}<button type="button" class="verb-minor" data-verb="make-amends"><strong>Take back my words</strong><small>what you told ${html(name(talkTo))} about ${html(name(target))}</small></button></div></div>`;
+    }</div><div class="talk-bar lk-sheet-actions talk-actions"><button type="button" class="verb-main" data-verb="tell" ${unavailable(tellReason)}><strong>Tell ${html(name(talkTo))}</strong><small class="tell-preview${!tellReason && !selectedStory && preview('tell').includes('It would be a lie') ? ' lie-warning' : ''}">${html(tellReason || (selectedStory ? storyPreview(selectedStory) : preview('tell').replace("You'll say: ", '')))}</small></button><button type="button" class="verb-main" data-verb="ask" ${unavailable(target === talkTo ? 'Ask someone else about this person.' : '')}><strong>Ask ${html(name(talkTo))}</strong><small class="ask-preview">${html(target === talkTo ? 'Ask someone else about this person.' : askPreview().replace("You'll ask: ", ''))}</small></button><div class="minor-verbs">${selectedStory || preview('tell') !== preview('defend') ? `<button type="button" class="verb-minor" data-verb="defend" ${unavailable(defendReason)}><strong>Defend ${html(name(target))}</strong><small>${html(defendReason || preview('defend').replace("You'll say: ", ''))}</small></button>` : ''}<button type="button" class="verb-minor" data-verb="make-amends"><strong>Take back my words</strong><small>Withdraw what you told ${html(name(talkTo))} about ${html(name(target))}.</small></button></div></div>`;
     body.querySelectorAll<HTMLButtonElement>('[data-tab]').forEach((b) => {
       b.onclick = () => {
         storyTab = b.dataset.tab === 'story';
@@ -646,7 +649,8 @@ function chooseTalk(id: string): void {
     }
     const presence = body.querySelector('.presence');
     if (presence)
-      presence.textContent = view(game.s).held?.id === talkTo ? '' : 'Their tea is finished; they may leave.';
+      presence.textContent =
+        view(game.s).held?.id === talkTo ? '' : 'They have finished their tea and may leave.';
   };
   update();
 }
@@ -692,13 +696,20 @@ function feedText(line: Game['s']['log'][number]): string {
   const speakers = line.who ?? [];
   const names = speakers.slice(0, 2).map(name);
   const others = Math.max(0, speakers.length - names.length);
-  const claim = line.text.split(': heard again')[0] ?? line.text;
-  return `${claim}: heard again${names.length ? ` from ${names.join(', ')}${others ? ` and ${others} others` : ''}` : ''}${line.count ? ` (${line.count} ${line.count === 1 ? 'echo' : 'echoes'})` : ''}`;
+  const claim = line.text.split('. You have heard this again')[0] ?? line.text;
+  return `You hear the claim again${names.length ? ` from ${names.join(', ')}${others ? ` and ${others} others` : ''}` : ''}: ${claim}${line.count ? ` (${line.count} ${line.count === 1 ? 'repetition' : 'repetitions'})` : ''}.`;
 }
 function sceneCard(): string {
   const scene = game.s.scene;
   if (!scene) return '';
   return `<aside class="scene-card" data-scene="${html(scene.id)}" aria-label="A conversation waiting"><h2>${scene.who.map((id) => html(name(id))).join(' · ')}</h2><p>${html(scene.text)}</p><div class="scene-choices">${scene.choices.map((c) => `<button type="button" data-choice="${html(c.id)}"><strong>${html(c.label)}</strong><small>${html(c.says)}</small>${c.risk ? `<small class="choice-risk">${html(c.risk)}</small>` : ''}</button>`).join('')}</div></aside>`;
+}
+function rizaDecision(lean: 'warm' | 'unsure' | 'cool' = 'unsure'): string {
+  return lean === 'warm'
+    ? 'Rıza seems willing to agree to the wedding.'
+    : lean === 'cool'
+      ? 'Rıza seems unwilling to agree to the wedding.'
+      : 'Rıza has not decided about the wedding.';
 }
 function rizaCard(): string {
   const riza = state().riza;
@@ -715,16 +726,16 @@ function rizaCard(): string {
   const labels = { honest: 'Honesty', reliable: 'Promises', kind: 'Kindness' };
   const marks = { open: '?', settled: '✓', worse: '!', mending: '↺' };
   const threads = [...(state().threads ?? [])].sort((a, b) => b.at - a.at || b.id - a.id).slice(0, 2);
-  return `<aside class="riza-mind${changing ? ' lean-changed' : ''}" aria-label="Rıza’s mind"><p class="lean-label"><span class="lean-mark ${riza?.lean ?? 'unsure'}" aria-hidden="true"></span>Rıza leans ${riza?.lean ?? 'unsure'}</p>${doubts.length || riza?.word ? `<div class="doubt-chips${riza?.word ? ' has-word' : ''}">${doubts.map((d) => `<button type="button" data-doubt="${d.key}" aria-pressed="${selectedDoubt === d.key}" class="${(changedDoubts.get(d.key) ?? 0) > performance.now() ? 'doubt-changed' : ''}">${labels[d.key]} ▸<small>${marks[d.status]} ${d.status}</small></button>`).join('')}${riza?.word ? `<button type="button" data-word aria-pressed="${selectedDoubt === 'word'}">Your word ▸<small>${marks[riza.word.status]} ${riza.word.status}</small></button>` : ''}</div>` : ''}${selected ? `<p class="doubt-detail" role="status">“${html(selected.words)}”${selected.because ? `<br>${html(selected.because)}` : ''}${'mend' in selected && selected.mend ? `<br>${html(selected.mend)}` : ''}</p>` : ''}${threads.map((t) => `<p class="message-thread">${html(name(t.who))} → ${html(name(t.to))}: ${html(t.about)}${t.where ? ` · ${html(t.where)}` : ''} <span>${t.status === 'stalled' ? html(t.reason ?? `${name(t.who)} hasn't brought back word of reaching ${name(t.to)}.`) : t.status}</span></p>`).join('')}${causes.length ? `<p class="riza-cause" role="status">${[...new Set(causes)].map(html).join(' ')}</p>` : ''}<p class="next-step">${next ? `Next: ${html(next.label)} · ${dayLabel(next.day)}` : `The answer · ${dayLabel(riza?.answerDay ?? 13)}`}</p></aside>`;
+  return `<aside class="riza-mind${changing ? ' lean-changed' : ''}" aria-label="Rıza’s mind"><p class="lean-label"><span class="lean-mark ${riza?.lean ?? 'unsure'}" aria-hidden="true"></span>${rizaDecision(riza?.lean)}</p>${doubts.length || riza?.word ? `<div class="doubt-chips${riza?.word ? ' has-word' : ''}">${doubts.map((d) => `<button type="button" data-doubt="${d.key}" aria-pressed="${selectedDoubt === d.key}" class="${(changedDoubts.get(d.key) ?? 0) > performance.now() ? 'doubt-changed' : ''}">${labels[d.key]} ▸<small>${marks[d.status]} ${d.status}</small></button>`).join('')}${riza?.word ? `<button type="button" data-word aria-pressed="${selectedDoubt === 'word'}">Your word ▸<small>${marks[riza.word.status]} ${riza.word.status}</small></button>` : ''}</div>` : ''}${selected ? `<p class="doubt-detail" role="status">“${html(selected.words)}”${selected.because ? `<br>${html(selected.because)}` : ''}${'mend' in selected && selected.mend ? `<br>${html(selected.mend)}` : ''}</p>` : ''}${threads.map((t) => `<p class="message-thread">${html(name(t.who))} → ${html(name(t.to))}: ${html(t.about)}${t.where ? ` · ${html(t.where)}` : ''} <span>${t.status === 'stalled' ? html(t.reason ?? `${name(t.who)} hasn't brought back word of reaching ${name(t.to)}.`) : t.status}</span></p>`).join('')}${causes.length ? `<p class="riza-cause" role="status">${[...new Set(causes)].map(html).join(' ')}</p>` : ''}<p class="next-step">${next ? `Next: ${html(next.label)} · ${dayLabel(next.day)}` : `The answer · ${dayLabel(riza?.answerDay ?? 13)}`}</p></aside>`;
 }
 function fortnightTrack(): string {
   const day = Math.floor(game.s.minute / 1440) + 1;
-  return `<div class="fortnight-track" aria-label="Fourteen days; coffee Day 4, his word Day 8, answer Day 13">${Array.from({ length: 14 }, (_, i) => `<span class="day-tick${i + 1 === day ? ' today' : ''}${i + 1 < day ? ' past' : ''}" title="Day ${i + 1}${i === 3 ? ': family coffee' : i === 7 ? ': his word' : i === 12 ? ': answer' : ''}">${i === 3 ? '☕' : i === 7 ? '◇' : i === 12 ? '✦' : '·'}</span>`).join('')}</div>`;
+  return `<div class="fortnight-track" aria-label="The game lasts fourteen days. Family coffee is on Day 4. Rıza discusses your promises on Day 8 and answers about the wedding on Day 13.">${Array.from({ length: 14 }, (_, i) => `<span class="day-tick${i + 1 === day ? ' today' : ''}${i + 1 < day ? ' past' : ''}" title="Day ${i + 1}${i === 3 ? ': family coffee' : i === 7 ? ': Rıza discusses your promises' : i === 12 ? ': Rıza answers about the wedding' : ''}">${i === 3 ? '☕' : i === 7 ? '◇' : i === 12 ? '✦' : '·'}</span>`).join('')}</div>`;
 }
 function weddingStrip(): string {
   const r = state().riza;
   const marks = { open: '?', settled: '✓', worse: '!', mending: '↺' };
-  return `<button type="button" class="wedding-button${performance.now() < leanHighlightUntil ? ' lean-changed' : ''}" data-wedding-details aria-label="Wedding: Rıza leans ${r?.lean ?? 'unsure'}"><span class="lean-mark ${r?.lean ?? 'unsure'}" aria-hidden="true"></span><span class="wedding-lean">Rıza ${r?.lean ?? 'unsure'}</span>${game.s.engagement !== 'waiting' ? (game.s.engagement === 'accepted' ? 'Rıza has agreed to the marriage.' : 'Rıza has refused the marriage.') : `${(r?.doubts ?? []).map((d) => `<span>${d.key === 'honest' ? 'Honesty' : d.key === 'reliable' ? 'Promises' : 'Kindness'} ${marks[d.status]}</span>`).join('')}<span>Your word ${marks[r?.word?.status ?? 'open']}</span>`} ▸</button>`;
+  return `<button type="button" class="wedding-button${performance.now() < leanHighlightUntil ? ' lean-changed' : ''}" data-wedding-details aria-label="${rizaDecision(r?.lean)}"><span class="lean-mark ${r?.lean ?? 'unsure'}" aria-hidden="true"></span><span class="wedding-lean">${rizaDecision(r?.lean)}</span>${game.s.engagement !== 'waiting' ? (game.s.engagement === 'accepted' ? 'Rıza has agreed to the marriage.' : 'Rıza has refused the marriage.') : `${(r?.doubts ?? []).map((d) => `<span>${d.key === 'honest' ? 'Honesty' : d.key === 'reliable' ? 'Promises' : 'Kindness'} ${marks[d.status]}</span>`).join('')}<span>Your word ${marks[r?.word?.status ?? 'open']}</span>`} ▸</button>`;
 }
 function measureStrip(): void {
   stripObserver?.disconnect();
@@ -867,7 +878,7 @@ function render(): void {
   else if (incident)
     body = `<aside class="table-incident"><h2>What you overheard</h2><p>${html(incident.text)}</p><h3>Tell whom?</h3><div class="incident-people">${present.map((id) => `<button type="button" data-incident-person="${id}">${html(name(id))}</button>`).join('')}</div><button type="button" id="keep-incident">Keep it to yourself for now</button></aside>`;
   else
-    body = `${firstStart ? '<p class="first-start">Keep your word good. Help Emre marry Elif. Tap a neighbour to speak.</p>' : ''}<div class="section-heading"><h2>At your table</h2><span>and by the fountain</span></div><div class="people-chips">${orderedPeople.slice(0, 3).map(personCard).join('') || '<p>No one is close enough. Watch for people passing.</p>'}</div>${orderedPeople.length > 3 ? `<details class="other-neighbours"><summary>More people here (${orderedPeople.length - 3}) ▸</summary><div class="people-chips">${orderedPeople.slice(3).map(personCard).join('')}</div></details>` : ''}<p class="standing">${standing()}</p>`;
+    body = `${firstStart ? '<p class="first-start">Keep people’s trust in what you say. Help Emre marry Elif. Tap a neighbour to speak.</p>' : ''}<div class="section-heading"><h2>At your table</h2><span>and by the fountain</span></div><div class="people-chips">${orderedPeople.slice(0, 3).map(personCard).join('') || '<p>No one is close enough. Watch for people passing.</p>'}</div>${orderedPeople.length > 3 ? `<details class="other-neighbours"><summary>More people here (${orderedPeople.length - 3}) ▸</summary><div class="people-chips">${orderedPeople.slice(3).map(personCard).join('')}</div></details>` : ''}<p class="standing">${standing()}</p>`;
   host.innerHTML = `<main class="game lk-stage" data-sheet="fit" data-phase="${openSheet ? phase : 'garden'}"><div class="lk-strip">${topbar(
     dateLabel(game.s.minute),
   )}<div class="state-status" role="status">${slowReason ? html(slowReason) : skipping ? 'Waiting for someone to come by' : fortnightTrack()}</div>${weddingStrip()}</div><div class="map-wrap lk-scene"><canvas id="map" aria-label="The neighbourhood. Tap a person near the tea garden or fountain to call them over."></canvas>${reply ? `<button type="button" class="speech-overlay">${html(reply)}</button>` : ''}</div><section class="garden lk-sheet" aria-label="Your tea garden"><div class="lk-sheet-body">${body}</div><div class="lk-sheet-actions garden-actions"><button type="button" id="call" ${unavailable(callReason)}><strong>Call over</strong>${callReason ? `<small>${callReason}</small>` : ''}</button>${!game.s.scene && !question && !incident ? '<button type="button" id="skip" aria-label="Skip to the next event">Skip ⏩</button>' : ''}</div></section></main>`;
@@ -954,8 +965,8 @@ function render(): void {
 function dialog(titleText: string): HTMLDialogElement {
   const system = [
     'Game menu',
-    'Run could not open',
-    'Other ways in',
+    'The saved game could not open',
+    'Other ways to start',
     'What you heard',
     'Information',
   ].includes(titleText);
@@ -1041,7 +1052,7 @@ function showReply(): void {
   setPhase('reply');
   const body = document.createElement('div');
   body.className = 'lk-sheet-body reply-body';
-  body.innerHTML = `<blockquote>${html(reply || 'Your words have been heard.').replace(/(Believes you\.|Doubts it\.|Doesn’t believe you\.|Won’t hear it\.)/g, '<strong>$1</strong>')}</blockquote>`;
+  body.innerHTML = `<blockquote>${html(reply || 'Your words have been heard.').replace(/(They believe you\.|They doubt the claim\.|They do not believe you\.|They refuse to listen\.)/g, '<strong>$1</strong>')}</blockquote>`;
   const actions = document.createElement('div');
   actions.className = 'lk-sheet-actions';
   actions.append(
@@ -1072,29 +1083,29 @@ function information(): void {
     start: [
       'The garden',
       [
-        'You keep the tea garden for fourteen days.',
-        'Neighbours sit with you or pass the fountain, and what you say travels.',
-        'Rıza answers about the wedding on Day 13.',
-        'A lie can help today and come back to your gate.',
+        'You run the tea garden for fourteen days.',
+        'Neighbours sit with you or pass the fountain. They may repeat what you say.',
+        'Rıza decides whether to agree to the wedding on Day 13.',
+        'A lie can help today. Later, the person you lied about may hear it and confront you.',
       ],
     ],
     garden: [
       'Who can hear you',
       [
         'Only people at the garden or passing the fountain can hear you.',
-        'Tap a person to talk; tap a passer-by on the map to call them over.',
-        'Paying for their tea buys their silence, for a while.',
-        'The track marks the family coffee, Rıza’s word and his answer.',
-        'The clock holds whenever someone waits for you.',
+        'Tap a person to talk. Tap a person passing by on the map to call them over.',
+        'Paying for their tea stops them from repeating your words for a while.',
+        'The calendar marks the family coffee, Rıza’s decision about your promises, and his answer about the wedding.',
+        'The clock pauses whenever someone waits for your answer.',
       ],
     ],
     talk: [
       'Saying it',
       [
-        'Pick whom it is about, then a word or something you saw.',
-        'Tell says it; Ask asks what the listener thinks.',
-        'Defend speaks up for someone.',
-        'Take back my words withdraws what you told this listener. Copies already on their way keep travelling.',
+        'Choose who to talk about. Then choose a claim or something you saw.',
+        'Tell makes the claim. Ask asks what the listener thinks.',
+        'Defend makes a positive claim about someone.',
+        'Take back my words withdraws what you told this listener. People may still repeat what they heard earlier.',
         'You cannot tell the same thing to the same person twice. Telling someone who needs to know is not gossip.',
       ],
     ],
@@ -1102,8 +1113,8 @@ function information(): void {
       'Rıza’s doubts',
       [
         'Rıza weighs Emre’s honesty, his promises, his kindness, and your word.',
-        'Each doubt says what Rıza heard and what could mend it.',
-        '? open · ✓ settled · ! worse · ↺ mending.',
+        'Each doubt shows what Rıza heard and what could change his mind.',
+        '? means unresolved. ✓ means resolved. ! means his doubts have grown. ↺ means his doubts are easing.',
       ],
     ],
     night: [
@@ -1111,21 +1122,21 @@ function information(): void {
       [
         'Each day ends at 23:00.',
         'The summary is what reached you.',
-        'Much travelled where you could not hear.',
+        'People also had conversations that you could not hear.',
       ],
     ],
     end: [
-      'The game’s reckoning',
+      'The game’s count of claims',
       [
-        'The tally counts your tellings plus onward tellings.',
+        'The total counts the claims you made and the times other people repeated them.',
         'Withdrawals are included.',
-        'It is the game’s reckoning, not a measure of people.',
+        'The total does not measure anyone’s worth.',
       ],
     ],
   };
   const [heading, lines] = words[phase === 'reply' ? 'talk' : phase] ?? [
     'Who can hear you',
-    ['The clock holds whenever someone waits for you.'],
+    ['The clock pauses whenever someone waits for your answer.'],
   ];
   const d = document.createElement('dialog');
   d.className = 'info-popover';
@@ -1199,7 +1210,7 @@ function gameMenu(): void {
   d.dataset.systemMenu = 'true';
   const body = document.createElement('div');
   body.className = 'lk-sheet-body menu-body menu-rows';
-  body.innerHTML = '<p>The garden waits while this is open.</p>';
+  body.innerHTML = '<p>The clock is paused while this menu is open.</p>';
   body.append(button('What you heard ▸', heardSheet, 'menu-row'));
   const pace = document.createElement('div');
   pace.className = 'menu-pacing';
@@ -1224,7 +1235,7 @@ function gameMenu(): void {
   body.append(pace);
   body.append(
     button(
-      'Send word ▸',
+      'Feedback ▸',
       () => {
         d.close();
         sendWord();
@@ -1304,13 +1315,15 @@ function importFile(): void {
     } catch (error) {
       const existing = document.querySelector<HTMLElement>('.import-status');
       if (existing) {
-        existing.textContent = `Run could not open: ${error instanceof Error ? error.message : 'Invalid run. Your current garden is unchanged.'}`;
+        existing.textContent = `The saved game could not open: ${error instanceof Error ? error.message : 'This game file is invalid. Your current garden is unchanged.'}`;
         return;
       }
-      const d = dialog('Run could not open');
+      const d = dialog('The saved game could not open');
       const p = document.createElement('p');
       p.textContent =
-        error instanceof Error ? error.message : 'Invalid run. Your current garden is unchanged.';
+        error instanceof Error
+          ? error.message
+          : 'This game file is invalid. Your current garden is unchanged.';
       d.append(p);
     }
   };
@@ -1322,7 +1335,7 @@ function review(): void {
   lab.milestone('fortnight ended');
   save();
   const routeHtml = (r: (typeof game.s.routes)[number]) =>
-    `<p id="route-${r.id}"><time>Day ${Math.min(14, Math.floor(r.at / 1440) + 1)} · ${clock(r.at)}</time><br>${html(name(r.from))} → ${html(name(r.to))}<br><strong>${html(name(r.target))}: ${r.value ? '' : 'not '}${html(r.trait)}</strong>${r.lie ? ' · a lie' : ''}${r.steps ? ` · sharpened ${r.steps === 1 ? 'once' : 'twice'}` : ''}${r.confrontedAt !== undefined ? ' · traced and confronted' : ''}${r.retractionOf ? ` · withdraws #${r.retractionOf}` : ''}${r.retractedAt !== undefined ? ' · later withdrawn' : ''}<br><small>Route #${r.id}${r.parent ? ` · heard through #${r.parent}` : ''} · Started with ${html(name(r.origin))}</small></p>`;
+    `<p id="route-${r.id}"><time>Day ${Math.min(14, Math.floor(r.at / 1440) + 1)} · ${clock(r.at)}</time><br>${html(name(r.from))} → ${html(name(r.to))}<br><strong>${html(claimText(name(r.target), r.trait, r.value))}.</strong>${r.lie ? ' · a lie' : ''}${r.steps ? ` · sharpened ${r.steps === 1 ? 'once' : 'twice'}` : ''}${r.confrontedAt !== undefined ? ' · traced and confronted' : ''}${r.retractionOf ? ` · withdraws #${r.retractionOf}` : ''}${r.retractedAt !== undefined ? ' · later withdrawn' : ''}<br><small>Route #${r.id}${r.parent ? ` · heard through #${r.parent}` : ''} · Started with ${html(name(r.origin))}</small></p>`;
   const byId = new Map(game.s.routes.map((r) => [r.id, r]));
   const descendsFrom = (id: number, root: number) => {
     let route = byId.get(id);
@@ -1346,18 +1359,17 @@ function review(): void {
   const ownRoutes = personal
     .map(
       (root) =>
-        `<details><summary>${html(name(root.to))} heard you say ${html(name(root.target))} ${root.value ? 'is' : 'is not'} ${html(root.trait)}${root.lie ? ' · your lie' : ''}${root.retractionOf ? ' · your withdrawal' : ''}</summary><div class="route-list">${game.s.routes
+        `<details><summary>${html(name(root.to))} heard you say ${html(claimText(name(root.target), root.trait, root.value))}${root.lie ? ' · your lie' : ''}${root.retractionOf ? ' · your withdrawal' : ''}</summary><div class="route-list">${game.s.routes
           .filter((r) => descendsFrom(r.id, root.id))
           .map(routeHtml)
           .join('')}</div></details>`,
     )
     .join('');
-  host.innerHTML = `<main class="review">${topbar('The end of the fortnight')}<div class="lk-sheet-body"><p class="eyebrow">Words find their way.</p><h2>${game.s.engagement === 'accepted' ? 'Rıza has agreed. Emre and Elif may marry.' : game.s.engagement === 'refused' ? 'Rıza has refused the engagement. The two households will remember.' : 'The engagement remains unsettled.'}</h2><h2>What changed</h2><p>Your garden ended ${html(game.s.garden)}. ${confrontations.length ? `${html(confrontations.join(', '))} traced words back to your gate.` : 'No neighbour confronted you at your gate.'} ${shopChanges.length ? `${html(shopChanges.join(' and '))} closed the shutters early.` : ''}</p><h2>The paths your words took</h2><p class="fine">Open one of your statements to follow its descendants. Withdrawals do not recall copies that have already travelled.</p>${ownRoutes || '<p>You started no testimony.</p>'}<details class="all-routes"><summary>The whole village: every rumour route</summary><p class="fine">This includes conversations you could not witness.</p><div class="route-list">${game.s.routes.map(routeHtml).join('') || '<p>No rumour travelled.</p>'}</div></details><h2>One question to carry</h2><p>Whose trust mattered when you chose what to say?</p><div id="ending-tally">${endingTally(game.s)}</div></div><div id="review-actions" class="lk-sheet-actions"></div></main>`;
-  host.querySelector('#ending-tally summary')?.replaceChildren(document.createTextNode('See the tally'));
+  host.innerHTML = `<main class="review">${topbar('The end of fourteen days')}<div class="lk-sheet-body"><p class="eyebrow">People have repeated what they heard.</p><h2>${game.s.engagement === 'accepted' ? 'Rıza has agreed. Emre and Elif may marry.' : game.s.engagement === 'refused' ? 'Rıza has refused the engagement. The two households will remember.' : 'The engagement remains unsettled.'}</h2><h2>What changed</h2><p>${standing()} ${confrontations.length ? `${html(confrontations.join(', '))} found that the claims came from you.` : 'No neighbour confronted you about a claim.'} ${shopChanges.length ? `${html(shopChanges.join(' and '))} closed the shutters early.` : ''}</p><h2>The paths your words took</h2><p class="fine">Open one of your claims to see who repeated it. Withdrawing a claim does not undo what people have already repeated.</p>${ownRoutes || '<p>You made no claims about other people.</p>'}<details class="all-routes"><summary>Every claim shared in the neighbourhood</summary><p class="fine">This includes conversations you could not witness.</p><div class="route-list">${game.s.routes.map(routeHtml).join('') || '<p>Nobody repeated a claim.</p>'}</div></details><h2>A question to consider</h2><p>Whose trust mattered when you chose what to say?</p><div id="ending-tally">${endingTally(game.s)}</div></div><div id="review-actions" class="lk-sheet-actions"></div></main>`;
   host.querySelector('#review-actions')?.append(
-    button('Send word', sendWord),
+    button('Feedback', sendWord),
     button('Download this run', downloadRun),
-    button('Begin a new fortnight', () => void beginFortnight(), 'primary'),
+    button('Begin a new fourteen-day game', () => void beginFortnight(), 'primary'),
   );
   bindTopbar();
 }

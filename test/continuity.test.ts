@@ -123,7 +123,7 @@ it('refuses persona snapshots with missing pinned continuity rather than opening
       sex: 'female',
     }),
   });
-  await expect(validateContinuity(game)).rejects.toThrow(/pinned|continuity/i);
+  await expect(validateContinuity(game)).rejects.toThrow(/saved history/i);
 });
 it('refuses a competing old admission even when its earlier claim is retained', async () => {
   const { acceptPersona } = await import('@adam0white/lab-client');

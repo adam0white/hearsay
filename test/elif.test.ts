@@ -2,6 +2,7 @@ import { trustOf } from '@adam0white/human-framework';
 import { expect, it } from 'vitest';
 import { act, advance, fingerprint, load, newGame, replay, save } from '../src/sim/game';
 import { compactRun, exportRun, verifyImport } from '../src/ui/export';
+import { historicalRulesFingerprint } from './helpers/historical-rules.ts';
 
 const due = 5 * 1440 + 1080;
 it('opens Elif’s private request once in new fortnights and replays each answer', () => {
@@ -58,19 +59,20 @@ it('queues Elif behind another scene, preserves the queue on resume, and lets he
   expect(resumed.s.log.some((line) => line.kind === 'scene-fallback')).toBe(true);
 });
 
-it('continues both legacy editions exactly through the new scene date and ending', () => {
-  for (const [version, atScene, atEnd] of [
-    [1, 'e451eac5', 'c2d1c737'],
-    [2, 'db9cddc5', 'ae700dfc'],
-  ] as const) {
+it.each([
+  [1, '4aca755c', '43fdc32c'],
+  [2, '2533abd2', '290d4ee3'],
+] as const)(
+  'preserves baseline rules in historical edition %i through the scene date and ending',
+  (version, atScene, atEnd) => {
     const g = newGame(1, version);
     advance(g, due);
-    expect(fingerprint(g.s)).toBe(atScene);
+    expect(historicalRulesFingerprint(g.s)).toBe(atScene);
     expect(g.s.scene?.id).not.toBe('elif-6');
     const resumed = load(save(g));
     advance(resumed, 14 * 1440);
-    expect(fingerprint(resumed.s)).toBe(atEnd);
-    expect(fingerprint(replay(1, g.inputs, g.s.minute, version).s)).toBe(atScene);
-    expect(fingerprint(verifyImport(JSON.stringify(exportRun(g))).s)).toBe(atScene);
-  }
-});
+    expect(historicalRulesFingerprint(resumed.s)).toBe(atEnd);
+    expect(historicalRulesFingerprint(replay(1, g.inputs, g.s.minute, version).s)).toBe(atScene);
+    expect(historicalRulesFingerprint(verifyImport(JSON.stringify(exportRun(g))).s)).toBe(atScene);
+  },
+);

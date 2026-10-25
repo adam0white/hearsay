@@ -5,7 +5,7 @@ import { departureReason, prepareGardenDeparture } from '../src/sim/garden-depar
 it('keeps unfinished duties and the complete source prefix instead of clearing them for travel', () => {
   const g = freshGarden(17);
   expect(departureReason(g, 'derya')).toContain('relief');
-  expect(departureReason(g, 'hatice')).toContain('cover');
+  expect(departureReason(g, 'hatice')).toContain('run the garden');
   const before = structuredClone(g.people.riza);
   // Mechanism control: isolate chapter-boundary validation from the fortnight simulation.
   g.ended = true;

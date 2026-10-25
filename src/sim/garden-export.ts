@@ -63,6 +63,8 @@ export function importGarden(text: string): GardenRun {
       hash(JSON.stringify(e.state)).toString(16) !== e.fingerprint) ||
     canonicalPersona(run) !== canonicalPersona(e.state)
   )
-    throw new Error('Replay did not match. Your current garden is unchanged.');
+    throw new Error(
+      'This file does not replay the same way in this version of Hearsay. It may come from an older version. The file was not loaded. Start fresh.',
+    );
   return run;
 }

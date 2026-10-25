@@ -110,7 +110,7 @@ function ensureRiza(s: State) {
     reliable: `Does Emre keep his promises? If ${sources} told me he does, I would believe it.`,
     kind: `Does Emre treat people kindly? If ${sources} told me he does, I would believe it.`,
   };
-  s.riza.word ??= { status: 'open', words: 'I need to know your word will hold, Hatice.' };
+  s.riza.word ??= { status: 'open', words: 'I need to know I can trust what you say, Hatice.' };
   s.riza.doubts ??= DOUBTS.map((key) => ({ key, words: questions[key], status: 'open' }));
   const legacyRoad = !s.riza.steps;
   s.riza.steps ??= [
@@ -341,7 +341,7 @@ function reaction(
           ? `I believe ${title ? `your account of “${title}”: ` : ''}${assertion}. ${trust > 0.6 ? 'I trust your word on this.' : 'That fits what I have heard, though I have doubts about your word.'}`
           : believes === 'no'
             ? `I don’t believe ${title ? `your account of “${title}”: ` : ''}${assertion}. ${trust < 0.6 ? 'Your word has let me down.' : 'It goes against what I have seen and heard.'}`
-            : `I am not sure ${title ? `about “${title}”: ` : ''}${assertion}. ${trust < 0.6 ? 'I cannot take your word alone.' : 'I hear you, but I need more than that.'}`;
+            : `I am not sure ${title ? `about your account of “${title}”: ` : 'whether '}${assertion}. ${trust < 0.6 ? 'I cannot take your word alone.' : 'I hear you, but I need more than that.'}`;
   let will: string | undefined;
   const damaging = isUnfavourableTrait(trait, value);
   const changed = Math.abs(c - before) > 0.02;
@@ -412,7 +412,7 @@ function closeDay(s: State) {
     (l) => l.kind === 'riza' || l.kind === 'engagement' || l.kind === 'wedding-step',
   );
   if (riza) summary.push(`Rıza told you: “${riza.text}”`);
-  if (summary.length < 2) summary.push('You have had no further answer at your table today.');
+  if (summary.length < 2) summary.push('No one else has answered you at your table today.');
   const question =
     s.engagement !== 'waiting'
       ? 'Who will still sit with you tomorrow?'
@@ -425,7 +425,7 @@ function closeDay(s: State) {
   for (const thread of s.threads ?? [])
     if (thread.who !== 'hatice' && thread.status === 'on its way' && thread.at <= (day - 1) * 1440 + 1050) {
       thread.status = 'stalled';
-      thread.reason ??= `${nameOf(thread.who)} has not brought back word of reaching ${nameOf(thread.to)}.`;
+      thread.reason ??= `${nameOf(thread.who)} has not told you whether they spoke to ${nameOf(thread.to)}.`;
     }
   const stalled = s.threads?.findLast(
     (thread) => thread.status === 'stalled' && (thread.attemptedAt ?? thread.at) >= (day - 1) * 1440,
@@ -614,7 +614,7 @@ function visibleClaim(s: State, from: string, to: string, target: string, trait:
     const echo = s.log[heard.echo - 1]!;
     echo.count = heard.count - 1;
     echo.who = [...heard.who];
-    echo.text = `${claim}: heard again ${echo.count} time${echo.count === 1 ? '' : 's'} today; heard from ${heard.who.map((id) => PEOPLE.find((p) => p.id === id)!.name).join(', ')}.`;
+    echo.text = `${claim}. You have heard this again ${echo.count} time${echo.count === 1 ? '' : 's'} today. You have heard it from ${heard.who.map((id) => PEOPLE.find((p) => p.id === id)!.name).join(', ')}.`;
   }
 }
 
@@ -654,7 +654,7 @@ function confrontHatice(s: State, root: Route, recipient: string) {
     choices: [
       {
         id: 'own',
-        label: 'Own it and retract',
+        label: 'Admit it and take it back',
         says: 'I said it. I will take it back to everyone I told.',
         risk: 'They will hear you take it back',
       },
@@ -672,7 +672,9 @@ function confrontHatice(s: State, root: Route, recipient: string) {
         id: 'stand',
         label: 'Stand by it',
         says: 'I stand by what I said.',
-        risk: root.lie ? 'A contradiction will cost your word' : `${target.name} may stay cold`,
+        risk: root.lie
+          ? 'If someone proves it wrong, people will trust you less'
+          : `${target.name} may still avoid you`,
       },
     ],
     since: s.minute,
@@ -1109,7 +1111,7 @@ function questionReplies(s: State, question: Line): import('./types.ts').QuickRe
       },
       {
         label: 'Keep it to yourself',
-        says: 'Nothing I need to pass on.',
+        says: 'I have nothing I need to pass on.',
         input: { type: 'hold-tongue' as const },
       },
     ],
@@ -1189,7 +1191,7 @@ function reportThreads(s: State) {
             (s.silence[thread.who] ?? 0) > s.minute
               ? `${from} met ${to} but kept this account to himself.`
               : !confident
-                ? `${from} met ${to} but did not believe it enough to pass on.`
+                ? `${from} met ${to} but did not believe it enough to pass it on.`
                 : `${from} met ${to} but spoke about something else.`;
           if (!confident && (s.silence[thread.who] ?? 0) <= s.minute)
             answer(
@@ -1241,7 +1243,7 @@ function markWordHurt(s: State, target: string) {
   word.status = 'worse';
   word.words = 'Your account has hurt people, Hatice. I need to see you put it right.';
   word.because = `Your account of ${nameOf(target)} was traced to your table.`;
-  word.mend = `Take it back to ${mendNames(s, target) || 'the people you told'}, the people you told.`;
+  word.mend = `Take it back to ${mendNames(s, target) || 'the people you told'}.`;
 }
 function openScene(s: State, scene: Scene) {
   if (scene.kind === 'confrontation' && s.routes.find((r) => `confront-${r.id}` === scene.id)?.retractedAt)
@@ -1301,7 +1303,7 @@ function familyScene(s: State, day: number, met: boolean) {
           id: 'bread',
           label: 'Send Emre with bread',
           says: 'Take bread to Rıza’s door tomorrow and ask if they need anything.',
-          risk: 'Emre must face Rıza himself',
+          risk: 'Emre must speak to Rıza himself',
         },
         { id: 'rest', label: 'Let it rest', says: 'Let it rest for now.', risk: 'His doubts will wait too' },
       ],
@@ -1332,13 +1334,13 @@ function familyScene(s: State, day: number, met: boolean) {
           : cart
             ? 'Yes. Our household must keep its word too.'
             : 'Ask him yourselves. I will answer for what I have told you.',
-        risk: flour ? 'Kemal will hear you own it' : 'Emre must answer for himself',
+        risk: flour ? 'Kemal will hear that you admitted it' : 'Emre must answer for himself',
       },
       {
         id: 'soften',
         label: 'Soften your answer',
         says: 'We have all made mistakes. I hope you can give us time.',
-        risk: 'Rıza may keep his doubt',
+        risk: 'Rıza may still have doubts',
       },
       {
         id: 'deny',
@@ -1436,7 +1438,7 @@ function resolveScene(s: State, choiceId: string, to = -1, fallback = false) {
         );
       outcome = root.lie
         ? 'Then we will see whether your account holds. I will not forget this.'
-        : 'You may have your believers. Do not expect me to sit warmly with you.';
+        : 'Some people may believe you. Do not expect a friendly welcome from me.';
     }
   } else if (scene.kind === 'elif') {
     const elif = s.people.elif!;
@@ -1483,7 +1485,8 @@ function resolveScene(s: State, choiceId: string, to = -1, fallback = false) {
         );
         if (wrong) {
           word.status = s.amends?.some((c) => c.listeners.length) ? 'mending' : 'worse';
-          word.words = 'You answered us plainly. The people you told still need your retraction.';
+          word.words =
+            'You answered us plainly. You still need to take back what you said to the people you told.';
           word.mend = `Take it back to ${mendNames(s, wrong.target)}, the people you told.`;
         }
       }
@@ -1523,7 +1526,7 @@ function resolveScene(s: State, choiceId: string, to = -1, fallback = false) {
             id: 'soften',
             label: 'Leave it there',
             says: 'I have no answer for you today.',
-            risk: 'Rıza will keep his doubt',
+            risk: 'Rıza will still have doubts',
           },
         ],
         since: at,
@@ -1894,7 +1897,7 @@ export function act(g: Game, input: Input): boolean {
       if (p !== 'hatice')
         s.people[p]!.memory.sourceTrust.hatice = Math.min(1, trustOf(s.people[p]!, 'hatice') + 0.015);
     s.custom.hatice = Math.max(0, (s.custom.hatice ?? 1) - 0.03);
-    line(s, 'answer', 'You pour another glass. “Nothing I need to pass on.”');
+    line(s, 'answer', 'You pour another glass. “I have nothing I need to pass on.”');
   } else if (input.type === 'ask') {
     const p = s.people[input.listener]!;
     const best =
@@ -1917,7 +1920,7 @@ export function act(g: Game, input: Input): boolean {
     const detail = refusal
       ? 'They are not here to answer. I won’t talk about their faults behind their back. I won’t repeat that.'
       : emre && !input.trait && !s.routes.some((r) => r.to === 'riza' && r.target === 'emre')
-        ? 'He’s polite, he works. I don’t know his heart.'
+        ? 'He is polite and he works. I don’t know what he is like beyond that.'
         : ownView;
     answer(s, input.listener, `${detail}${emre && !s.riza ? ` ${marriageView(s).line}` : ''}`, input.target, {
       to: g.inputs.length,
@@ -2013,7 +2016,7 @@ export function act(g: Game, input: Input): boolean {
         answer(
           s,
           input.listener,
-          "You've told me he's a saint, Hatice. Give me something I've seen.",
+          "You've told me he is a good person, Hatice. Tell me something I have seen him do.",
           target,
           { to: g.inputs.length, believes: 'doubt', will: 'Tell me what he did.' },
         );
@@ -2650,7 +2653,7 @@ function step(s: State) {
     line(
       s,
       'ending',
-      'The fortnight is over. Open Game menu to follow the words you could not see travelling.',
+      'The two weeks are over. Open the Game menu to see who repeated the stories and who heard them.',
     );
   }
 }

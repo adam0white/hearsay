@@ -9,7 +9,7 @@ it('round-trips current pinned play and rejects altered choices and legacy runs'
   const e = exportGarden(g);
   expect(importGarden(JSON.stringify(e))).toEqual(g);
   e.inputs[0]!.input = { type: 'silence' };
-  expect(() => importGarden(JSON.stringify(e))).toThrow(/match/);
+  expect(() => importGarden(JSON.stringify(e))).toThrow(/Start fresh/);
   expect(() => importGarden(JSON.stringify({ game: 'hearsay', version: 5 }))).toThrow(/Start fresh/);
 });
 it('replays an atomic admission header attached after preflight, including existing live files', async () => {

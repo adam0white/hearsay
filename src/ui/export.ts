@@ -65,7 +65,7 @@ export function verifyImport(text: string): Game {
   )
     throw new Error('The run is incomplete.');
   if ((d.minute as number) < 360 || (d.minute as number) > 14 * 1440)
-    throw new Error('The run clock is outside the fortnight.');
+    throw new Error('The saved time is outside the game’s fourteen days.');
   if (d.inputs.length > 20000) throw new Error('The run has too many inputs.');
   if (
     Boolean(d.initialPeople) !== Boolean(d.initialContinuity) ||
@@ -73,7 +73,7 @@ export function verifyImport(text: string): Game {
       ((d.version !== 4 && d.version !== 5) ||
         Object.keys(d.initialPeople).some((id) => !['derya', 'dilan-delivery'].includes(id))))
   )
-    throw new Error('The pinned continuity is incomplete.');
+    throw new Error('The saved history for the arriving person is incomplete.');
   let previous = 360;
   const ids = new Set(PEOPLE.map((p) => p.id));
   for (const entry of d.inputs) {
@@ -85,7 +85,7 @@ export function verifyImport(text: string): Game {
       !entry.input ||
       typeof entry.input !== 'object'
     )
-      throw new Error('Invalid input history.');
+      throw new Error('The saved choices are invalid.');
     previous = entry.at;
     const input = entry.input;
     if (
@@ -103,23 +103,24 @@ export function verifyImport(text: string): Game {
         'one-cast-encounter',
       ].includes(input.type)
     )
-      throw new Error('Unknown choice in run.');
+      throw new Error('This saved game contains an unknown choice.');
     if (('listener' in input && !ids.has(input.listener)) || ('target' in input && !ids.has(input.target)))
-      throw new Error('Unknown neighbour in run.');
+      throw new Error('This saved game contains an unknown neighbour.');
     if (input.type === 'tell-story' && (!Number.isSafeInteger(input.incident) || input.incident < 1))
-      throw new Error('Unknown witnessed story in run.');
+      throw new Error('This saved game contains an unknown witnessed event.');
     if ('trait' in input && input.trait !== undefined && !Object.hasOwn(REPUTATION_TRAITS, input.trait))
-      throw new Error('Unknown claim in run.');
+      throw new Error('This saved game contains an unknown claim.');
     if (input.type === 'choose' && (typeof input.scene !== 'string' || typeof input.choice !== 'string'))
-      throw new Error('Invalid scene choice in run.');
+      throw new Error('This saved game contains an invalid conversation choice.');
     if (
       input.type === 'one-cast-encounter' &&
       ((d.version !== 4 && d.version !== 5) ||
         !['derya', 'dilan-delivery'].includes(input.person) ||
         !['support', 'pry', 'leave'].includes(input.choice))
     )
-      throw new Error('Invalid visitor choice.');
-    if (input.type === 'call-over' && !ids.has(input.person)) throw new Error('Unknown passer-by in run.');
+      throw new Error('This saved game contains an invalid choice about a visitor.');
+    if (input.type === 'call-over' && !ids.has(input.person))
+      throw new Error('This saved game contains an unknown person passing by.');
   }
   const game = replay(
     d.seed as number,
@@ -133,10 +134,12 @@ export function verifyImport(text: string): Game {
     !matchesReplay(game.s, d.fingerprint) ||
     (Object.hasOwn(d, 'state') && (!d.state || fingerprint(d.state) !== d.fingerprint))
   )
-    throw new Error('Replay did not match this run. Your current garden is unchanged.');
+    throw new Error(
+      'This file does not replay the same way in this version of Hearsay. Choose Start fresh to begin a new game. Your current garden is unchanged.',
+    );
   if (d.fileHistory !== undefined) {
     if (typeof d.fileHistory !== 'string' || !/^[a-f0-9-]{36}$/.test(d.fileHistory))
-      throw new Error('Invalid file history provenance.');
+      throw new Error('This game file has an invalid history identifier.');
     game.fileHistory = d.fileHistory;
   }
   if (d.continuity) game.continuity = structuredClone(d.continuity);

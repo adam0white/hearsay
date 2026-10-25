@@ -68,7 +68,7 @@ it('holds an incident indefinitely until the player responds, at every chosen sp
   await readFor(6000);
   expect(await page.locator('.table-incident').count()).toBe(1);
   expect(await page.locator('#clock').innerText()).toBe(clock);
-  expect(await page.locator('.state-status').innerText()).toMatch(/Held.*overheard/i);
+  expect(await page.locator('.state-status').innerText()).toMatch(/The clock is paused.*overheard/i);
   expect(await page.locator('[data-speed]').count()).toBe(0);
 });
 

@@ -24,8 +24,8 @@ it('opens and sends feedback from the title before a run exists', async () => {
     lab.sendFeedback=async(note,options)=>{window.titleFeedback={note,...options};return 'queued';};
   })()`);
   await page.getByRole('button', { name: 'Game menu', exact: true }).click();
-  await page.getByRole('button', { name: 'Send word ▸', exact: true }).click();
-  await page.getByRole('textbox', { name: 'Your word', exact: true }).fill('I have not started yet.');
+  await page.getByRole('button', { name: 'Feedback ▸', exact: true }).click();
+  await page.getByRole('textbox', { name: 'Your note', exact: true }).fill('I have not started yet.');
   await page.getByRole('button', { name: 'Submit', exact: true }).click();
   expect(await page.evaluate('window.titleFeedback')).toEqual({
     note: 'I have not started yet.',
@@ -46,12 +46,12 @@ it('sends recording-off feedback in one sheet and remembers the optional name', 
   })()`);
   expect(await page.getByRole('button', { name: 'Submit', exact: true }).isEnabled()).toBe(true);
   await page.getByRole('button', { name: 'Not sure', exact: true }).click();
-  await page.getByRole('textbox', { name: 'Your word', exact: true }).fill('I wanted to talk.');
-  await page.getByText('+ Add a name or tester id', { exact: true }).click();
-  await page.getByRole('textbox', { name: 'Your name or tester id', exact: true }).fill(' Hatice ');
+  await page.getByRole('textbox', { name: 'Your note', exact: true }).fill('I wanted to talk.');
+  await page.getByText('+ Add a name or tester ID', { exact: true }).click();
+  await page.getByRole('textbox', { name: 'Your name or tester ID', exact: true }).fill(' Hatice ');
   await page.getByRole('button', { name: 'Submit', exact: true }).click();
   expect(await page.getByRole('status').last().innerText()).toBe(
-    'Note and verdict queued without a run or history linkage.',
+    'Your note and answer are queued to send. Your game and play history are not attached.',
   );
   expect(await page.evaluate('window.feedbackSent')).toEqual({
     note: 'Verdict: mixed\n\nI wanted to talk.',
@@ -76,7 +76,7 @@ it('keeps privacy and unanswered historical linkage from blocking the note', asy
     openFeedback(()=>({game:'hearsay',seed:1,inputs:[]}),()=>{});
   })()`);
   expect(await page.getByRole('button', { name: 'Submit', exact: true }).isEnabled()).toBe(true);
-  await page.getByRole('textbox', { name: 'Your word', exact: true }).fill('Keep my words.');
+  await page.getByRole('textbox', { name: 'Your note', exact: true }).fill('Keep my words.');
   await page.getByRole('button', { name: 'Submit', exact: true }).click();
   expect(await page.evaluate('window.linkageSends')).toBe(1);
   expect(await page.locator('.hflab-veil').count()).toBe(0);
@@ -90,10 +90,10 @@ it('keeps a transport failure in the same sheet and permits retry', async () => 
     const {openFeedback}=await import('/src/ui/feedback.ts');
     openFeedback(()=>{throw new Error('export unavailable');},()=>{});
   })()`);
-  await page.getByRole('textbox', { name: 'Your word', exact: true }).fill('Keep my words.');
+  await page.getByRole('textbox', { name: 'Your note', exact: true }).fill('Keep my words.');
   await page.getByRole('button', { name: 'Submit', exact: true }).click();
   expect(await page.getByRole('status').last().innerText()).toContain('could not be sent');
-  expect(await page.getByRole('textbox', { name: 'Your word', exact: true }).inputValue()).toBe(
+  expect(await page.getByRole('textbox', { name: 'Your note', exact: true }).inputValue()).toBe(
     'Keep my words.',
   );
   await page.getByRole('button', { name: 'Submit', exact: true }).click();

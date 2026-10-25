@@ -4,6 +4,7 @@ import { act, advance, fingerprint, load, newGame, replay, save } from '../src/s
 import { dailyIncidents } from '../src/sim/incidents.ts';
 import { say } from '../src/sim/voices.ts';
 import { neighborNorm } from '../src/sim/world.ts';
+import { historicalRulesFingerprint } from './helpers/historical-rules.ts';
 
 it('pins the canonical night nurse profile to edition 4', () => {
   const g = newGame(17, 4);
@@ -58,16 +59,16 @@ it('pins admitted people before local initialization and round trips them throug
   expect(() => newGame(17, 3, { derya: original })).toThrow();
 });
 
-it('retains the exact pre-change replay fingerprints for all three legacy editions', () => {
+it('preserves baseline rules in all three historical editions after prose changes', () => {
   for (const [edition, expected] of [
-    [1, '2fdfd460'],
-    [2, '2dfd3b4c'],
-    [3, '01f41cf3'],
+    [1, 'c3f9e714'],
+    [2, '6a50a48c'],
+    [3, 'b5d27bef'],
   ] as const) {
     const g = newGame(17, edition);
     advance(g, 6000);
-    expect(fingerprint(g.s)).toBe(expected);
-    expect(fingerprint(replay(17, g.inputs, g.s.minute, edition).s)).toBe(expected);
+    expect(historicalRulesFingerprint(g.s)).toBe(expected);
+    expect(historicalRulesFingerprint(replay(17, g.inputs, g.s.minute, edition).s)).toBe(expected);
   }
 });
 
@@ -149,4 +150,15 @@ it('releases Derya after her final night shift before the assignment checkpoint'
   expect(restored.s.locations.derya).toBe('flat-5');
   expect(restored.s.people.derya!.activity).toBeFalsy();
   expect(restored.s.log.filter((line) => line.kind === 'one-cast-release')).toHaveLength(1);
+});
+
+it('keeps different used voice stems distinct when comparing historical rules', () => {
+  const a = newGame(1, 1).s;
+  const b = structuredClone(a);
+  a.voiceUsed = { 'voice:0:hatice': ['Sit down. Your tea is coming.'] };
+  b.voiceUsed = { 'voice:0:hatice': ['Come in, there’s a clean chair.'] };
+  expect(historicalRulesFingerprint(a)).not.toBe(historicalRulesFingerprint(b));
+  b.voiceUsed = { 'voice:0:hatice': ['I’ll tell you, but keep it between us.'] };
+  a.voiceUsed = { 'voice:0:hatice': ['Between you and me, then.'] };
+  expect(historicalRulesFingerprint(a)).toBe(historicalRulesFingerprint(b));
 });

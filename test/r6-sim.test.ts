@@ -103,7 +103,7 @@ it('reports insufficient belief only through the messenger speaking within earsh
   for (const belief of g.s.people.cem!.memory.beliefs)
     if (['emre:honest', 'emre:dishonest'].includes(belief.prop)) belief.logOdds = 0;
   advance(g, 1440 + 1050);
-  expect(g.s.threads!.at(-1)?.reason).toBe('Cem met Rıza but did not believe it enough to pass on.');
+  expect(g.s.threads!.at(-1)?.reason).toBe('Cem met Rıza but did not believe it enough to pass it on.');
   expect(
     g.s.log.some(
       (line) => line.speaker === 'cem' && line.text.includes('not sure enough about that account'),

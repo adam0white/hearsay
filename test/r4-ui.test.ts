@@ -77,7 +77,9 @@ it('holds the listener beyond departure and keeps the statement and every verb o
   await load();
   await talkTo('aylin');
   await page.locator('.state-status').filter({ hasText: 'talking' }).waitFor();
-  await page.waitForFunction(() => document.querySelector('.state-status')?.textContent?.includes('Held'));
+  await page.waitForFunction(() =>
+    document.querySelector('.state-status')?.textContent?.includes('The clock is paused'),
+  );
   await page.clock.runFor(2200);
   expect(await page.locator('.state-status').innerText()).toContain('talking');
   expect(await page.locator('[data-person="aylin"]').count()).toBe(1);
@@ -127,7 +129,9 @@ it('shows people, household marks and a compact wedding road', async () => {
 it('releases a saved hold on Resume when its sheet no longer exists', async () => {
   await load();
   await talkTo('aylin');
-  await page.waitForFunction(() => document.querySelector('.state-status')?.textContent?.includes('Held'));
+  await page.waitForFunction(() =>
+    document.querySelector('.state-status')?.textContent?.includes('The clock is paused'),
+  );
   await page.reload();
   await page.getByRole('button', { name: 'Resume', exact: true }).click();
   await page.locator('.lk-strip').waitFor();

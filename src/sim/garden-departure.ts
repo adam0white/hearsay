@@ -16,8 +16,9 @@ export function departureReason(g: GardenRun, id: GardenPerson): string | undefi
   if (!p.body.alive) return 'This chapter cannot treat death as travel.';
   if (p.activity) return 'Finish or explicitly leave the current activity first.';
   if (id === 'hatice') {
-    if (!g.ended && !g.gardenCovered) return 'The garden has no agreed cover. Hatice’s duties stay here.';
-    if (g.lunch.debt) return 'The garden invoice remains unpaid. A new chapter cannot clear it.';
+    if (!g.ended && !g.gardenCovered)
+      return 'Nobody has agreed to run the garden for Hatice. She still has duties here.';
+    if (g.lunch.debt) return 'The garden invoice is still unpaid. Leaving does not clear the debt.';
   }
   if (id === 'derya' && !g.released)
     return 'Derya’s final relief night has not ended. Her morning sleep is still required.';
@@ -30,7 +31,7 @@ export function departureReason(g: GardenRun, id: GardenPerson): string | undefi
   if (g.lunch.reservations.includes(id) && g.lunch.result === 'waiting')
     return 'This person still has a reserved lunch visit. Keep that appointment before departure.';
   if (!g.ended && Math.floor(g.minute / 1440) < 12)
-    return 'This local visit has not reached its agreed closing chapter yet.';
+    return 'This visit has not reached its agreed ending yet.';
   return undefined;
 }
 export function prepareGardenDeparture(g: GardenRun, id: GardenPerson): GardenDeparture {
@@ -42,14 +43,14 @@ export function prepareGardenDeparture(g: GardenRun, id: GardenPerson): GardenDe
     chapter: `hearsay-closing:${id}:${g.minute}`,
     limitations: [
       `${GARDEN_CAST[id].name} leaves only this completed garden visit; permanent work and family are not erased.`,
-      'The full garden account, third-person claims and unsupported relationships remain in the named local Hearsay source archive.',
+      'The full garden record, claims about other people and relationships that cannot transfer stay in the saved Hearsay archive.',
       ...(id === 'osman'
         ? [
-            'The Voice tenant/rent account is separate from this garden invoice; no debt forgiveness is inferred.',
+            'The tenant’s rent account from Voice is separate from this garden invoice. The rent debt has not been forgiven.',
           ]
         : []),
       ...(id === 'derya'
-        ? ['The final relief assignment is over. Morning sleep is not assumed completed by travel.']
+        ? ['The final relief assignment is over. Derya still needs her morning sleep when she travels.']
         : []),
     ],
   };

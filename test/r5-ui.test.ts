@@ -130,7 +130,7 @@ it('puts a pending scene first and keeps all its spoken choices on the phone whi
   expect(await page.locator('.garden .lk-sheet-body > :first-child').getAttribute('data-scene')).toBe(
     'phone-scene',
   );
-  expect(await page.locator('.state-status').innerText()).toContain('Held');
+  expect(await page.locator('.state-status').innerText()).toContain('The clock is paused');
   expect(await page.locator('[data-speed]').count()).toBe(0);
   await onScreen('[data-scene], [data-choice]');
   expect((await onScreen('[data-choice]')).every((r) => r.height >= 44)).toBe(true);
@@ -206,7 +206,7 @@ it('removes duplicate Defend and previews the actual Ask without a belief verdic
   const lastInput = (await journalInputs()).findLast(({ input }) => input.type === 'ask')?.input;
   expect(lastInput).toMatchObject({ type: 'ask', target: 'emre', trait: 'reliable' });
   expect(await page.locator('.speech-overlay').innerText()).not.toMatch(
-    /Believes you|Doubts it|Doesn’t believe you|Won’t hear it/,
+    /They believe you|They doubt the claim|They do not believe you|They refuse to listen/,
   );
 });
 it('keeps Sleep and tomorrow pinned even with a long recap', async () => {

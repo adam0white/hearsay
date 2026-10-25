@@ -7,9 +7,9 @@ it('keeps the tally absent by default and throughout play', () => {
   const g = newGame(1);
   expect(endingTally(g.s)).toBe('');
   g.s.ended = true;
-  expect(endingTally(g.s)).toContain('<summary>See tally</summary>');
+  expect(endingTally(g.s)).toContain('<summary>See the total</summary>');
   expect(endingTally(g.s)).not.toContain(' open');
-  expect(endingTally(g.s)).toContain('Words from your gate: 0');
+  expect(endingTally(g.s)).toContain('Claims that began with you: 0');
 });
 
 it('counts own and onward Hatice-origin routes explicitly without changing the run', () => {
@@ -35,9 +35,11 @@ it('counts own and onward Hatice-origin routes explicitly without changing the r
   ];
   const before = JSON.stringify(g);
   const tally = endingTally(g.s);
-  expect(tally).toContain('Words from your gate: 3');
-  expect(tally).toContain('your tellings (2) + onward tellings by neighbours (1)');
-  expect(tally).toContain("game's own reckoning");
-  expect(tally).toContain('not a measure of people');
+  expect(tally).toContain('Claims that began with you: 3');
+  expect(tally).toContain('You made 2 claims. Neighbours repeated them 1 time.');
+  expect(tally).toContain('Each recorded conversation counts once');
+  expect(tally).toContain('does not measure anyone’s worth');
   expect(JSON.stringify(g)).toBe(before);
+  g.s.routes = [route, { ...route, id: 2, from: 'riza', to: 'elif', parent: 1 }];
+  expect(endingTally(g.s)).toContain('You made 1 claim. Neighbours repeated it 1 time.');
 });

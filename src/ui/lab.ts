@@ -8,7 +8,8 @@ import { compactRun, type RunExport } from './export';
 
 export const notebookRunOptions = {
   compact: (run: unknown) => compactRun(run as RunExport),
-  compactNote: 'The seed, choices, clock and fingerprint are included; the full village state is omitted.',
+  compactNote:
+    'This includes the seed, choices, clock and fingerprint. It leaves out the full state of the neighbourhood.',
 };
 
 const quiet: Lab | null =

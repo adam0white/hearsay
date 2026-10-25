@@ -33,7 +33,7 @@ import {
 } from '../sim/garden-continuity.ts';
 import { exportGarden, importGarden } from '../sim/garden-export.ts';
 import { actualGardenLocation, type PlanChoice, type ReputationTrait } from '../sim/garden-stakes.ts';
-import { gardenEnglish, gardenPlace } from './garden-english.ts';
+import { gardenPlace } from './garden-english.ts';
 import { openGardenFeedback } from './garden-feedback.ts';
 import { GardenRecordingGuard, type RecordingBinding } from './garden-recording.ts';
 import { lab } from './lab.ts';
@@ -94,7 +94,7 @@ async function save(): Promise<boolean> {
   });
   if (!stored) {
     notice =
-      'Your garden could not save on this device. Keep this page open. You can send Feedback from the menu.';
+      'Your garden could not be saved on this device. Keep this page open. You can send feedback from the game menu.';
     render();
   }
   return stored;
@@ -102,7 +102,7 @@ async function save(): Promise<boolean> {
 function input(value: GardenInput) {
   if (!run) return;
   if (!chooseGarden(run, value))
-    notice = 'They cannot stay for this now. Try when their duty ends, or leave the matter private.';
+    notice = 'They cannot do this now. Try again when their work or rest ends, or keep the matter private.';
   else {
     notice = '';
     save();
@@ -124,13 +124,13 @@ async function useRun(
       next.chapter.inputs.length > 8 ||
       new Set(next.chapter.inputs.map((p) => p.parent.castId)).size !== next.chapter.inputs.length
     )
-      throw new Error('Invalid pinned cast collection.');
+      throw new Error('The saved group of people is invalid.');
     for (const input of next.chapter.inputs) {
       const parent = await validatePersona(input.parent);
       lifeAdmission(input, 'hearsay');
       const claim = next.chapter.claims.find((h) => h.castId === parent.castId);
       if (!claim || claim.parentRevision !== parent.revision || claim.branchId !== parent.branchId)
-        throw new Error('Pinned claim does not follow its source.');
+        throw new Error('A saved person does not continue their recorded history.');
       await validatePersona(claim);
     }
   }
@@ -168,13 +168,13 @@ async function useRun(
 }
 function labControls() {
   if (!labTools) return '';
-  return `<details class="cg-lab"><summary>Lab tools</summary><p>Continuity is ${shelf.enabled ? 'on' : 'off'}. Saved runs keep their original people.</p>${button(shelf.enabled ? 'Turn browser continuity off' : 'Turn browser continuity on', 'continuity')}${button('Play a separate local fortnight', 'local')}${run ? button('Save this garden', 'save') + button('Download this run', 'export') : ''}<label class="cg-file">Import a run<input type="file" id="import-run" accept=".json,application/json"></label>${run ? `<label>Person to checkpoint<select id="cg-checkpoint-person">${GARDEN_IDS.map((p) => `<option value="${p}">${esc(GARDEN_CAST[p].name)}</option>`).join('')}</select></label>${button('Save their eligible closing chapter', 'checkpoint')}${button('Create an explicit fresh browser branch', 'fork')}<p>Unfinished duties or invoices can prevent a closing chapter. Download the run before replacing a branch.</p>${run.chapter?.inputs.map((p) => `<p>${esc(lifeAdmission(p, 'hearsay').line)}</p>`).join('') ?? ''}` : ''}</details>`;
+  return `<details class="cg-lab"><summary>Lab tools</summary><p>Continuity is ${shelf.enabled ? 'on' : 'off'}. It lets people continue between games in this browser. Saved games keep their original people.</p>${button(shelf.enabled ? 'Turn browser continuity off' : 'Turn browser continuity on', 'continuity')}${button('Play fourteen days with new local people', 'local')}${run ? button('Save this garden', 'save') + button('Download this run', 'export') : ''}<label class="cg-file">Import a run<input type="file" id="import-run" accept=".json,application/json"></label>${run ? `<label>Person whose chapter you want to save<select id="cg-checkpoint-person">${GARDEN_IDS.map((p) => `<option value="${p}">${esc(GARDEN_CAST[p].name)}</option>`).join('')}</select></label>${button('Save their closing chapter if it is ready', 'checkpoint')}${button('Start a separate history for this person', 'fork')}<p>A chapter cannot close while work or invoices remain unfinished. Download this game before replacing a person’s history.</p>${run.chapter?.inputs.map((p) => `<p>${esc(lifeAdmission(p, 'hearsay').line)}</p>`).join('') ?? ''}` : ''}</details>`;
 }
 function menuControls() {
-  return `${run ? button('Resume', 'back') : ''}${button('Feedback', 'send')}${button('Fullscreen', 'fullscreen')}<a href="https://human.adamwhite.work/games/" target="_top">All games</a><div id="cg-recording"></div>${run ? button('New game', 'new') : ''}${confirmNew ? `<p>Start a new fortnight and replace this device’s saved garden?</p>${button('Start new game', 'restart', starting)}${button('Keep this garden', 'cancel-new', starting)}` : ''}${labControls()}`;
+  return `${run ? button('Resume', 'back') : ''}${button('Feedback', 'send')}${button('Fullscreen', 'fullscreen')}<a href="https://human.adamwhite.work/games/" target="_top">All games</a><div id="cg-recording"></div>${run ? button('New game', 'new') : ''}${confirmNew ? `<p>Start a new fourteen-day game and replace this device’s saved garden?</p>${button('Start new game', 'restart', starting)}${button('Keep this garden', 'cancel-new', starting)}` : ''}${labControls()}`;
 }
 function renderTitle() {
-  root.innerHTML = `<main class="cg-title"><p class="eyebrow">A fortnight in the neighbourhood</p><h1>Hearsay</h1><p>You are Hatice. You run a tea garden in Istanbul. People stop between shifts, deliveries and appointments.</p><p class="goal">Your goal is to open a paid workers’ lunch on Day 13.</p><details><summary>How to play</summary><p>Agree on supplies on Day 4 and paid cooking on Day 8. You need at least four meal reservations. People decide whether to book based on what they hear.</p><p>Choose a person to talk to. You can listen, repeat a claim or keep it private. Your words affect who trusts you and visits the garden. The clock runs for fourteen days.</p><p>Prices use lira, Turkish money. Your garden saves automatically on this device.</p></details>${notice ? `<p role="status">${esc(notice)}</p>` : ''}${button('Begin', 'start', starting)}${menuControls()}</main>`;
+  root.innerHTML = `<main class="cg-title"><p class="eyebrow">Fourteen days in the neighbourhood</p><h1>Hearsay</h1><p>You are Hatice. You run a tea garden in Istanbul. People visit between shifts, deliveries and appointments.</p><p class="goal">Your goal is to open a paid workers’ lunch on Day 13.</p><details><summary>How to play</summary><p>Arrange supplies on Day 4 and agree on paid cooking on Day 8. You need at least four meal reservations. People decide whether to book based on what they hear.</p><p>Choose a person to talk to. You can listen, repeat a claim or keep it private. Your words affect who trusts you and visits the garden. The clock runs for fourteen days.</p><p>Prices are in lira, the currency of Turkey. Your garden saves automatically on this device.</p></details>${notice ? `<p role="status">${esc(notice)}</p>` : ''}${button('Begin', 'start', starting)}${menuControls()}</main>`;
   root.querySelector('#cg-recording')?.append(telemetryToggle(lab));
 }
 function render() {
@@ -197,9 +197,9 @@ function render() {
   if (menu) {
     panel = `<h2>Game menu</h2><p>The clock is paused. Your garden saves automatically.</p>${menuControls()}`;
   } else if (run.lunch.pending) {
-    panel = `<h2>${run.lunch.pending === 'trial' ? 'Day 4 · Reserve the supplies' : 'Day 8 · Agree paid cooking'}</h2><p>You have ${run.lunch.cash} lira. You owe ${run.lunch.debt} lira. Each meal sells for 100 lira. Four meals cover the 380-lira cost of the sample, preparation and food if you pay now. Credit raises the cost to 410 lira, so you need five meals.</p><p>${run.lunch.pending === 'trial' ? 'Rıza will deliver the agreed number of loaves. Osman will supply the produce with a written order. Pay for a sample now, buy it on credit for a higher price, or decline.' : 'Aylin offers preparation after her school shift, with a clear leaving time. Her 180-lira fee is due before the Day 10, 17:00 preparation appointment. The free bench remains separate from paid food.'}</p>${run.lunch.pending === 'trial' ? button('Pay 120 lira for the sample now', 'plan-paid-trial') + button('Buy on credit: owe 150 lira before lunch; need five meals', 'plan-credit-trial') + button('Decline the sample and reserve no supplies', 'plan-decline-trial') : button('Pay 180 lira for the preparation session', 'plan-paid-prep') + button('Owe 180 lira; cooking waits for payment', 'plan-unpaid-prep') + button('Cancel the lunch preparation', 'plan-cancel')}${running ? button('Finish the current conversation first', 'finish') + button('Leave the current conversation', 'release') : ''}<p>The clock is paused while you decide. These payments come from your garden cash. A promise to pay does not count as payment.</p>`;
+    panel = `<h2>${run.lunch.pending === 'trial' ? 'Day 4 · Reserve the supplies' : 'Day 8 · Agree on paid cooking'}</h2><p>You have ${run.lunch.cash} lira. You owe ${run.lunch.debt} lira. Each meal sells for 100 lira. Selling four meals pays for the sample, preparation and food, which cost 380 lira if you pay now. Buying the sample on credit means paying later. It raises the total cost to 410 lira, so you need to sell five meals.</p><p>${run.lunch.pending === 'trial' ? 'Rıza will deliver the agreed number of loaves. Osman will supply the produce with a written order. Pay for a sample now, agree to pay a higher price later, or decline the sample.' : 'Aylin offers to prepare food after her school shift. She gives a time when she must leave. Pay her 180-lira fee before the preparation session at 17:00 on Day 10. Anyone may still use the free bench without buying food.'}</p>${run.lunch.pending === 'trial' ? button('Pay 120 lira for the sample now', 'plan-paid-trial') + button('Get the sample now and pay 150 lira before lunch', 'plan-credit-trial') + button('Decline the sample and reserve no supplies', 'plan-decline-trial') : button('Pay 180 lira for the preparation session', 'plan-paid-prep') + button('Agree to pay 180 lira before preparation', 'plan-unpaid-prep') + button('Cancel the lunch preparation', 'plan-cancel')}${running ? button('Finish the current conversation first', 'finish') + button('Leave the current conversation', 'release') : ''}<p>The clock is paused while you decide. These payments come from your garden cash. A promise to pay does not count as payment.</p>`;
   } else if (run.ended) {
-    panel = `<h2>${run.lunch.result === 'open' ? 'The workers’ lunch opened' : run.lunch.result === 'short' ? 'The lunch made a loss' : 'The lunch could not open'}</h2><p>${esc(gardenEnglish(run.lunch.reason ?? 'No lunch result was recorded.'))}</p><p>${run.lunch.debt ? 'You still owe an unpaid invoice. Starting another chapter does not cancel that debt.' : 'All lunch invoices are paid.'}</p><p>${esc(gardenEnglish(gardenStanding(run)))}</p><p>${run.routes.filter((r) => r.from === 'hatice').length ? 'You made claims to other people. The garden account records who heard them.' : 'You did not make any claims about other people.'}</p>${button('Read the garden account', 'account')}${button('Game menu', 'menu')}`;
+    panel = `<h2>${run.lunch.result === 'open' ? 'The workers’ lunch opened' : run.lunch.result === 'short' ? 'The lunch made a loss' : 'The lunch could not open'}</h2><p>${esc(run.lunch.reason ?? 'No lunch result was recorded.')}</p><p>${run.lunch.debt ? 'You still have an unpaid invoice. Starting another chapter does not cancel that debt.' : 'All lunch invoices are paid.'}</p><p>${esc(gardenStanding(run))}</p><p>${run.routes.filter((r) => r.from === 'hatice').length ? 'You made claims to other people. The garden record shows who heard them.' : 'You did not make any claims about other people.'}</p>${button('Read the garden record', 'account')}${button('Game menu', 'menu')}`;
   } else {
     panel = `<h2>${esc(c.name)} <small>${id === 'hatice' ? '· you' : ''}</small></h2><p>${esc(c.job)} · ${esc(gardenPlace(actualGardenLocation(run, id)))}</p>`;
     if (running?.person === id)
@@ -207,14 +207,14 @@ function render() {
     else if (running)
       panel += `<p>You are listening to ${esc(GARDEN_CAST[running.person].name)}. Finish or leave that conversation first.</p>${button('Go to the conversation', 'chat')}`;
     else if (discovery)
-      panel += `<details><summary>About ${esc(c.name)}</summary><p>${Math.floor((run.people[id].now - run.people[id].life.bornAt) / (365 * 1440))} years old. ${esc(gardenEnglish(c.family))}</p></details><p class="cg-confidence">${esc(gardenEnglish(discovery.fact))}</p>${discovery.response ? `<p>${esc(gardenEnglish(discovery.outcome ?? ''))}</p>${button('Sit and talk again', 'listen', !here)}` : `${button('Offer practical help and keep this private', 'support', !here)}${button('Keep this private', 'keep', !here)}${button('Repeat this at another table', 'spread', !here)}`}`;
+      panel += `<details><summary>About ${esc(c.name)}</summary><p>${esc(c.name)} is ${Math.floor((run.people[id].now - run.people[id].life.bornAt) / (365 * 1440))} years old. ${esc(c.family)}</p></details><p class="cg-confidence">${esc(discovery.fact)}</p>${discovery.response ? `<p>${esc(discovery.outcome ?? '')}</p>${button('Sit and talk again', 'listen', !here)}` : `${button('Offer practical help and keep this private', 'support', !here)}${button('Keep this private', 'keep', !here)}${button('Repeat this at another table', 'spread', !here)}`}`;
     else
-      panel += `<p>${here ? esc(gardenEnglish(c.cue)) : 'They are away or unavailable. Their work and rest have their own hours.'}</p>${button(id === 'hatice' ? 'Reflect on your past for fifteen minutes' : 'Invite a quiet conversation', 'listen', !here)}${id !== 'hatice' ? button('Press for private details', 'pry', !here) : ''}`;
+      panel += `<p>${here ? esc(c.cue) : 'They are away or unavailable. They have times set aside for work and rest.'}</p>${button(id === 'hatice' ? 'Reflect on your past for fifteen minutes' : 'Invite a quiet conversation', 'listen', !here)}${id !== 'hatice' ? button('Press for private details', 'pry', !here) : ''}`;
     const confrontation = run.lunch.confrontations.find(
       (c) => c.person === id && !c.resolved && c.at <= run!.minute,
     );
     if (confrontation)
-      panel = `<h2>${esc(c.name)} confronts you</h2><p>Someone traced the disproved claim back to you. Agree to correct it with each listener, or stand by it and lose a day of tea sales.</p>${button('Take responsibility and agree to correct the claim', 'confront-own', !here)}${button('Stand by the disproved claim', 'confront-stand', !here)}`;
+      panel = `<h2>${esc(c.name)} confronts you</h2><p>Someone found that the disproved claim came from you. Agree to correct it with each person who heard it, or stand by it and lose a day of tea sales.</p>${button('Take responsibility and agree to correct the claim', 'confront-own', !here)}${button('Stand by the disproved claim', 'confront-stand', !here)}`;
     if (!running && id !== 'hatice' && run.minute >= 7 * 1440 + 720 && run.minute < 12 * 1440 + 780)
       panel += button('Invite them to book the Day 13 lunch', 'reserve', !here);
     if (!running && id !== 'hatice')
@@ -224,18 +224,18 @@ function render() {
         .map((p) => `<option value="${p}">${esc(GARDEN_CAST[p].name)}</option>`)
         .join(
           '',
-        )}</select></label><label>What?<select id="cg-trait"><option value="reliable">Keeping promises</option><option value="honest">Honesty</option><option value="kind">Kindness</option><option value="generous">Generosity</option></select></label>${button('Ask what they have heard', 'ask', !here)}${button('Defend them on this point', 'defend', !here)}${button('Make a damaging claim on this point', 'tell', !here)}${button('Withdraw your accusation', 'amends', !here)}<p class="fine">You are making a claim about someone, not proving it. Something told to you in private stays private unless you repeat it.</p></details>`;
+        )}</select></label><label>What?<select id="cg-trait"><option value="reliable">Keeping promises</option><option value="honest">Honesty</option><option value="kind">Kindness</option><option value="generous">Generosity</option></select></label>${button('Ask what they have heard', 'ask', !here)}${button('Make a positive claim about this trait', 'defend', !here)}${button('Make a damaging claim about this trait', 'tell', !here)}${button('Withdraw your accusation', 'amends', !here)}<p class="fine">Making a claim does not prove it. Something told to you in private stays private unless you repeat it.</p></details>`;
   }
   if (!menu && !run.ended && !running) panel += button('Pour tea without sharing news', 'silence');
   if (!menu && run.lunch.debt > 0)
     panel +=
-      `<p>Garden cash: ${run.lunch.cash} lira. Outstanding invoice: ${run.lunch.debt} lira.</p>` +
+      `<p>Garden cash: ${run.lunch.cash} lira. Unpaid invoice: ${run.lunch.debt} lira.</p>` +
       button(`Pay the ${run.lunch.debt} lira invoice`, 'plan-settle', run.lunch.cash < run.lunch.debt);
-  root.innerHTML = `<main class="cg-game"><header class="cg-header"><div><strong>Hearsay</strong> <span>${clock()}</span></div>${button(menu ? 'Back' : 'Game menu', menu ? 'back' : 'menu')}<p>Day 13 lunch: Bread ${run.lunch.breadDelivered ? 'delivered' : run.lunch.bread ? 'ordered' : 'not ordered'}. Produce ${run.lunch.produceDelivered ? 'delivered' : run.lunch.produce ? 'ordered' : 'not ordered'}. Cooking ${run.lunch.prepared ? 'prepared' : run.lunch.cook ? 'paid for' : 'not paid for'}. Meals reserved: ${run.lunch.reservations.length}/${run.lunch.trial === 'credit' ? 5 : 4}.</p><p>You have ${run.lunch.cash} lira. You owe ${run.lunch.debt} lira.</p><div class="cg-paces">${[0, 1, 4, 12].map((p, i) => `<button type="button" data-pace="${p}" aria-pressed="${pace === p}">${['Pause', 'Slow', 'Walk', 'Hurry'][i]}</button>`).join('')}</div></header><section class="cg-scene" aria-label="The tea garden"><div class="cg-gate">THE GARDEN GATE <span>${run.benchFree ? 'Anyone may sit here without buying.' : 'There are a few chairs in the shade.'}</span></div><div class="cg-tables">${GARDEN_IDS.map((p) => `<button type="button" class="cg-person ${gardenHere(run!, p) ? 'here' : 'away'}" data-person="${p}" aria-pressed="${selected === p}"><span aria-hidden="true">${p === 'hatice' ? '☕' : '◯'}</span><strong>${esc(GARDEN_CAST[p].name)}</strong><small>${gardenHere(run!, p) ? 'at the garden' : esc(gardenPlace(actualGardenLocation(run!, p)))}</small></button>`).join('')}</div><p class="cg-standing">${esc(gardenEnglish(gardenStanding(run)))}</p></section><section class="cg-panel" aria-live="polite">${notice ? `<p class="cg-notice" role="status">${esc(notice)}</p>` : ''}${panel}</section><details class="cg-account"><summary>Garden account: what you heard</summary>${run.log
+  root.innerHTML = `<main class="cg-game"><header class="cg-header"><div><strong>Hearsay</strong> <span>${clock()}</span></div>${button(menu ? 'Back' : 'Game menu', menu ? 'back' : 'menu')}<p>Day 13 lunch: ${run.lunch.breadDelivered ? 'The bread has been delivered.' : run.lunch.bread ? 'The bread is ordered.' : 'The bread is not ordered.'} ${run.lunch.produceDelivered ? 'The produce has been delivered.' : run.lunch.produce ? 'The produce is ordered.' : 'The produce is not ordered.'} ${run.lunch.prepared ? 'The food has been prepared.' : run.lunch.cook ? 'Paid cooking is arranged.' : 'Paid cooking is not arranged.'} Meals reserved: ${run.lunch.reservations.length}/${run.lunch.trial === 'credit' ? 5 : 4}.</p><p>You have ${run.lunch.cash} lira. You owe ${run.lunch.debt} lira.</p><div class="cg-paces">${[0, 1, 4, 12].map((p, i) => `<button type="button" data-pace="${p}" aria-pressed="${pace === p}">${['Pause', 'Slow', 'Normal', 'Fast'][i]}</button>`).join('')}</div></header><section class="cg-scene" aria-label="The tea garden"><div class="cg-gate">THE GARDEN GATE <span>${run.benchFree ? 'Anyone may sit here without buying.' : 'There are a few chairs in the shade.'}</span></div><div class="cg-tables">${GARDEN_IDS.map((p) => `<button type="button" class="cg-person ${gardenHere(run!, p) ? 'here' : 'away'}" data-person="${p}" aria-pressed="${selected === p}"><span aria-hidden="true">${p === 'hatice' ? '☕' : '◯'}</span><strong>${esc(GARDEN_CAST[p].name)}</strong><small>${gardenHere(run!, p) ? 'at the garden' : esc(gardenPlace(actualGardenLocation(run!, p)))}</small></button>`).join('')}</div><p class="cg-standing">${esc(gardenStanding(run))}</p></section><section class="cg-panel" aria-live="polite">${notice ? `<p class="cg-notice" role="status">${esc(notice)}</p>` : ''}${panel}</section><details class="cg-account"><summary>Garden record: what you heard</summary>${run.log
     .slice(-60)
     .map(
       (l) =>
-        `<p><small>Day ${Math.floor(l.at / 1440) + 1} ${Math.floor((l.at % 1440) / 60)}:${String(l.at % 60).padStart(2, '0')}</small> ${esc(gardenEnglish(l.text))}</p>`,
+        `<p><small>Day ${Math.floor(l.at / 1440) + 1} ${Math.floor((l.at % 1440) / 60)}:${String(l.at % 60).padStart(2, '0')}</small> ${esc(l.text)}</p>`,
     )
     .join('')}</details></main>`;
   root.querySelectorAll<HTMLDetailsElement>('details').forEach((d, i) => {
@@ -288,14 +288,14 @@ function bind() {
       if (!file) return;
       recordingGuard.invalidate();
       try {
-        if (file.size > 8 * 1024 * 1024) throw new Error('Run file exceeds 8 MiB.');
+        if (file.size > 8 * 1024 * 1024) throw new Error('This game file is larger than the 8 MiB limit.');
         const text = await file.text();
         if (attempt !== loadGeneration || !valid()) return;
         ++generation;
         await useRun(importGarden(text), true);
       } catch (error) {
         console.error('Garden import failed', error);
-        notice = error instanceof Error ? error.message : 'Could not read this run.';
+        notice = error instanceof Error ? error.message : 'This game file could not be read.';
         render();
       }
     };
@@ -370,8 +370,8 @@ async function action(key: string) {
     } catch (e) {
       console.error('Garden start failed', e);
       notice = labTools
-        ? `${e instanceof Error ? e.message : 'Admission refused.'} No new garden started. The previous save is kept.`
-        : 'The new garden could not start because the saved people could not be loaded together. Your previous garden is kept. You can try again or send Feedback.';
+        ? `${e instanceof Error ? e.message : 'The saved people could not be loaded.'} No new garden was started. Your previous saved garden is kept.`
+        : 'The new garden could not start because the saved people could not be loaded together. Your previous garden is kept. You can try again or send feedback.';
     } finally {
       starting = false;
       render();
@@ -403,8 +403,8 @@ async function action(key: string) {
   if (key === 'save') {
     const stored = await save();
     notice = stored
-      ? 'Garden saved on this device.'
-      : 'Could not save on this device. Download a file before leaving.';
+      ? 'Your garden is saved on this device.'
+      : 'Your garden could not be saved on this device. Download this game before leaving.';
     render();
     return;
   }
@@ -485,7 +485,7 @@ export async function startGarden() {
       const receipts: Record<string, PersonaEnvelope> = {};
       for (const [id, head] of Object.entries(saved.value.ownedHeads ?? {})) {
         const valid = await validatePersona(head);
-        if (id !== valid.castId) throw new Error('Local ownership mismatch');
+        if (id !== valid.castId) throw new Error('The saved person’s history belongs to someone else.');
         receipts[id] = valid;
       }
       await useRun(
@@ -496,7 +496,7 @@ export async function startGarden() {
       );
     } catch {
       notice =
-        'Your saved garden could not open. It is still stored on this device. Try reloading, or send Feedback before starting a new garden.';
+        'Your saved garden could not open. It is still stored on this device. Try reloading, or send feedback before starting a new garden.';
       render();
     }
   } else {
@@ -567,12 +567,15 @@ async function checkpoint(selected?: GardenPerson, fork = false) {
       try {
         if (fileOrigin && !parent && !fork)
           throw new Error(
-            'Imported files do not own embedded branch receipts. Keep local or explicitly create a fresh branch.',
+            'People from an imported file cannot replace a history saved in this browser. Keep this game local or start a separate history for this person.',
           );
         const actor = captured.people[id];
         let next: PersonaEnvelope;
         if (!actor.body.alive) {
-          if (!parent) throw new Error('No owned living branch to close. The local death remains saved.');
+          if (!parent)
+            throw new Error(
+              'There is no saved living history for this person to close. Their death is still saved in this game.',
+            );
           next = await closePersonaBranch(parent, stamps(), captured.minute);
         } else {
           const projected = await captureGardenSource(captured, id);
@@ -601,12 +604,16 @@ async function checkpoint(selected?: GardenPerson, fork = false) {
           ].slice(-8);
           while (archives.length > 1 && JSON.stringify(archives).length > 8 * 1024 * 1024) archives.shift();
           if (JSON.stringify(archives).length > 8 * 1024 * 1024)
-            throw new Error('Source archive exceeds 8 MiB. Download the full garden before leaving.');
+            throw new Error(
+              'The saved history is larger than the 8 MiB limit. Download the full game before leaving.',
+            );
           if (!(await save()))
-            throw new Error('Could not retain the source-bound local archive. Export before leaving.');
+            throw new Error(
+              'The full history could not be saved on this device. Download this game before leaving.',
+            );
         }
         if (generation !== atGeneration || run !== captured)
-          throw new Error('Run or identity changed. Checkpoint cancelled.');
+          throw new Error('The game or person changed. Their chapter was not saved.');
         await shelf.request({
           action: 'put',
           envelope: next,
@@ -629,7 +636,7 @@ async function checkpoint(selected?: GardenPerson, fork = false) {
           notice = `${cast.name}’s ${next.terminal ? 'death' : 'closing chapter'} is saved in this browser.`;
         await save();
       } catch (e) {
-        if (selected) notice = e instanceof Error ? e.message : 'Checkpoint refused.';
+        if (selected) notice = e instanceof Error ? e.message : 'This person’s chapter could not be saved.';
       }
     }
   } finally {

@@ -127,12 +127,12 @@ function envelopeOmissions(lines: string[]): string[] {
       ];
 }
 const fail = (message: string): never => {
-  throw new Error(`One cast: ${message}`);
+  throw new Error(`This person could not continue. ${message}`);
 };
 const hash = /^[a-f0-9]{64}$/;
 const token = /^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$/;
 function cast(id: string): OneCastId {
-  if (!Object.hasOwn(ONE_CAST, id)) fail('unsupported cast');
+  if (!Object.hasOwn(ONE_CAST, id)) fail('This character is not supported.');
   return id as OneCastId;
 }
 /** SHA-256 of the complete, canonical HF Person snapshot, not just its portable projection. */
@@ -147,7 +147,8 @@ export async function checkpointPerson(person: Person): Promise<OneCastCheckpoin
   };
 }
 function readHistory(value: unknown, projection: PersonaProjectionSnapshot, game: string): OneCastFact[] {
-  if (!Array.isArray(value) || value.length > 8) fail('unsupported history');
+  if (!Array.isArray(value) || value.length > 8)
+    fail('The history must be a list with no more than eight entries.');
   return (value as unknown[]).map((unknownFact) => {
     const f = unknownFact as OneCastFact;
     if (
@@ -164,7 +165,7 @@ function readHistory(value: unknown, projection: PersonaProjectionSnapshot, game
       (f.outcome !== undefined && !token.test(f.outcome)) ||
       !projection.episodes.some((e) => e.id === f.episodeId)
     )
-      fail('history lacks approved attended provenance');
+      fail('The history does not have valid records of what this person experienced.');
     return structuredClone(f);
   });
 }
@@ -179,7 +180,7 @@ function readCheckpoint(value: unknown, projection: PersonaProjectionSnapshot): 
     canonicalPersona(c.sourceRng) !== canonicalPersona(projection.rng) ||
     !hash.test(c.checkpointDigest)
   )
-    fail('invalid source checkpoint stamps');
+    fail('The saved person’s checkpoint details are invalid.');
   return structuredClone(c);
 }
 /** Validate first, then claim the shelf head before starting the returned pinned run. */
@@ -196,10 +197,10 @@ export async function prepareOneCastAdmission(
     envelope.source.game !== contract.sourceGame ||
     envelope.source.engine !== '2.14.1'
   )
-    fail('unsupported source or cast revision');
+    fail('The original game or character revision is not supported.');
   const allowed = ['person', 'history', 'checkpoint', 'admission', 'departure'];
   if (Object.keys(envelope.transfer).some((k) => !allowed.includes(k)))
-    fail('unsupported source transfer field');
+    fail('The file contains an unsupported source transfer field.');
   const projection = validatePersonaProjection(envelope.transfer.person);
   if (
     projection.mappingVersion !== contract.incoming ||
@@ -208,10 +209,10 @@ export async function prepareOneCastAdmission(
     Object.keys(projection.skills).length ||
     projection.episodes.length > 1
   )
-    fail('unsupported semantic mapping or obligation');
+    fail('The rules for carrying this person into Hearsay, or an obligation in the file, are not supported.');
   const history = readHistory(envelope.transfer.history, projection, contract.sourceGame);
   if (history.some((f) => f.kind !== contract.factKind && f.kind !== 'private-disclosure'))
-    fail('unsupported fact meaning');
+    fail('The history contains a kind of fact that this character cannot carry into Hearsay.');
   const checkpoint = readCheckpoint(envelope.transfer.checkpoint, projection);
   const admitted = admitPersona(projection, opening, {
     mappingVersion: contract.incoming,
@@ -249,8 +250,10 @@ export function encounterOneCast(
   choice: OneCastEncounterChoice,
   minute: number,
 ): { person: Person; encounter: OneCastEncounter } {
-  if (minute < 1440 || minute < initial.now) fail('learn the tea-garden loop before the encounter');
-  if (initial.id !== ONE_CAST[admission.castId].targetId || initial.activity) fail('visitor unavailable');
+  if (minute < 1440 || minute < initial.now)
+    fail('Play through the tea-garden loop before this conversation.');
+  if (initial.id !== ONE_CAST[admission.castId].targetId || initial.activity)
+    fail('The visitor has a different identity or is busy with another activity.');
   const person = snapshot(initial);
   const fact = admission.history.find((f) => f.kind === ONE_CAST[admission.castId].factKind);
   const offers: Affordance[] = [
@@ -279,9 +282,9 @@ export function encounterOneCast(
     });
   const decision = decide(person, offers, { now: minute });
   const selected = offers.find((o) => o.id === decision.chosenAffordanceId);
-  if (!selected) return fail('HF selected no encounter action');
+  if (!selected) return fail('The simulation did not select an action for this conversation.');
   const activity = begin(person, selected, decision);
-  if (!activity) fail('HF did not begin the selected encounter');
+  if (!activity) fail('The simulation did not begin the selected conversation.');
   const accepted = selected.id === 'one-cast-talk';
   finish(person, {
     affordanceId: selected.id,
@@ -339,10 +342,11 @@ export async function createOneCastReturn(
     branchId?: string;
   },
 ): Promise<PersonaEnvelope> {
-  if (!hash.test(options.parentRevision)) fail('return requires accepted shelf head');
+  if (!hash.test(options.parentRevision))
+    fail('The saved story needs a valid reference before this person can return.');
   if (admission.castId === 'hf.cast.derya.stairwell' && !options.assignmentEnded)
-    fail('the relief assignment has not been released');
-  if (options.encounter.at > person.now) fail('encounter has not happened');
+    fail('The temporary assignment has not been released as complete.');
+  if (options.encounter.at > person.now) fail('The conversation has not happened yet.');
   const contract = ONE_CAST[admission.castId];
   const episode = person.memory.episodes.findLast(
     (e) => e.action === 'one-cast-encounter' && e.at === options.encounter.at,
@@ -421,13 +425,14 @@ export async function createAuthoredDeryaCheckpoint(
     assignmentEnded?: boolean;
   },
 ): Promise<PersonaEnvelope> {
-  if (!options.assignmentEnded) fail('the relief assignment has not been released');
+  if (!options.assignmentEnded) fail('The temporary assignment has not been released as complete.');
   if (person.id !== 'derya' || person.name !== 'Derya' || person.life.sex !== 'female')
-    fail('legacy or incompatible Derya cannot enter the canonical branch');
+    fail('This legacy or incompatible version of Derya cannot enter her current official story.');
   const age = (person.now - person.life.bornAt) / (365 * 1440);
-  if (age < 44 || age >= 45) fail('canonical nurse age conflict');
+  if (age < 44 || age >= 45) fail('Derya’s age does not match her official profile.');
   const understanding = person.conscience.norms.find((n) => n.normId === 'backbiting');
-  if (understanding?.standing !== 'forbidden') fail('canonical backbiting understanding required');
+  if (understanding?.standing !== 'forbidden')
+    fail('Derya’s official profile requires her to regard talking behind someone’s back as forbidden.');
   const projection = projectPersona(person, { version: 'hearsay-stairwell/1', skills: {} });
   return createPersona({
     format: 'hf-persona/1',
@@ -466,12 +471,12 @@ export function createOneCastOpening(castId: OneCastId, opening: Person, input: 
     age >= contract.age + 1 ||
     opening.id !== contract.targetId
   )
-    fail('canonical opening identity conflict');
+    fail('The person’s identity does not match the required opening profile.');
   if (
     projection.health.health !== opening.body.health ||
     projection.health.circadianPeak !== opening.body.circadianPeak
   )
-    fail('canonical opening health compatibility conflict');
+    fail('The person’s health or daily sleep rhythm does not match the opening profile.');
   const target = snapshot(opening);
   target.life.bornAt = projection.life.bornAt + target.now - projection.source.now;
   target.body.fitness = projection.health.fitness;

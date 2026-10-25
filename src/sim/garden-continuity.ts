@@ -110,10 +110,10 @@ export function admitGardenPerson(
     canonical = canonicalCast(parent.castId);
   if (parent.castRevision !== canonical.revision || parent.terminal)
     throw new Error(
-      'Closed or older cast edition. Keep the archive or explicitly start a fresh local chapter.',
+      'This character’s story is closed or uses an older edition. Keep the archive or start a new chapter on this device.',
     );
   if (canonicalPersona(preparePersonaLife(parent, input.clockMs).life) !== canonicalPersona(input.life))
-    throw new Error('Life input does not match its pinned clock.');
+    throw new Error('This person’s history does not match the time recorded in the file.');
   const opening = gardenOpening(id, seed);
   let person: Person;
   if (parent.transfer.castPassport === 'authored-cast/1') person = opening;
@@ -126,7 +126,7 @@ export function admitGardenPerson(
       GARDEN_ADAPTERS.voice[id] === parent.castId;
     if ((!own && !voice) || parent.transfer.sourceRole !== id)
       throw new Error(
-        'This passport has no registered Hearsay semantic adapter. Keep its source chapter or play explicitly local.',
+        'Hearsay has no semantic adapter to carry this person’s saved history into the garden. Keep the original chapter or start a new chapter on this device.',
       );
     const portable = validateCalendarPersona(parent.transfer.person);
     const checkpoint = parent.transfer.checkpoint as
@@ -141,30 +141,34 @@ export function admitGardenPerson(
       portable.person.source.id !== id ||
       portable.person.mappingVersion !== (voice ? 'site-cast-calendar/1' : 'hearsay-calendar/1')
     )
-      throw new Error('Missing full-source checkpoint receipt or incompatible mapping.');
+      throw new Error(
+        'The file lacks a valid receipt for the complete saved person, or its rules for carrying that person into the garden are incompatible.',
+      );
     for (const n of portable.calendar.norms)
       if (!DEFAULT_NORMS.some((known) => canonicalPersona(known) === canonicalPersona(n)))
-        throw new Error('Untrusted source norm meaning.');
+        throw new Error('The original game uses a rule about conduct whose meaning Hearsay cannot verify.');
     for (const c of [...portable.calendar.commitments, ...portable.calendar.owed]) {
       if ([...c.actions, ...(c.violatedBy ?? [])].some((a) => !calendarActions.has(a)))
-        throw new Error('A source duty has no supported garden action.');
+        throw new Error(
+          'A duty from the original game requires an action that is unavailable in the garden.',
+        );
       if (
         'targetId' in c &&
         c.targetId &&
         c.targetId !== 'self' &&
         !GARDEN_IDS.includes(c.targetId as GardenPerson)
       )
-        throw new Error('A duty needs a person who is still at source.');
+        throw new Error('A duty requires a person who remains in the original game.');
       if ('toId' in c && c.toId && c.toId !== 'self' && !GARDEN_IDS.includes(c.toId as GardenPerson))
-        throw new Error('An obligation is owed to someone outside this chapter.');
+        throw new Error('This person owes an obligation to someone outside this chapter.');
     }
     const age = portable.person.source.now - portable.person.life.bornAt;
     if (age < canonical.age * 525600 || age > (canonical.age + 200) * 525600)
-      throw new Error('Unsupported age provenance.');
+      throw new Error('This person’s age is outside the supported range.');
     const source = own ? archives.find((a) => a.digest === checkpoint.sha256 && a.person === id) : undefined;
     if (own && !source)
       throw new Error(
-        'The source-bound Hearsay archive is unavailable on this device. Export it or choose explicit local play.',
+        'The original Hearsay archive is unavailable on this device. Keep the original game’s saved files or start a new chapter here.',
       );
     // Full Hearsay source state is recovered only from its matching local prefix. Voice's
     // unsupported social memories/market skill remain in the named source archive.
@@ -172,7 +176,7 @@ export function admitGardenPerson(
       source &&
       canonicalPersona(projectGardenPerson(source.prefix.people[id])) !== canonicalPersona(portable)
     )
-      throw new Error('Source-bound prefix differs from its passport.');
+      throw new Error('The saved original chapter does not match the person’s passport.');
     const target = opening;
     target.now = 360;
     target.life.bornAt = portable.person.life.bornAt + 360 - portable.person.source.now;
@@ -206,7 +210,9 @@ export function admitGardenPerson(
       retained.conscience.norms = admitted.conscience.norms;
       person = restore(retained);
       if (canonicalPersona(person) !== canonicalPersona(retained))
-        throw new Error('Unsupported full-source clock translation. Keep the source chapter.');
+        throw new Error(
+          'Hearsay cannot adjust the complete saved person to the garden’s clock without changing other information. Keep the original chapter.',
+        );
     } else person = admitted;
   }
   const admission = lifeAdmission(input, 'hearsay');

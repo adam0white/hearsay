@@ -1,4 +1,4 @@
-/** Send word uses the same remembered-name and consent paths as Night Watch. */
+/** Feedback uses the same remembered-name and consent paths as Night Watch. */
 import { feedbackPersonaControl, feedbackSharePlay } from '@adam0white/lab-kit';
 import { lab } from './lab';
 
@@ -21,16 +21,16 @@ export function downloadRun(run: unknown): void {
 export function openFeedback(getRun: () => unknown, onClose: () => void, hasRun = true): HTMLDialogElement {
   const d = document.createElement('dialog');
   d.className = 'feedback-dialog sheet';
-  d.setAttribute('aria-label', 'Send word');
+  d.setAttribute('aria-label', 'Feedback');
   d.dataset.systemMenu = 'true';
-  d.innerHTML = `<div class="dialog-head"><h2>Send word</h2><button type="button" aria-label="Close Send word">×</button></div>
+  d.innerHTML = `<div class="dialog-head"><h2>Feedback</h2><button type="button" aria-label="Close Feedback">×</button></div>
     <div class="feedback-body lk-sheet-body">
     <p>Send a note even when recording is off. Play history is attached only when recording is allowed.</p>
     <div class="feedback-recording"></div>
     <fieldset class="feedback-verdicts" aria-label="Would you keep playing?"><button type="button" data-verdict="keep" aria-pressed="false">I’d keep playing</button><button type="button" data-verdict="mixed" aria-pressed="false">Not sure</button><button type="button" data-verdict="quit" aria-pressed="false">I’d stop here</button></fieldset>
-    <textarea aria-label="Your word" rows="4" placeholder="What happened, what you wanted, what got in the way."></textarea>
-    <details class="feedback-name"><summary>+ Add a name or tester id</summary><label>Your name or tester id<input type="text" maxlength="60" autocomplete="nickname"></label><p class="fine">A sent name labels your past and future play on this device. Leave it empty to stay pseudonymous.</p></details>
-    <details class="feedback-preview"><summary>What is sent</summary><p>Your note and optional name. Your run is attached only when recording is allowed.</p><pre></pre><a href="https://human.adamwhite.work/lab/privacy/">Lab privacy</a></details>
+    <textarea aria-label="Your note" rows="4" placeholder="What happened? What did you want to do? What got in the way?"></textarea>
+    <details class="feedback-name"><summary>+ Add a name or tester ID</summary><label>Your name or tester ID<input type="text" maxlength="60" autocomplete="nickname"></label><p class="fine">If you send a name, it labels your past and future play on this device. Leave it empty to send no name.</p></details>
+    <details class="feedback-preview"><summary>What is sent</summary><p>Your note and optional name are sent. Your game is attached only when recording is allowed.</p><pre></pre><a href="https://human.adamwhite.work/lab/privacy/">Lab privacy</a></details>
     <button type="button" class="feedback-download">Keep a copy of this run</button><p role="status"></p></div>
     <div class="feedback-actions lk-sheet-actions"><button type="button" class="primary feedback-send">Submit</button></div>`;
   const note = d.querySelector('textarea')!;
@@ -57,8 +57,8 @@ export function openFeedback(getRun: () => unknown, onClose: () => void, hasRun 
     }
     sent = true;
     status.textContent = noteOnly
-      ? 'Note and verdict queued without a run or history linkage.'
-      : 'Note queued with available run and linked play.';
+      ? 'Your note and answer are queued to send. Your game and play history are not attached.'
+      : 'Your note is queued to send with the available game and linked play history.';
     send.textContent = 'Back to the game';
     update();
   };
@@ -102,7 +102,7 @@ export function openFeedback(getRun: () => unknown, onClose: () => void, hasRun 
       });
       success(noteOnly);
     } catch {
-      status.textContent = 'Your word could not be sent. Please try again.';
+      status.textContent = 'Your note could not be sent. Please try again.';
     } finally {
       busy = false;
       update();

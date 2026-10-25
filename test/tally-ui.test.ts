@@ -40,8 +40,8 @@ it('offers the tally only as a closed ending disclosure, without a menu preferen
   await page.getByRole('button', { name: 'Resume', exact: true }).click();
   const tally = page.locator('#ending-tally details');
   expect(await tally.getAttribute('open')).toBe(null);
-  await page.getByText('See the tally', { exact: true }).click();
-  expect(await tally.innerText()).toContain('Total =');
+  await page.getByText('See the total', { exact: true }).click();
+  expect(await tally.innerText()).toContain('Claims that began with you:');
   await page.getByRole('button', { name: 'Game menu', exact: true }).click();
   expect(await page.getByRole('switch').count()).toBe(1);
   expect(await page.getByRole('switch', { name: 'Recording' }).count()).toBe(1);

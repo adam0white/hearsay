@@ -53,3 +53,9 @@ Source work follows owner route F-492. Ordinary garden controls now use automati
 Immutable client0.4.6 and kit0.5.6 replace the prior pins; HF2.18.0 stays unchanged. The actual telemetry notice node lives in a stable footer. Saved narration is projected into full, literal English by `garden-english.ts` without changing the replay record. Names, culture, family relationships and uncertainty remain. Width-based fluid type applies to actual roster labels, controls and Feedback; the page and sheet scroll without fixed-height clipping.
 
 Source verification, independent review, paired frozen checker counts, cultural inventory, exact CI and live release evidence are recorded outside the worktree in `~/code/.lab-scratch/simplify/workers/hearsay.md`. This entry describes the increment, not a completed deployment or owner verdict. Technical delivery and Adam's play acceptance remain separate. No new playtest round is authorized or run.
+
+## Source plain-English rewrite — 2026-10-25
+
+Player prose now lives in the simulation and UI source. The live garden no longer uses narration lookup tables or grammar regex replacements. `garden-english.ts` only names mechanical locations. The historical shell also uses complete sentences. Preserve names, uncertainty, boundaries around private information, numeric rules and semantic labels.
+
+The edition stays `hearsay-cast/6`. Current exports require exact complete-state replay. An older prose fingerprint may refuse with a plain Start fresh message. Historical rule pins exclude named prose fields and map rewritten used-line stems back to their original identities; do not erase those anti-repeat histories. Paired full-run evidence, the independent Codex review, on-screen text and release receipts live in `~/code/.lab-scratch/plain2/hearsay-report.md`. HF package narration remains the separate HF worker’s responsibility. Adam’s feel/readiness acceptance still remains due 2026-11-03.

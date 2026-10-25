@@ -9,19 +9,8 @@ import {
   save,
   tellingUnavailable,
 } from '../src/sim/game.ts';
-import type { State } from '../src/sim/types.ts';
 import { compactRun, exportRun, verifyImport } from '../src/ui/export.ts';
-
-function legacyFingerprint(state: State) {
-  // npm 2.9.0 vs 2.10.0 full-state comparisons differ only at Person.engine.
-  // Keep the historical hashes and normalize only that stamp on a copy.
-  const legacy = structuredClone(state);
-  for (const person of Object.values(legacy.people)) {
-    expect(person.engine).toBe('2.10.0');
-    person.engine = '2.9.0';
-  }
-  return fingerprint(legacy);
-}
+import { historicalRulesFingerprint } from './helpers/historical-rules.ts';
 
 it('refuses a known duplicate story without logging another input or changing state', () => {
   const g = newGame(1);
@@ -105,16 +94,17 @@ it('discovers an already heard claim without strengthening it or creating anothe
   expect(tellingUnavailable(g.s, input)).toContain('Ali');
 });
 
-it('replays a minimal pre-change duplicate run with its exact legacy fingerprint', () => {
+it('preserves the baseline duplicate rules and refuses an obsolete prose fingerprint', () => {
   const inputs = [0, 1].map(() => ({
     at: 390,
     input: { type: 'tell-story', listener: 'fatma', incident: 1 } as const,
   }));
   const g = replay(1, inputs, 390, 1);
-  expect(legacyFingerprint(g.s)).toBe('53cbae48');
+  expect(historicalRulesFingerprint(g.s)).toBe('6ccc239a');
   expect(g.inputs).toHaveLength(2);
   const run = { game: 'hearsay', version: 1, seed: 1, minute: 390, inputs, fingerprint: '53cbae48' };
-  expect(legacyFingerprint(verifyImport(JSON.stringify(run)).s)).toBe('53cbae48');
+  expect(() => verifyImport(JSON.stringify(run))).toThrow(/Start fresh/);
+  expect(fingerprint(verifyImport(JSON.stringify(compactRun(exportRun(g)))).s)).toBe(fingerprint(g.s));
   expect(exportRun(g).version).toBe(1);
   expect(newGame(1).s.version).toBe(5);
   expect(() => verifyImport(JSON.stringify({ ...run, version: 5 }))).toThrow();
@@ -140,7 +130,7 @@ it('provides pure UI protection for an imported legacy run without changing its 
   expect(tellingUnavailable(g.s, input)).toContain('already told Fatma');
   expect(fingerprint(g.s)).toBe(before);
   expect(act(g, input)).toBe(true);
-  expect(legacyFingerprint(g.s)).toBe('53cbae48');
+  expect(historicalRulesFingerprint(g.s)).toBe('6ccc239a');
 });
 
 it('recovers legacy public tellings collapsed into echoes without changing replay state', () => {
@@ -190,12 +180,15 @@ it('does not restore a legacy duplicate-story limit after a later withdrawal, ev
   expect(fingerprint(replay(1, g.inputs, 390, 1).s)).toBe(fingerprint(g.s));
 });
 
-it('loads an owner-style full legacy export through day 7 with repeated stories and withdrawal', () => {
+it('preserves baseline owner-style rules through day 7 and round trips a current historical export', () => {
   // Synthetic history: no private owner data belongs in a fixture.
   const story = { type: 'tell-story', listener: 'fatma', incident: 1 } as const;
-  const inputs = [story, story, { type: 'make-amends', listener: 'fatma', target: 'kemal' }, story].map(
-    (input) => ({ at: 390, input }),
-  );
+  const inputs = [
+    story,
+    story,
+    { type: 'make-amends', listener: 'fatma', target: 'kemal' } as const,
+    story,
+  ].map((input) => ({ at: 390, input }));
   const run = {
     game: 'hearsay',
     version: 1,
@@ -204,9 +197,10 @@ it('loads an owner-style full legacy export through day 7 with repeated stories 
     inputs,
     fingerprint: '30000cb5',
   };
-  const g = verifyImport(JSON.stringify(run));
+  expect(() => verifyImport(JSON.stringify(run))).toThrow(/Start fresh/);
+  const g = replay(1, inputs, run.minute, 1);
   const full = exportRun(g);
   expect(full.version).toBe(1);
-  expect(legacyFingerprint(full.state)).toBe(run.fingerprint);
+  expect(historicalRulesFingerprint(full.state)).toBe('68731e09');
   expect(exportRun(verifyImport(JSON.stringify(full)))).toEqual(full);
 });

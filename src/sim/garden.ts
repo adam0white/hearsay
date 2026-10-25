@@ -130,7 +130,7 @@ export function freshGarden(
       {
         at: 360,
         kind: 'opening',
-        text: 'The urn warms. A fortnight of tea, work and talk begins. Open a paid workers’ lunch on Day 13. Pay for a sample on Day 4, agree Aylin’s cooking terms on Day 8, and earn at least four reservations. Bread, produce, paid work and your word all matter. Free use of the gate bench stays separate from food sales.',
+        text: 'The tea urn warms as the two weeks begin. Your goal is to serve a paid lunch for workers on Day 13. Pay for a sample on Day 4 and agree on Aylin’s cooking terms on Day 8. You need at least four meal reservations. You also need bread, produce and paid cooking work. People book based on whether they trust your word. Anyone may use the gate bench without buying food.',
       },
     ],
     discoveries: {},
@@ -207,14 +207,18 @@ function endChat(g: GardenRun, completed: boolean) {
       note(
         g,
         'conversation',
-        `${c.name} finishes another quiet conversation. Earlier confidences remain private.`,
+        chat.person === 'hatice'
+          ? 'You finish reflecting on your past. You keep these thoughts private.'
+          : `${c.name} finishes another quiet conversation. What they told you earlier stays private.`,
         chat.person,
       );
   } else
     note(
       g,
       'interrupted',
-      'The conversation ends before the confidence is shared. You have learned no private fact.',
+      chat.person === 'hatice'
+        ? 'You stop reflecting before you reach a private memory.'
+        : 'The conversation ends before the person shares anything private. You have learned nothing private.',
       chat.person,
     );
   delete g.chat;
@@ -286,7 +290,7 @@ function testimony(
       note(
         g,
         'own-statement',
-        'You do not believe this claim yourself. The listener cannot see that intention.',
+        'You do not believe this claim yourself. The listener does not know that.',
         'hatice',
       );
     // A chosen statement need not be the speaker's most salient existing belief.
@@ -296,8 +300,8 @@ function testimony(
         channel: 'told',
         kind: 'testimony',
         summary: confidenceOf
-          ? 'Hatice repeats a private confidence with an unkind inference.'
-          : `Hatice gives an account of ${trait}.`,
+          ? 'Hatice repeats something shared in private and adds an unkind conclusion.'
+          : `Hatice says whether ${GARDEN_CAST[about].name} is ${trait}.`,
         actorId: from,
         salience: 1,
         claims: [{ prop, value, confidence: 0.8 }],
@@ -318,7 +322,7 @@ function testimony(
     note(
       g,
       'testimony',
-      `You tell ${GARDEN_CAST[to].name}: “${GARDEN_CAST[about].name} is ${value ? '' : 'not '}${trait}.” This is your claim, not proof.`,
+      `You tell ${GARDEN_CAST[to].name}: “${GARDEN_CAST[about].name} is ${value ? '' : 'not '}${trait}.” You are making a claim. You have not proved it.`,
       to,
     );
   } else
@@ -345,12 +349,7 @@ function testimony(
         prop: claim.prop,
         value: claim.value,
       });
-      note(
-        g,
-        'talk',
-        `${a.name} tells ${b.name} ${claim.value ? '' : 'they doubt '}an account about ${GARDEN_CAST[target].name}.`,
-        from,
-      );
+      note(g, 'talk', `${a.name} passes on a claim to ${b.name} about ${GARDEN_CAST[target].name}.`, from);
     }
 }
 export function chooseGarden(g: GardenRun, input: GardenInput): boolean {
@@ -411,7 +410,9 @@ export function chooseGarden(g: GardenRun, input: GardenInput): boolean {
       note(
         g,
         'refusal',
-        `${p.name} keeps this private. A cup of tea does not buy an explanation.`,
+        input.person === 'hatice'
+          ? 'You choose not to reflect on this private matter now.'
+          : `${p.name} keeps this private. Buying tea does not mean they have to explain.`,
         input.person,
       );
     } else {
@@ -430,7 +431,9 @@ export function chooseGarden(g: GardenRun, input: GardenInput): boolean {
       note(
         g,
         'chat',
-        `${p.name} agrees to sit with you for fifteen minutes. Either of you may leave; their next duty still applies.`,
+        input.person === 'hatice'
+          ? 'You take fifteen minutes to reflect on your past. You can stop early.'
+          : `${p.name} agrees to sit with you for fifteen minutes. Either of you may leave. They still need to return to their next duty.`,
         input.person,
       );
     }
@@ -457,7 +460,9 @@ export function chooseGarden(g: GardenRun, input: GardenInput): boolean {
     } else if (input.choice === 'keep') d.outcome = GARDEN_CAST[input.person].refusal;
     else {
       d.outcome =
-        'You repeat a confidence at the next table. Its owner hears you. They stop trusting this table with private matters.';
+        input.person === 'hatice'
+          ? 'You share a private matter from your own past at the next table. You add an unkind claim about yourself.'
+          : 'You repeat something told to you in private at the next table. The person who told you hears you. They stop trusting you with private matters.';
       p.memory.sourceTrust.hatice = Math.max(0, trustOf(p, 'hatice') - 0.25);
       testimony(
         g,
@@ -471,13 +476,13 @@ export function chooseGarden(g: GardenRun, input: GardenInput): boolean {
       note(
         g,
         'private-breach',
-        `${GARDEN_CAST[audience!].name} hears you repeat: ${d.fact} You attach an unkind inference; the confidence does not prove a general character claim.`,
+        `${GARDEN_CAST[audience!].name} hears you repeat this private information: ${d.fact} You add an unkind conclusion about ${GARDEN_CAST[input.person].name}’s character. The private information does not prove that conclusion.`,
         audience,
       );
     }
     note(g, 'response', d.outcome, input.person);
   } else if (input.type === 'silence') {
-    note(g, 'silence', 'You pour tea and let the table be quiet. Nobody owes you news.');
+    note(g, 'silence', 'You pour tea without sharing news. Nobody has to tell you anything.');
   } else if (['tell', 'defend', 'ask', 'amends'].includes(input.type) && 'about' in input) {
     const trait = input.trait ?? 'reliable';
     if (!['honest', 'reliable', 'kind', 'generous'].includes(trait)) return false;
@@ -490,15 +495,15 @@ export function chooseGarden(g: GardenRun, input: GardenInput): boolean {
       const source = p.memory.beliefs.find((b) => b.prop === prop)?.sources.at(-1);
       const origin = source
         ? source.id === input.person || source.id === 'self'
-          ? 'I saw an act myself.'
+          ? 'I saw what happened myself.'
           : GARDEN_IDS.includes(source.id as GardenPerson)
-            ? `${GARDEN_CAST[source.id as GardenPerson].name} brought me an account.`
-            : 'It came from an earlier chapter, whose full account stays there.'
-        : 'Nobody has brought me an account.';
+            ? `${GARDEN_CAST[source.id as GardenPerson].name} told me about it.`
+            : 'I heard it in an earlier chapter. The details remain in that chapter.'
+        : 'Nobody has told me about it.';
       note(
         g,
         'answer',
-        `${GARDEN_CAST[input.person].name}: “${belief > 0.7 ? 'What I have heard reassures me' : belief < 0.3 ? 'What I have heard troubles me' : 'I have not heard enough to judge'} about ${GARDEN_CAST[input.about].name} being ${trait}. ${origin} Ask them directly.”`,
+        `${GARDEN_CAST[input.person].name}: “${belief > 0.7 ? 'What I have heard makes me think' : belief < 0.3 ? 'What I have heard makes me doubt that' : 'I have not heard enough to judge whether'} ${GARDEN_CAST[input.about].name} is ${trait}. ${origin} Ask them directly.”`,
         input.person,
       );
     } else if (input.type === 'amends') {
@@ -522,7 +527,7 @@ export function chooseGarden(g: GardenRun, input: GardenInput): boolean {
       note(
         g,
         'amends',
-        `You withdraw your accusation about ${GARDEN_CAST[input.about].name} to ${p.name}, replacing your claim with uncertainty. Copies already passed on remain their own conversations.`,
+        `You tell ${p.name} that you withdraw your accusation about ${GARDEN_CAST[input.about].name} and are no longer sure. People may still have repeated the claim to others.`,
         input.person,
       );
     } else {
@@ -702,7 +707,7 @@ function minuteStep(g: GardenRun) {
     note(
       g,
       'release',
-      'Derya’s final relief night is over. Her next chapter must preserve her need for morning sleep. The other visitors finish their local appointments at the end of the fortnight.',
+      'Derya’s final night covering for another nurse is over. She will still need to sleep in the morning after leaving the garden. The other visitors finish their local appointments at the end of these two weeks.',
     );
   }
   stakesStep(g, (id) => gardenHere(g, id));
@@ -713,7 +718,7 @@ function minuteStep(g: GardenRun) {
     note(
       g,
       'ending',
-      'The fortnight ends. Your garden account records what you heard, what you repeated and what you left private.',
+      'The two weeks end. Your garden record shows what you heard, what you repeated and what you kept private.',
     );
   }
 }
@@ -743,10 +748,10 @@ export function replayGarden(
 export function gardenStanding(g: GardenRun): string {
   const here = GARDEN_IDS.filter((id) => id !== 'hatice' && gardenHere(g, id));
   return g.minute < g.lunch.closedUntil
-    ? 'The garden is closed after the confrontation; no tea is sold.'
+    ? 'The garden is closed after the confrontation. No tea is sold.'
     : here.length >= 5
-      ? 'The tables are occupied. Customers who stay pay for their tea.'
+      ? 'People are sitting at the tables. Customers who stay pay for their tea.'
       : here.length >= 2
-        ? 'A few customers remain; the empty places earn nothing.'
+        ? 'A few customers remain. Empty seats bring in no money.'
         : 'The benches are empty. There are no customers to serve.';
 }

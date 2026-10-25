@@ -11,13 +11,14 @@ export const GARDEN_CAST = {
     age: 48,
     sex: 'female',
     job: 'Tea-garden keeper',
-    family: 'Widowed; her grown child lives outside the district.',
+    family: 'She is widowed. Her grown child lives outside the district.',
     profile: { honesty: 0.85, extraversion: 0.7, conscientiousness: 0.7, agreeableness: 0.6 },
-    cue: 'The old reception account is still in your drawer.',
+    cue: 'The account from the wedding reception is still in your drawer.',
     fact: 'You encouraged a couple to spend more on their wedding. You called your contribution a gift while privately expecting them to book the garden. You later complained about their ingratitude.',
     repair:
-      'You separate the gift from your unspoken expectation and correct your complaint at the tables where you repeated it.',
-    refusal: 'You leave the old account closed. Calling it generosity does not settle the unspoken bargain.',
+      'You acknowledge that your gift came with an expectation you never stated. You correct your complaint with the people who heard you repeat it.',
+    refusal:
+      'You do not discuss the old wedding account. Calling your contribution generous does not resolve the expectation you never stated.',
   },
   derya: {
     castId: 'hf.cast.derya.stairwell',
@@ -26,14 +27,15 @@ export const GARDEN_CAST = {
     age: 44,
     sex: 'female',
     job: 'Night nurse on a short relief assignment',
-    family: 'Single; temporary lodging near the garden. Her home is flat 5, Lale Apartmanı.',
+    family:
+      'She is single and has temporary lodging near the garden. Her home is flat 5 of Lale Apartmanı, the Lale apartment building.',
     profile: { honesty: 0.7, extraversion: 0.35, agreeableness: 0.6, emotionality: 0.5, openness: 0.55 },
-    cue: 'Derya folds an unfinished training enquiry before ordering breakfast.',
+    cue: 'Derya folds an unfinished letter asking about training before ordering breakfast.',
     fact: 'Derya reported a scheduling error before anyone was harmed. Training invitations then stopped. She kept the correspondence, but does not know whether the events were connected.',
     repair:
-      'Derya writes a precise request for an explanation. Hatice helps check the wording; no reply or training place is promised.',
+      'Derya writes a specific request for an explanation. Hatice helps check the wording. Nobody has promised a reply or a training place.',
     refusal:
-      'Derya puts the correspondence away. Her work and family are private; she has not asked the garden to investigate.',
+      'Derya puts the correspondence away. Her work and family are private. She has not asked anyone at the garden to investigate.',
   },
   dilan: {
     castId: 'hf.cast.dilan.murmur',
@@ -42,7 +44,7 @@ export const GARDEN_CAST = {
     age: 33,
     sex: 'female',
     job: 'Parcel delivery visitor',
-    family: 'Aylin’s younger sister. Their mother lives elsewhere.',
+    family: 'Dilan is Aylin’s younger sister. Their mother lives elsewhere.',
     profile: {
       honesty: 0.68,
       conscientiousness: 0.48,
@@ -51,10 +53,10 @@ export const GARDEN_CAST = {
       agreeableness: 0.6,
     },
     cue: 'Dilan checks an old route slip, then looks toward Ece.',
-    fact: 'Dilan once covered Ece’s missed delivery and let Murat believe the delay was hers. She expected thanks without asking; Ece thought the matter was settled.',
+    fact: 'Dilan once completed a delivery Ece had missed and let Murat believe Dilan had caused the delay. Dilan expected thanks without saying so. Ece thought the matter was settled.',
     repair:
-      'Dilan asks Ece for a short conversation about the actual route slip. She names her unspoken expectation instead of sending an accusation through Hatice.',
-    refusal: 'Dilan keeps the slip. Hatice has no permission to turn the old delivery into public news.',
+      'Dilan asks Ece for a short conversation about the old delivery slip. She explains the thanks she expected instead of asking Hatice to pass on an accusation.',
+    refusal: 'Dilan keeps the slip. Hatice does not have permission to tell others about the old delivery.',
   },
   nermin: {
     castId: 'hf.cast.nermin.goodhands',
@@ -72,12 +74,12 @@ export const GARDEN_CAST = {
       emotionality: 0.5,
       openness: 0.65,
     },
-    cue: 'Nermin asks for a quiet table to review her own agency practice.',
-    fact: 'In a placement she called a mismatch, Nermin softened a worker’s concern about unpaid nights. She refunded part of the client’s fee before checking what the worker had lost.',
+    cue: 'Nermin asks for a quiet table to review how she runs her agency.',
+    fact: 'Nermin described a worker’s placement as a poor match and made the worker’s complaint about unpaid nights sound less serious. She refunded part of the client’s fee before checking what the worker had lost.',
     repair:
-      'With Nermin’s consent, you review her account without client names. She drafts a correction and a request to the worker for the unpaid hours she can substantiate; payment and forgiveness remain unresolved.',
+      'With Nermin’s consent, you review what happened without using client names. She drafts a correction and a letter asking the worker which unpaid hours she can document. Payment and forgiveness remain unresolved.',
     refusal:
-      'Nermin closes the case review. Professional confidentiality is not a hint that Hatice may repeat.',
+      'Nermin stops reviewing the case. Hatice does not have permission to repeat what Nermin shared in confidence about her work.',
   },
   aylin: {
     castId: 'hf.cast.aylin.murmur',
@@ -86,7 +88,7 @@ export const GARDEN_CAST = {
     age: 36,
     sex: 'female',
     job: 'School kitchen cook',
-    family: 'Dilan’s older sister; their mother is background.',
+    family: 'She is Dilan’s older sister. Their mother is not involved in events at the garden.',
     profile: {
       honesty: 0.8,
       conscientiousness: 0.8,
@@ -98,7 +100,7 @@ export const GARDEN_CAST = {
     cue: 'Aylin declines an evening cooking request with an unusually cheerful smile.',
     fact: 'Aylin has been learning social dance above a tyre shop. She likes being a beginner where nobody expects her to organise the evening. Her class partner is a neighbour, not a secret romance.',
     repair:
-      'Aylin keeps the evening free and goes to class on her own terms. You do not turn it into family news or an obligation to perform.',
+      'Aylin keeps the evening free and chooses to go to class. You do not tell her family or expect her to perform for anyone.',
     refusal: 'Aylin says she has an evening of her own. She owes no further explanation.',
   },
   ece: {
@@ -108,7 +110,7 @@ export const GARDEN_CAST = {
     age: 24,
     sex: 'female',
     job: 'Courier and part-time logistics student',
-    family: 'Lives with an aunt; her parents live elsewhere.',
+    family: 'She lives with an aunt. Her parents live elsewhere.',
     profile: {
       honesty: 0.65,
       conscientiousness: 0.7,
@@ -118,10 +120,10 @@ export const GARDEN_CAST = {
       openness: 0.75,
     },
     cue: 'Ece asks whether anyone may sit at the garden gate without ordering.',
-    fact: 'Ece maps places where workers can sit without buying anything. She notes shade, backs on seats and closing hours. This is a personal map, not an official accessibility survey.',
+    fact: 'Ece maps places where workers can sit without buying anything. She notes whether there is shade, whether seats have backrests and when each place closes. This is a personal map. It is not an official survey of access for disabled people.',
     repair:
       'You agree that the gate bench is free to use during opening hours. Ece checks the hours with you before adding it to the workers’ map.',
-    refusal: 'Ece keeps the map informal. Nobody has permission to brand it as a garden promotion.',
+    refusal: 'Ece keeps the map informal. Nobody has permission to use it to advertise the garden.',
   },
   riza: {
     castId: 'hf.cast.riza.voice',
@@ -135,8 +137,9 @@ export const GARDEN_CAST = {
     cue: 'Rıza asks which lane has the blue tiled doorway.',
     fact: 'Rıza keeps doorway sketches and photographs after his daughter sent a picture she thought he would like. He has not shown the collection because he does not want his quiet interest turned into a performance.',
     repair:
-      'Rıza marks a short public-street walk to offer his daughter. You leave private courtyards out and let him decide whether to invite her; no completed visit is claimed.',
-    refusal: 'Rıza keeps the sketches for himself. A private pleasure need not become a garden attraction.',
+      'Rıza marks a short walking route along public streets to suggest to his daughter. You leave private courtyards out and let him decide whether to invite her. The visit has not happened.',
+    refusal:
+      'Rıza keeps the sketches for himself. He does not have to share his private interest with garden customers.',
   },
   osman: {
     castId: 'hf.cast.osman.voice',
@@ -145,13 +148,14 @@ export const GARDEN_CAST = {
     age: 55,
     sex: 'male',
     job: 'Produce supplier, market trader and small landlord',
-    family: 'Divorced; his adult son works elsewhere.',
+    family: 'He is divorced. His adult son works elsewhere.',
     profile: { conscientiousness: 0.75, agreeableness: 0.35, honesty: 0.6, extraversion: 0.5 },
-    cue: 'Osman brings his crate account and pauses over an older receipt.',
-    fact: 'Osman opens his ledger himself. A former tenant’s repair contribution was never deducted from the final account. He found the note later but kept the money while waiting for a complaint.',
+    cue: 'Osman brings the account for his produce crates and stops to look at an older receipt.',
+    fact: 'Osman opens his account book himself. A former tenant’s repair contribution was never deducted from the final account. He found the note later but kept the money while waiting for a complaint.',
     repair:
-      'Osman writes the exact correction and addresses a repayment letter. This is a prepared correction, not proof of payment. Halil’s separate rent account remains unchanged.',
-    refusal: 'Osman closes his ledger. One generous concession would not correct this separate account.',
+      'Osman writes the exact correction and addresses a letter about repayment. He has prepared the correction, but this does not prove that he has repaid the money. Halil’s separate rent account remains unchanged.',
+    refusal:
+      'Osman closes his account book. A generous offer elsewhere would not correct this separate account.',
   },
 } as const;
 export type GardenPerson = keyof typeof GARDEN_CAST;

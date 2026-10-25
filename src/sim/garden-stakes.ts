@@ -108,7 +108,7 @@ export function planChoice(g: GardenRun, choice: PlanChoice): boolean {
     say(
       g,
       'payment',
-      'You pay the outstanding preparation and supply invoice. The debt is settled, with a receipt.',
+      'You pay the outstanding preparation and supply invoice. You receive a receipt showing that the debt is paid.',
     );
     return true;
   }
@@ -123,9 +123,9 @@ export function planChoice(g: GardenRun, choice: PlanChoice): boolean {
       g,
       'agreement',
       choice === 'paid-trial'
-        ? 'You pay for the Day 4 sample. Rıza agrees to bring a counted bread order on Day 13. Osman agrees to a written produce order. Neither agreement proves their whole character.'
+        ? 'You pay for the Day 4 sample. Rıza agrees to bring the agreed number of loaves on Day 13. Osman agrees to a written produce order. These agreements do not prove what they are like in every situation.'
         : choice === 'credit-trial'
-          ? 'Osman supplies the sample on credit. The written invoice is due before the Day 13 lunch; credit costs more than paying now. Rıza agrees to the bread order.'
+          ? 'Osman supplies the sample on credit. You must pay the written invoice before the Day 13 lunch. Buying on credit costs more than paying now. Rıza agrees to the bread order.'
           : 'You decline the sample. No bread or produce is reserved for the lunch.',
     );
   } else if (l.pending === 'prep') {
@@ -144,17 +144,17 @@ export function planChoice(g: GardenRun, choice: PlanChoice): boolean {
       g,
       'agreement',
       choice === 'paid-prep'
-        ? 'You pay Aylin for a defined preparation session after her school shift. She agrees to cook on Day 13 and leave at the agreed hour. Free use of the gate bench remains separate from paid food.'
+        ? 'You pay Aylin for the agreed preparation session after her school shift. She agrees to cook on Day 13 and leave at the agreed hour. Free use of the gate bench remains separate from paid food.'
         : choice === 'unpaid-prep'
-          ? 'You put the preparation fee on the account instead. Aylin will not begin unpaid work. Her offer stays open only if the fee is paid before the lunch.'
-          : 'You cancel the preparation. Aylin keeps her own evening; no cooking is promised.',
+          ? 'You record the preparation fee as money you owe instead. Aylin will not begin unpaid work. Her offer stays open only if the fee is paid before the preparation session at 17:00 on Day 10.'
+          : 'You cancel the preparation. Aylin keeps the evening for herself. She has not promised to cook.',
     );
     l.reservations = GARDEN_IDS.filter((id) => id !== 'hatice' && wantsLunch(g, id));
     say(
       g,
       'reservations',
       l.reservations.length
-        ? `${l.reservations.map((id) => GARDEN_CAST[id].name).join(', ')} reserve their own meal, on the stated supplier and cooking terms. Reservations may change if new evidence reaches them.`
+        ? `${l.reservations.map((id) => GARDEN_CAST[id].name).join(', ')} ${l.reservations.length === 1 ? 'reserves one meal' : 'reserve a meal each'}, with the supply and cooking terms you agreed on. They may change their reservations if they hear something new.`
         : 'Nobody is willing to reserve a meal on the current terms. Ask what they have heard and correct what you can.',
     );
   } else return false;
@@ -201,7 +201,7 @@ const ACTS: {
     trait: 'reliable',
     truth: true,
     witness: 'derya',
-    text: 'Aylin brings the agreed sample before leaving for the school kitchen. She labels the ingredients and the handover hour. Derya collects the breakfast portion as agreed.',
+    text: 'Aylin brings the agreed sample before leaving for the school kitchen. She labels the ingredients and the delivery time. Derya collects the breakfast portion as agreed.',
   },
   {
     person: 'ece',
@@ -215,14 +215,14 @@ const ACTS: {
     trait: 'honest',
     truth: true,
     witness: 'dilan',
-    text: 'Nermin corrects a work enquiry in front of Dilan: she has not confirmed coverage and will not promise a placement on that address yet.',
+    text: 'Nermin corrects her answer to a work enquiry in front of Dilan. She has not confirmed that someone can do the work and will not yet promise to place a worker at that address.',
   },
   {
     person: 'riza',
     trait: 'reliable',
     truth: true,
     witness: 'aylin',
-    text: 'Rıza brings the bread order at the promised handover. He and Aylin check the count before she leaves. This is delivery work, not evidence that he is a baker.',
+    text: 'Rıza brings the bread order at the agreed delivery time. He and Aylin check the count before she leaves. He is delivering bread. This does not mean he is a baker.',
   },
   {
     person: 'derya',
@@ -243,14 +243,14 @@ const ACTS: {
     trait: 'honest',
     truth: true,
     witness: 'riza',
-    text: 'Osman returns the corrected eight-crate invoice and hands Hatice the overcharge. Rıza checks the receipt. The correction concerns this garden order; his old tenant account remains separate.',
+    text: 'Osman returns the corrected eight-crate invoice and hands Hatice the overcharge. Rıza checks the receipt. This correction is for the garden order. It does not settle the account with his former tenant.',
   },
   {
     person: 'aylin',
     trait: 'reliable',
     truth: true,
     witness: 'nermin',
-    text: 'Aylin keeps the agreed preparation appointment after her school shift. Nermin sees the written leaving time. Neither offers unpaid extra cover.',
+    text: 'Aylin keeps the agreed preparation appointment after her school shift. Nermin sees the written leaving time. Neither offers to do extra work without pay.',
   },
   {
     person: 'riza',
@@ -264,7 +264,7 @@ const ACTS: {
     trait: 'honest',
     truth: true,
     witness: 'derya',
-    text: 'Hatice shows Derya the lunch account, including any unpaid invoice. She does not call a promised payment a settled one.',
+    text: 'Hatice shows Derya the lunch account, including any unpaid invoice. She does not say that a payment has been made when it has only been promised.',
   },
   {
     person: 'ece',
@@ -278,7 +278,7 @@ const ACTS: {
     trait: 'kind',
     truth: true,
     witness: 'aylin',
-    text: 'Dilan asks whether Aylin has time to talk before sitting down. Aylin keeps her own evening free. A warm exchange does not settle their whole family history.',
+    text: 'Dilan asks whether Aylin has time to talk before sitting down. Aylin keeps her own evening free. Their friendly conversation does not resolve everything that happened in their family.',
   },
 ];
 export function stakesStep(g: GardenRun, here: (id: GardenPerson) => boolean): void {
@@ -286,7 +286,11 @@ export function stakesStep(g: GardenRun, here: (id: GardenPerson) => boolean): v
     t = g.minute % 1440,
     day = Math.floor(g.minute / 1440) + 1;
   if (l.pendingUntil !== undefined && g.minute >= l.pendingUntil) {
-    say(g, 'missed', `The Day ${day} agreement window closes without your answer. No agreement is inferred.`);
+    say(
+      g,
+      'missed',
+      `The deadline for the Day ${day} agreement passes without your answer. You have not agreed to anything.`,
+    );
     if (l.pending === 'trial') l.trial = 'missed';
     else l.prep = 'cancelled';
     delete l.pending;
@@ -303,7 +307,7 @@ export function stakesStep(g: GardenRun, here: (id: GardenPerson) => boolean): v
               trait: 'reliable' as const,
               truth: true,
               witness: 'osman' as const,
-              text: 'Ece hands over the parcel receipt at the agreed time. Osman sees this delivery. It proves nothing about her private interests or the rest of her route.',
+              text: 'Ece hands over the parcel receipt at the agreed time. Osman sees this delivery. It tells you nothing about her private interests or her other deliveries.',
             }
           : authored;
     if (act) {
@@ -358,8 +362,8 @@ export function stakesStep(g: GardenRun, here: (id: GardenPerson) => boolean): v
       g,
       'custom',
       GARDEN_IDS.filter((id) => id !== 'hatice' && here(id)).length
-        ? 'Customers who still trust the table pay for their tea. Those who avoid it spend elsewhere.'
-        : 'The benches stay empty this morning. There are no tea takings.',
+        ? 'Customers who still trust you pay for their tea. Those who avoid the garden spend elsewhere.'
+        : 'The benches are empty. You earn no money from tea.',
     );
   }
   if (t === 720 && (day === 4 || day === 8)) {
@@ -369,8 +373,8 @@ export function stakesStep(g: GardenRun, here: (id: GardenPerson) => boolean): v
       g,
       'milestone',
       day === 4
-        ? 'Day 4: Rıza and Osman offer a counted bread and produce order for the Day 13 workers’ lunch. Decide whether to pay for the sample, take a written credit invoice or decline.'
-        : 'Day 8: Aylin offers a paid cooking session with a clear leaving hour. Decide the preparation terms. Customers will reserve their own meals from what they have heard.',
+        ? 'Day 4: Rıza and Osman offer an order for bread and produce in agreed amounts for the Day 13 workers’ lunch. Decide whether to pay for the sample now, agree in writing to pay later or decline it.'
+        : 'Day 8: Aylin offers a paid cooking session with an agreed time to leave. Decide how to pay for preparation. Customers will decide whether to reserve a meal based on what they have heard.',
     );
   }
   for (const c of l.confrontations) {
@@ -383,7 +387,7 @@ export function stakesStep(g: GardenRun, here: (id: GardenPerson) => boolean): v
       say(
         g,
         'confrontation',
-        `${GARDEN_CAST[c.person].name} traces the contradicted account back to your table. “Will you take it back to the people who heard it, or stand by it?”`,
+        `${GARDEN_CAST[c.person].name} traces the disproved claim back to you. “Will you correct what you said to the people who heard it, or stand by it?”`,
         c.person,
       );
   }
@@ -393,7 +397,7 @@ export function stakesStep(g: GardenRun, here: (id: GardenPerson) => boolean): v
       say(
         g,
         'delivery',
-        'Rıza hands over the counted lunch bread. Hatice checks the loaf count and signs the delivery receipt.',
+        'Rıza hands over the agreed number of loaves for lunch. Hatice checks the loaf count and signs the delivery receipt.',
         'riza',
       );
     }
@@ -413,10 +417,10 @@ export function stakesStep(g: GardenRun, here: (id: GardenPerson) => boolean): v
     l.served = supplies ? l.reservations.filter((id) => wantsLunch(g, id) && here(id)) : [];
     l.result = !supplies ? 'cancelled' : l.served.length >= (l.trial === 'credit' ? 5 : 4) ? 'open' : 'short';
     l.reason = !supplies
-      ? 'The lunch cannot open: an actual delivery, completed paid preparation, settled invoice or the 80-lira food budget is missing.'
+      ? 'The lunch cannot open. You need both deliveries, completed paid preparation, all invoices paid and 80 lira for food. At least one of these is missing.'
       : l.served.length >= (l.trial === 'credit' ? 5 : 4)
-        ? 'The paid lunch opens. The meals cover the sample, paid preparation and food cost.'
-        : 'The food is ready, but too few reservations survive what people have heard. The lunch makes a loss.';
+        ? 'The paid lunch opens. Meal sales pay for the sample, paid preparation and food.'
+        : 'The food is ready, but too few customers come. The lunch loses money.';
     if (supplies) {
       l.cash -= 80;
       l.cash += l.served.length * 100;
@@ -424,7 +428,7 @@ export function stakesStep(g: GardenRun, here: (id: GardenPerson) => boolean): v
     say(
       g,
       'lunch-result',
-      `${l.reason} ${l.served.length ? `${l.served.map((id) => GARDEN_CAST[id].name).join(', ')} actually sit down and pay for their meal.` : 'No paid lunch is served.'}`,
+      `${l.reason} ${l.served.length ? `${l.served.map((id) => GARDEN_CAST[id].name).join(', ')} ${l.served.length === 1 ? 'sits down and pays for one meal' : 'sit down and pay for their meals'}.` : 'No paid lunch is served.'}`,
     );
   }
 }
@@ -438,7 +442,7 @@ export function answerConfrontation(g: GardenRun, person: GardenPerson, choice: 
     say(
       g,
       'confrontation-answer',
-      'You own the account and agree to withdraw it separately with each listener. The copies are not erased.',
+      'You take responsibility for the claim. You agree to withdraw it with each listener. People may still have repeated it to others.',
       person,
     );
   } else {
@@ -448,7 +452,7 @@ export function answerConfrontation(g: GardenRun, person: GardenPerson, choice: 
     say(
       g,
       'confrontation-answer',
-      'You stand by the contradicted story. The person leaves, and word of the confrontation empties the garden until tomorrow. No tea is sold during that closure.',
+      'You stand by the disproved claim. The person leaves, and people hear about the confrontation and stop visiting the garden until tomorrow. No tea is sold during that closure.',
       person,
     );
   }
@@ -470,8 +474,8 @@ export function reserveLunch(g: GardenRun, id: GardenPerson): boolean {
     g,
     'reservation',
     yes
-      ? `${GARDEN_CAST[id].name} books one paid meal for Day 13 at 13:00. A courier’s lunch stop uses their own break; no shift is abandoned.`
-      : `${GARDEN_CAST[id].name}: “Not yet. I need to trust your word, Osman’s invoice, Aylin’s timing and Rıza’s delivery. Ask me what I heard.”`,
+      ? `${GARDEN_CAST[id].name} books one paid meal for Day 13 at 13:00. The reservation does not cancel any work commitments.`
+      : `${GARDEN_CAST[id].name}: “I will not book yet. I need to trust what you say, Osman’s invoice, Aylin’s timing and Rıza’s delivery. Ask me what I heard.”`,
     id,
   );
   return true;

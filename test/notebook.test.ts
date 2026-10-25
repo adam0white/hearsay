@@ -27,10 +27,10 @@ describe('run import', () => {
   it('rejects altered state and unknown input before replacement', () => {
     const run = exportRun(newGame(72));
     run.state.garden = 'full';
-    expect(() => verifyImport(JSON.stringify(run))).toThrow('Replay did not match');
+    expect(() => verifyImport(JSON.stringify(run))).toThrow('Start fresh');
     const invalid = exportRun(newGame(72));
     invalid.inputs.push({ at: 360, input: { type: 'call-over', person: 'unknown' } });
-    expect(() => verifyImport(JSON.stringify(invalid))).toThrow('Unknown passer-by');
+    expect(() => verifyImport(JSON.stringify(invalid))).toThrow('unknown person passing by');
   });
   it('replays the compact notebook run without its full state', () => {
     const game = newGame(72);
@@ -45,31 +45,33 @@ describe('run import', () => {
     expect(run.fingerprint).toBe(fingerprint(game.s));
     expect(fingerprint(verifyImport(JSON.stringify(run)).s)).toBe(run.fingerprint);
     run.fingerprint = 'altered';
-    expect(() => verifyImport(JSON.stringify(run))).toThrow('Replay did not match');
+    expect(() => verifyImport(JSON.stringify(run))).toThrow('Start fresh');
   });
 });
 
 it.each([1, 2] as const)(
-  'imports HF 2.9.0 full and compact version %i runs without hiding other changes',
+  'accepts an earlier engine stamp in current historical version %i exports without hiding other changes',
   (version) => {
     const game = newGame(72, version);
     advance(game, 405);
     const run = exportRun(game);
-    // HF 2.10.0 changes only this stamp for hosts that do not opt into new fields.
+    // Synthetic stamp-only compatibility control; this is not an archived HF 2.9.0 run.
     for (const person of Object.values(run.state.people)) person.engine = '2.9.0';
     run.fingerprint = fingerprint(run.state);
     for (const candidate of [run, compactRun(run)]) {
       const imported = verifyImport(JSON.stringify(candidate));
       expect(imported.s).toEqual(game.s);
-      expect(Object.values(imported.s.people).every((person) => person.engine === '2.10.0')).toBe(true);
+      expect(
+        Object.values(imported.s.people).every((person) => person.engine === game.s.people.hatice!.engine),
+      ).toBe(true);
     }
     const altered = structuredClone(run);
     altered.state.custom.hatice = 0.123;
     altered.fingerprint = fingerprint(altered.state);
     for (const candidate of [altered, compactRun(altered)])
-      expect(() => verifyImport(JSON.stringify(candidate))).toThrow('Replay did not match');
+      expect(() => verifyImport(JSON.stringify(candidate))).toThrow('Start fresh');
     const corrupt = structuredClone(run);
     corrupt.state.garden = 'full';
-    expect(() => verifyImport(JSON.stringify(corrupt))).toThrow('Replay did not match');
+    expect(() => verifyImport(JSON.stringify(corrupt))).toThrow('Start fresh');
   },
 );

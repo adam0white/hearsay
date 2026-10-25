@@ -23,12 +23,12 @@ it.each([
   await page.goto(`${server.resolvedUrls?.local[0] ?? ''}?lab=1`);
   await page.locator('.cg-title, .cg-game').first().waitFor();
   if (await page.locator('.cg-title').count()) await page.getByText('Lab tools', { exact: true }).click();
-  const start = page.getByRole('button', { name: 'Play a separate local fortnight', exact: true });
+  const start = page.getByRole('button', { name: 'Play fourteen days with new local people', exact: true });
   if (await start.isVisible()) await start.click();
   else {
     await page.getByRole('button', { name: 'Game menu', exact: true }).first().click();
     await page.getByText('Lab tools', { exact: true }).click();
-    await page.getByRole('button', { name: 'Play a separate local fortnight', exact: true }).click();
+    await page.getByRole('button', { name: 'Play fourteen days with new local people', exact: true }).click();
   }
   await page.locator('[data-pace="0"]').click();
   expect(await page.locator('.cg-header').innerText()).toContain('Day 13 lunch');
@@ -49,7 +49,7 @@ it.each([
     (el as HTMLDetailsElement).open = true;
   });
   await page.getByRole('button', { name: 'Save this garden', exact: true }).click();
-  await page.getByRole('status').filter({ hasText: 'Garden saved' }).waitFor();
+  await page.getByRole('status').filter({ hasText: 'Your garden is saved' }).waitFor();
   await page.reload();
   await page.locator('[data-pace="0"]').click();
   expect(await page.locator('.cg-confidence').innerText()).toContain('doorway');

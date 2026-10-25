@@ -69,7 +69,7 @@ let conflict: {
 } | null = null;
 const build = () => lab.build().c ?? 'development';
 const message = (error: unknown) =>
-  error instanceof Error ? error.message : 'Continuity unavailable. Keep a local file.';
+  error instanceof Error ? error.message : 'Continuity is unavailable. Download a file to keep this game.';
 /** Bind history metadata without consulting recording identity or consent. */
 export async function gateContinuity(g: ContinuityGame | undefined, file = false): Promise<void> {
   ++gateSerial;
@@ -82,7 +82,8 @@ export async function gateContinuity(g: ContinuityGame | undefined, file = false
 export async function chooseContinuityRecording(_value: boolean): Promise<void> {}
 export async function validateContinuity(g: ContinuityGame): Promise<void> {
   if (!g.continuity) {
-    if (g.initialPeople || g.initialContinuity) throw new Error('The pinned continuity is missing.');
+    if (g.initialPeople || g.initialContinuity)
+      throw new Error('The saved history for the arriving person is missing.');
     return;
   }
   if (
@@ -92,10 +93,10 @@ export async function validateContinuity(g: ContinuityGame): Promise<void> {
     !Array.isArray(g.continuity.rows) ||
     g.continuity.rows.length > 128
   )
-    throw new Error('Unsupported continuity save.');
+    throw new Error('This saved history cannot be used in this version.');
   if (g.continuity.source) await validatePersona(g.continuity.source.head);
   if (g.continuity.entries.length && (!g.initialContinuity || !g.initialPeople))
-    throw new Error('The pinned continuity is missing.');
+    throw new Error('The saved history for the arriving person is missing.');
   for (const entry of g.continuity.entries) {
     await validatePersona(entry.head);
     await validatePersona(entry.admission.envelope);
@@ -112,19 +113,19 @@ export async function validateContinuity(g: ContinuityGame): Promise<void> {
       targetBuild: entry.admission.targetBuild,
     });
     if (JSON.stringify(admitted) !== JSON.stringify(entry.admission))
-      throw new Error('The pinned admission does not validate.');
+      throw new Error('The saved person could not be checked.');
     if (
       JSON.stringify(
         g.initialContinuity?.entries.find((e) => e.admission.castId === entry.admission.castId)?.admission,
       ) !== JSON.stringify(entry.admission)
     )
-      throw new Error('The pinned replay arrival differs.');
+      throw new Error('The person’s arrival does not match the saved game.');
     if (
       entry.head.castId !== entry.admission.castId ||
       !g.initialPeople?.[entry.admission.person.id] ||
       JSON.stringify(g.initialPeople[entry.admission.person.id]) !== JSON.stringify(entry.admission.person)
     )
-      throw new Error('The pinned arrival is incomplete.');
+      throw new Error('The saved person’s arrival is incomplete.');
   }
 }
 function row(e: ContinuityEntry, envelope: PersonaEnvelope, stage: string): OneCastRow {
@@ -170,7 +171,7 @@ export async function arrive(seed: number, fresh = false): Promise<ContinuityGam
       );
       if (departure && !oldSource) {
         bridgeStatus =
-          'Continuation return unavailable: this Hearsay chapter has already departed. Its saved source prefix is retained. Start a fresh authored fortnight to play another garden.';
+          'This Hearsay chapter has already continued in another game, so it cannot be resumed here. Its earlier history is still saved. Start fourteen days with the original people to play another garden.';
         continue;
       }
       // Dilan's opening is authored by the adapter; Derya uses this edition's nurse.
@@ -315,8 +316,7 @@ export function checkpointContinuity(): Promise<void> {
           await put('persona-departure:' + envelope.branchId, prefix);
           if (owner && current() === g && attempt === gateSerial) await gateContinuity(g, scope === 'file');
           if (owner && current() === g && gatedGame === g) store();
-          bridgeStatus =
-            'Derya’s assignment ended. Her checkpoint is saved; flat 5 remains her permanent home.';
+          bridgeStatus = 'Derya’s assignment ended. Her chapter is saved. Flat 5 remains her permanent home.';
         }
       } catch (error) {
         bridgeStatus = message(error);
@@ -370,7 +370,7 @@ export function checkpointContinuity(): Promise<void> {
         await put('persona-departure:' + envelope.branchId, prefix);
 
         bridgeStatus =
-          'Chapter checkpoint saved in this browser. Source continuation requires its matching saved departure and source support.';
+          'This person’s chapter is saved in this browser. To continue in their original game, that game must support their return and have the matching saved departure.';
         conflict = null;
         if (current() === g) {
           store();
@@ -407,17 +407,19 @@ export function continuityPanel(): HTMLElement {
   const status = document.createElement('p');
   const controls = feedbackPersonaControls(status);
   status.setAttribute('role', 'status');
-  status.textContent = bridgeStatus || 'Continuity uses this browser. A fresh fortnight is always available.';
+  status.textContent =
+    bridgeStatus ||
+    'Continuity lets people continue between games in this browser. You can always start fourteen days with the original people.';
   box.append(controls, status);
   const entries = current()?.continuity?.entries ?? [];
   if (entries.length) {
     const detail = document.createElement('details');
     const summary = document.createElement('summary');
-    summary.textContent = 'What this arrival carries';
+    summary.textContent = 'What continues with this person';
     detail.append(summary);
     const policy = document.createElement('p');
     policy.textContent =
-      'The approved profile and attended fact carry over. This chapter supplies current hunger, tiredness and mood. Travel and recovery are not simulated. Source routines and relationships stay in their original chapter.';
+      'The person’s approved profile and the fact they learned continue here. This chapter sets their current hunger, tiredness and mood. The game does not simulate their travel or recovery. Their routines and relationships stay in their original chapter.';
     detail.append(policy);
     for (const entry of entries) {
       const p = document.createElement('p');
@@ -443,7 +445,8 @@ export function continuityPanel(): HTMLElement {
         else {
           const g = current();
           if (!g?.s.deryaAssignmentReleased) {
-            status.textContent = 'Derya’s relief assignment has not ended. Her source chapter remains here.';
+            status.textContent =
+              'Derya’s temporary assignment has not ended. Her chapter stays in this game.';
             return;
           }
           const prefix = structuredClone(g);
@@ -496,10 +499,10 @@ export function continuityPanel(): HTMLElement {
       try {
         const file = input.files?.[0];
         if (!file) return;
-        if (file.size > 256 * 1024) throw new Error('Person file exceeds 256 KiB.');
+        if (file.size > 256 * 1024) throw new Error('This person file is larger than the 256 KiB limit.');
         candidate = await validatePersona(JSON.parse(await file.text()));
         status.textContent =
-          'Person file checked. Begin a new fortnight to admit it. Your loaded run stays unchanged.';
+          'The person file has been checked. Begin a new fourteen-day game to include this person. Your current game is unchanged.';
       } catch (error) {
         status.textContent = message(error);
       }
@@ -507,7 +510,7 @@ export function continuityPanel(): HTMLElement {
     input.click();
   });
   add(
-    'Save a chapter checkpoint',
+    'Save this person’s chapter',
     () =>
       void checkpointContinuity().then(() => {
         status.textContent = bridgeStatus;
@@ -515,7 +518,7 @@ export function continuityPanel(): HTMLElement {
   );
   if (pendingArrival)
     add(
-      'Fork the arriving history',
+      'Start a separate history for the arriving person',
       () =>
         void (async () => {
           const held = pendingArrival;
@@ -561,14 +564,14 @@ export function continuityPanel(): HTMLElement {
           candidate = null;
           await gateContinuity(g, held.scope === 'file');
           await loadArrival(g);
-          status.textContent = 'Explicit fork admitted into a new fortnight.';
+          status.textContent = 'A separate history for this person has begun in a new fourteen-day game.';
         })().catch((error) => {
           status.textContent = message(error);
         }),
     );
   if (conflict)
     add(
-      'Fork this continuation',
+      'Start a separate history for this person',
       () =>
         void (async () => {
           const held = conflict;
@@ -617,7 +620,7 @@ export function continuityPanel(): HTMLElement {
           conflict = null;
           await gateContinuity(current());
           store();
-          status.textContent = 'Explicit fork saved as the active branch.';
+          status.textContent = 'A separate history for this person is now saved as their current history.';
         })().catch((error) => {
           status.textContent = message(error);
         }),

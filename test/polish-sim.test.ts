@@ -1,5 +1,5 @@
 import { credence, trustOf } from '@adam0white/human-framework';
-import { expect, it } from 'vitest';
+import { afterAll, describe, expect, it } from 'vitest';
 import { runPolicy } from '../scripts/policy.ts';
 import { act, advance, newGame, PEOPLE, spokenClaim } from '../src/sim/game.ts';
 import { dailyIncidents, EMRE_INCIDENTS } from '../src/sim/incidents.ts';
@@ -38,8 +38,8 @@ it('collects repeated visible claims into one daily echo with count and speakers
   const echoes = g.s.log.filter((l) => l.kind === 'echo');
   expect(echoes.length).toBeGreaterThan(0);
   expect(echoes.every((l) => /again.*\d|\d.*again/.test(l.text))).toBe(true);
-  expect(echoes.every((l) => /heard from/.test(l.text))).toBe(true);
-  expect(new Set(echoes.map((l) => `${l.target}:${l.text.split('heard again')[0]}`)).size).toBe(
+  expect(echoes.every((l) => /heard it from/.test(l.text))).toBe(true);
+  expect(new Set(echoes.map((l) => `${l.target}:${l.text.split('You have heard this again')[0]}`)).size).toBe(
     echoes.length,
   );
 });
@@ -60,20 +60,23 @@ it('seeing a contradiction traces a lie and costs trust across the witness house
 });
 
 const policySeeds = [1, 2, 3, 8, 13];
-it('careful honest play wins a majority of seeded engagements', () => {
-  const states = policySeeds.map((seed) => runPolicy(seed, 'careful').s);
-  expect(states.filter((s) => s.engagement === 'accepted').length).toBeGreaterThan(policySeeds.length / 2);
-});
-it('reckless lies lose the engagement and empty the garden for a majority of seeds', () => {
-  const states = policySeeds.map((seed) => runPolicy(seed, 'reckless').s);
-  expect(states.filter((s) => s.engagement === 'refused' && s.garden === 'empty').length).toBeGreaterThan(
-    policySeeds.length / 2,
-  );
-});
-it('a few distant lies can still win a majority of seeded cunning runs', () => {
-  const states = policySeeds.map((seed) => runPolicy(seed, 'cunning').s);
-  expect(states.filter((s) => s.engagement === 'accepted').length).toBeGreaterThan(policySeeds.length / 2);
-  expect(states.every((s) => s.routes.some((r) => r.from === 'hatice' && r.lie))).toBe(true);
+describe.each(['careful', 'reckless', 'cunning'] as const)('%s seeded outcomes', (policy) => {
+  const outcomes = new Map<number, boolean>();
+  afterAll(() => {
+    expect(outcomes.size).toBe(policySeeds.length);
+    expect([...outcomes.values()].filter(Boolean).length).toBeGreaterThan(policySeeds.length / 2);
+  });
+  it.each(policySeeds)('plays seed %i to the policy outcome', (seed) => {
+    const state = runPolicy(seed, policy).s;
+    outcomes.set(
+      seed,
+      policy === 'reckless'
+        ? state.engagement === 'refused' && state.garden === 'empty'
+        : state.engagement === 'accepted',
+    );
+    if (policy === 'cunning')
+      expect(state.routes.some((route) => route.from === 'hatice' && route.lie)).toBe(true);
+  });
 });
 
 // A contradicted account in another household is not knowledge Rıza possesses.
@@ -146,5 +149,5 @@ it('does not turn another witnessed act into knowledge of a later incident', () 
   const g = newGame(1);
   advance(g, 1830);
   expect(spokenClaim(g.s, 'osman', 'emre', 'honest', true)).not.toMatch(/fifty|Ali/);
-  expect(spokenClaim(g.s, 'hatice', 'emre', 'honest', true)).toMatch(/fifty.*Ali/);
+  expect(spokenClaim(g.s, 'hatice', 'emre', 'honest', true)).toMatch(/Ali.*fifty/);
 });

@@ -27,13 +27,15 @@ it('holds time throughout same-sheet feedback under a privacy signal', async () 
   })()`);
   await page.locator('#game-menu').click();
   const before = await page.locator('#clock').innerText();
-  await page.getByRole('button', { name: 'Send word ▸', exact: true }).click();
+  await page.getByRole('button', { name: 'Feedback ▸', exact: true }).click();
   await page.clock.runFor(12000);
   expect(await page.locator('#clock').innerText()).toBe(before);
   expect(await page.getByRole('button', { name: 'Submit', exact: true }).isEnabled()).toBe(true);
-  await page.getByRole('textbox', { name: 'Your word', exact: true }).fill('Let me read.');
+  await page.getByRole('textbox', { name: 'Your note', exact: true }).fill('Let me read.');
   await page.getByRole('button', { name: 'Submit', exact: true }).click();
-  expect(await page.getByRole('status').last().innerText()).toContain('Note and verdict queued');
+  expect(await page.getByRole('status').last().innerText()).toContain(
+    'Your note and answer are queued to send',
+  );
   const sent = (await page.evaluate('window.sentRun')) as {
     note: string;
     run: { game: string; state: unknown; fingerprint: string };
