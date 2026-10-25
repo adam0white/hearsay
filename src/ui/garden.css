@@ -316,7 +316,7 @@ body:has(.cg-title),
 }
 .cg-footer {
   max-width: 1366px;
-  padding: 12px;
+  padding: 0;
   margin: auto;
 }
 .cg-footer:empty {
@@ -363,4 +363,10 @@ body .hflab :is(input, textarea) {
 .cg-title .fine {
   font-size: clamp(16px, 13px + 0.45vw, 19px);
   color: #665b4c;
+}
+
+/* Keep the common disclosure on one phone line without fixing its height. */
+.cg-footer .lk-telemetry-notice {
+  font-size: max(14px, calc(1rem - 3px)) !important;
+  padding: 4px 2px !important;
 }
