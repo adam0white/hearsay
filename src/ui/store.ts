@@ -37,7 +37,10 @@ function open(): Promise<IDBDatabase> {
 
 async function gzip(text: string): Promise<Blob> {
   const cs = new CompressionStream('gzip');
-  return new Response(new Blob([text]).stream().pipeThrough(cs)).blob();
+  // A Blob stream belongs to its document; WebKit can reject it during navigation.
+  const input = new Response(text).body;
+  if (!input) throw new Error('Save compression input is unavailable.');
+  return new Response(input.pipeThrough(cs)).blob();
 }
 
 async function gunzip(b: Blob): Promise<string> {
