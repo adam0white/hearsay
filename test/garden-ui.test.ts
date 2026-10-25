@@ -56,3 +56,29 @@ it.each([
   expect(await page.locator('.cg-confidence').innerText()).toContain('doorway');
   expect(await page.locator('.cg-panel').innerText()).toContain('keeps the sketches');
 });
+it('requires an unchecked new-game choice and saves that choice through reload', async () => {
+  const fresh = await browser.newPage();
+  try {
+    await fresh.goto(`${server.resolvedUrls?.local[0] ?? ''}?lab=1`);
+    const option = fresh.getByLabel('Use longer conversations about the garden and lunch');
+    await option.waitFor();
+    expect(await option.isChecked()).toBe(false);
+    await option.check();
+    await fresh.getByText('Lab tools', { exact: true }).click();
+    await fresh
+      .getByRole('button', { name: 'Play fourteen days with new local people', exact: true })
+      .click();
+    await fresh.locator('[data-pace="0"]').click();
+    const config = () =>
+      fresh.evaluate(`(async()=>{
+      const {get}=await import('/src/ui/store.ts');
+      return (await get('garden-cast6')).value.export.config;
+    })()`);
+    expect(await config()).toEqual({ dialogue: 'garden-talk/1' });
+    await fresh.reload();
+    await fresh.locator('[data-pace="0"]').click();
+    expect(await config()).toEqual({ dialogue: 'garden-talk/1' });
+  } finally {
+    await fresh.close();
+  }
+});

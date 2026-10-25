@@ -31,6 +31,7 @@ import {
   gardenOpening,
 } from './garden-cast.ts';
 import type { GardenChapter } from './garden-continuity.ts';
+import { type GardenConfig, gardenConversation, validateGardenConfig } from './garden-dialogue.ts';
 import {
   actualGardenLocation,
   answerConfrontation,
@@ -71,6 +72,7 @@ export interface GardenDiscovery {
 export interface GardenRun {
   edition: typeof GARDEN_EDITION;
   seed: number;
+  config?: GardenConfig;
   chapter?: GardenChapter;
   lunch: LunchState;
   minute: number;
@@ -107,7 +109,9 @@ export function freshGarden(
   seed: number,
   admitted: Partial<Record<GardenPerson, Person>> = {},
   chapter?: GardenChapter,
+  config?: GardenConfig,
 ): GardenRun {
+  validateGardenConfig(config);
   const people = {} as Record<GardenPerson, Person>;
   for (const [i, id] of GARDEN_IDS.entries()) {
     const p = admitted[id] ? copy(admitted[id]) : gardenOpening(id, seed ^ (i * 997));
@@ -120,6 +124,7 @@ export function freshGarden(
   return {
     edition: GARDEN_EDITION,
     seed,
+    ...(config ? { config: copy(config) } : {}),
     ...(chapter ? { chapter: copy(chapter) } : {}),
     lunch: lunchOpening(),
     minute: 360,
@@ -239,7 +244,28 @@ function testimony(
   const result =
     from === 'hatice'
       ? null
-      : converse(a, b, { at: g.minute, placeId: 'garden', maxClaims: 1, topics: [about] });
+      : converse(a, b, {
+          at: g.minute,
+          placeId: 'garden',
+          maxClaims: 1,
+          topics: [about],
+          ...(g.config
+            ? {
+                phrase: (claim, summary) => {
+                  const target = 'about' in claim ? (claim.about as GardenPerson) : undefined;
+                  const trait = claim.prop.split(':')[1];
+                  if (
+                    !('value' in claim) ||
+                    !target ||
+                    !GARDEN_IDS.includes(target) ||
+                    !['honest', 'reliable', 'kind', 'generous'].includes(trait ?? '')
+                  )
+                    return summary;
+                  return `${a.name} tells ${b.name}: “${GARDEN_CAST[target].name} is ${claim.value ? '' : 'not '}${trait}.” This is a claim, not proof.`;
+                },
+              }
+            : {}),
+        });
   for (const event of result?.socialEvents.speaker ?? []) socialEvent(a, event);
   for (const event of result?.socialEvents.listener ?? []) socialEvent(b, event);
   if (result) {
@@ -354,7 +380,15 @@ function testimony(
         prop: claim.prop,
         value: claim.value,
       });
-      note(g, 'talk', `${a.name} tells ${b.name} something about ${GARDEN_CAST[target].name}.`, from);
+      note(
+        g,
+        'talk',
+        g.config
+          ? (result!.told.find((p) => p.claims?.some((c) => c.prop === claim.prop && c.value === claim.value))
+              ?.summary ?? `${a.name} tells ${b.name} something about ${GARDEN_CAST[target].name}.`)
+          : `${a.name} tells ${b.name} something about ${GARDEN_CAST[target].name}.`,
+        from,
+      );
     }
 }
 export function chooseGarden(g: GardenRun, input: GardenInput): boolean {
@@ -523,7 +557,7 @@ export function chooseGarden(g: GardenRun, input: GardenInput): boolean {
       note(
         g,
         'answer',
-        `${GARDEN_CAST[input.person].name}: “${belief > 0.7 ? 'What I have heard makes me think' : belief < 0.3 ? 'What I have heard makes me doubt that' : 'I have not heard enough to judge whether'} ${GARDEN_CAST[input.about].name} is ${trait}. ${origin} ${uncertain ? publicConcern[input.person] : `Ask ${GARDEN_CAST[input.about].sex === 'male' ? 'him' : 'her'} directly.`}”${invitation}`,
+        `${GARDEN_CAST[input.person].name}: “${belief > 0.7 ? 'What I have heard makes me think' : belief < 0.3 ? 'What I have heard makes me doubt that' : 'I have not heard enough to judge whether'} ${GARDEN_CAST[input.about].name} is ${trait}. ${origin} ${g.config ? gardenConversation(g, input.person) : uncertain ? publicConcern[input.person] : `Ask ${GARDEN_CAST[input.about].sex === 'male' ? 'him' : 'her'} directly.`}”${invitation}`,
         input.person,
       );
     } else if (input.type === 'amends') {
@@ -756,8 +790,9 @@ export function replayGarden(
   minute: number,
   initial?: GardenRun['initialPeople'],
   chapter?: GardenChapter,
+  config?: GardenConfig,
 ): GardenRun {
-  const g = freshGarden(seed, initial, chapter);
+  const g = freshGarden(seed, initial, chapter, config);
   for (const e of inputs) {
     advanceGarden(g, e.at);
     if (!chooseGarden(g, e.input)) throw new Error('Invalid recorded garden choice');

@@ -31,6 +31,7 @@ import {
   gardenId,
   type SourceArchive,
 } from '../sim/garden-continuity.ts';
+import type { GardenConfig } from '../sim/garden-dialogue.ts';
 import { exportGarden, importGarden } from '../sim/garden-export.ts';
 import { actualGardenLocation, type PlanChoice, type ReputationTrait } from '../sim/garden-stakes.ts';
 import { gardenPlace } from './garden-english.ts';
@@ -178,11 +179,14 @@ function labControls() {
   if (!labTools) return '';
   return `<details class="cg-lab"><summary>Lab tools</summary><p>Continuity is ${shelf.enabled ? 'on' : 'off'}. It lets people continue between games in this browser. Saved games keep their original people.</p>${button(shelf.enabled ? 'Turn browser continuity off' : 'Turn browser continuity on', 'continuity')}${button('Play fourteen days with new local people', 'local')}${run ? button('Save this garden', 'save') + button('Download this run', 'export') : ''}<label class="cg-file">Import a run<input type="file" id="import-run" accept=".json,application/json"></label>${run ? `<label>Person whose chapter you want to save<select id="cg-checkpoint-person">${GARDEN_IDS.map((p) => `<option value="${p}">${esc(GARDEN_CAST[p].name)}</option>`).join('')}</select></label>${button('Save their closing chapter if it is ready', 'checkpoint')}${button('Start a separate history for this person', 'fork')}<p>A chapter cannot close while work or invoices remain unfinished. Download this game before replacing a person’s history.</p>${run.chapter?.inputs.map((p) => `<p>${esc(lifeAdmission(p, 'hearsay').line)}</p>`).join('') ?? ''}` : ''}</details>`;
 }
+function conversationOption() {
+  return `<label class="cg-dialogue"><input type="checkbox" id="cg-dialogue" ${starting ? 'disabled' : ''}> Use longer conversations about the garden and lunch</label>`;
+}
 function menuControls() {
-  return `${run ? button('Resume', 'back') : ''}${button('Feedback', 'send')}${button('Fullscreen', 'fullscreen')}<a href="https://human.adamwhite.work/games/" target="_top">All games</a><div id="cg-recording"></div>${run ? button('New game', 'new') : ''}${confirmNew ? `<p>Start a new fourteen-day game and replace this device’s saved garden?</p>${button('Start new game', 'restart', starting)}${button('Keep this garden', 'cancel-new', starting)}` : ''}${labControls()}`;
+  return `${run ? button('Resume', 'back') : ''}${button('Feedback', 'send')}${button('Fullscreen', 'fullscreen')}<a href="https://human.adamwhite.work/games/" target="_top">All games</a><div id="cg-recording"></div>${run ? button('New game', 'new') : ''}${confirmNew ? `<p>Start a new fourteen-day game and replace this device’s saved garden?</p>${conversationOption()}${button('Start new game', 'restart', starting)}${button('Keep this garden', 'cancel-new', starting)}` : ''}${labControls()}`;
 }
 function renderTitle() {
-  root.innerHTML = `<main class="cg-title"><p class="eyebrow">Fourteen days in the neighbourhood</p><h1>Hearsay</h1><p>You are Hatice. You run a tea garden in Istanbul. People visit between shifts, deliveries and appointments.</p><p class="goal">Your goal is to open a paid workers’ lunch on Day 13.</p><details><summary>How to play</summary><p>Arrange supplies on Day 4 and agree on paid cooking on Day 8. You need at least four meal reservations. People decide whether to book based on what they hear.</p><p>Choose a person to talk to. You can listen, repeat a claim or keep it private. Your words affect who trusts you and visits the garden. The clock runs for fourteen days.</p><p>Prices are in lira, the currency of Turkey. Your garden saves automatically on this device.</p></details>${notice ? `<p role="status">${esc(notice)}</p>` : ''}${button('Begin', 'start', starting)}${menuControls()}</main>`;
+  root.innerHTML = `<main class="cg-title"><p class="eyebrow">Fourteen days in the neighbourhood</p><h1>Hearsay</h1><p>You are Hatice. You run a tea garden in Istanbul. People visit between shifts, deliveries and appointments.</p><p class="goal">Your goal is to open a paid workers’ lunch on Day 13.</p><details><summary>How to play</summary><p>Arrange supplies on Day 4 and agree on paid cooking on Day 8. You need at least four meal reservations. People decide whether to book based on what they hear.</p><p>Choose a person to talk to. You can listen, repeat a claim or keep it private. Your words affect who trusts you and visits the garden. The clock runs for fourteen days.</p><p>Prices are in lira, the currency of Turkey. Your garden saves automatically on this device.</p></details>${notice ? `<p role="status">${esc(notice)}</p>` : ''}${conversationOption()}${button('Begin', 'start', starting)}${menuControls()}</main>`;
   root.querySelector('#cg-recording')?.append(telemetryToggle(lab));
 }
 function render() {
@@ -340,11 +344,14 @@ async function action(key: string) {
     ++loadGeneration;
     const attempt = ++generation;
     const seed = crypto.getRandomValues(new Uint32Array(1))[0]!;
+    const config: GardenConfig | undefined = root.querySelector<HTMLInputElement>('#cg-dialogue')?.checked
+      ? { dialogue: 'garden-talk/1' }
+      : undefined;
     starting = true;
     recordingGuard.invalidate();
     render();
     try {
-      let next = freshGarden(seed),
+      let next = freshGarden(seed, {}, undefined, config),
         receipts: Record<string, PersonaEnvelope> = {};
       await shelf.ready;
       if (shelf.enabled && key !== 'local') {
@@ -359,7 +366,7 @@ async function action(key: string) {
                 admitGardenPerson(input, seed, archives),
               ]),
             );
-            return freshGarden(seed, people);
+            return freshGarden(seed, people, undefined, config);
           },
           { isCurrent: () => generation === attempt },
         );

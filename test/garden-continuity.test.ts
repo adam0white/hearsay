@@ -68,7 +68,7 @@ async function voice(id: GardenPerson) {
     castRevision: c.revision,
     branchId: `test-${id}`,
     parentRevision: null,
-    source: { ...stamps, game: 'voice' },
+    source: { ...stamps, game: 'voice', rules: 'cast-1' },
     transfer: {
       castPassport: 'site-cast/1',
       sourceRole: id,
@@ -175,4 +175,11 @@ it('publishes a full ordinary closing checkpoint and retains source-bound trust 
   expect(back.body.lastSleep!.to - back.body.lastSleep!.from).toBe(
     run.people.riza.body.lastSleep!.to - run.people.riza.body.lastSleep!.from,
   );
+});
+
+it('refuses an unknown Voice exporter instead of treating a matching actor as a complete tuple', async () => {
+  const parent = await voice('riza');
+  const { revision: _revision, ...body } = parent;
+  const unknown = await createPersona({ ...body, source: { ...parent.source, rules: 'unknown-exporter' } });
+  expect(() => admitGardenPerson(preparePersonaLife(unknown, 0), 17)).toThrow(/semantic adapter/);
 });

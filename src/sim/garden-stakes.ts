@@ -5,6 +5,7 @@
 import {
   applyReputationBelief,
   confirm,
+  confirmObservedReputation,
   credence,
   socialEvent,
   trustOf,
@@ -319,8 +320,10 @@ export function stakesStep(g: GardenRun, here: (id: GardenPerson) => boolean): v
         const p = g.people[witness],
           prop = `${act.person}:${act.trait}`,
           before = credence(p, prop);
-        const disproved = confirm(p, prop, act.truth, g.minute);
-        applyReputationBelief(p, prop, before, credence(p, prop), g.minute);
+        const disproved = g.config
+          ? confirmObservedReputation(p, prop, act.truth, g.minute)
+          : confirm(p, prop, act.truth, g.minute);
+        if (!g.config) applyReputationBelief(p, prop, before, credence(p, prop), g.minute);
         for (const source of disproved) {
           if (!GARDEN_IDS.includes(source as GardenPerson)) continue;
           p.memory.sourceTrust[source] = Math.max(0, trustOf(p, source) - 0.12);

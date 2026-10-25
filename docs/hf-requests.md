@@ -1,6 +1,6 @@
 # Requests from Hearsay
 
-2026-10-20. Hearsay pins npm 2.10.0 and does not modify the framework checkout. Delivery status below refers to the published HF API; adoption is separate.
+Historical request record, 2026-10-20. Hearsay then pinned npm 2.10.0 and does not modify the framework checkout. Delivery status below refers to the published HF API; adoption is separate.
 
 - **Delivered in HF 2.10.0 — Optional testimony lineage token (Hearsay 1 / Stairwell 4).** `Belief.provenance`, `provenanceOf` and `converse(..., { provenance: true })` carry first acquisition, origin and an opaque host lineage token. The original request: `converse` selects a belief and returns a claim, but the host must match that claim to its own last received route to trace rumour ancestry. An optional opaque evidence token carried from an attended claim into later testimony would let a host keep a precise graph when several sources said the same thing. The framework should still own belief weighting; the host should still own the graph and its disclosure.
 - **One operation for observed reputation corrections.** Hosts calling `confirm` directly also need to call `applyReputationBelief` with the before/after credence. A composite observation helper would reduce the risk that a host corrects a belief while leaving the person's relationship unchanged. The existing functions are sufficient for this build.
@@ -12,9 +12,15 @@
 - **Delivered in HF 2.10.0 — Same-source contradiction (`contradicted` / `Percept.reports`, Stairwell 2).** Hearsay does not carry Stairwell's `<source>:dishonest` / 0.75-scale workaround. Its `receiveTestimony` instead penalizes a less trusted source when a different, more trusted speaker disagrees. HF's new operation detects a single source giving opposite accounts, once per proposition. Substitution would change evidence requirements and penalties, so the game's rule stays.
 - **Delivered in HF 2.10.0 — Provenance and opaque lineage (Hearsay 1 / Stairwell 4).** Adoption is deferred in this upgrade. HF retains first acquisition even after a correction; Hearsay chooses an eligible route from current testimony, or starts a new root for firsthand knowledge. Its per-transmission graph also carries bends, incidents, withdrawals and household consequences. Replacing that lookup with first acquisition would change ancestry and confrontation outcomes. Opting in only to store unused metadata would change full-state fixtures without replacing the workaround. The route graph remains authoritative. Reassess provenance with any future route-rule change; no new gameplay work is scheduled here.
 
-HF delivered the composite observed-reputation helper in 2.20 and the claim-attached conversation callback in 2.17. Hearsay deliberately retains its equivalent primitive composition and host-owned phrasing. The current garden invokes `converse` once and handles the selected result; phrasing does not select or invent a claim. Its existing graph remains authoritative. No unused provenance metadata is added. Revisit only with a route-rule change; owner review target 2026-11-03.
+## Current HF3 adoption decision — 2026-10-25
 
-Space, schedules, economic custom, the engagement decision, bend ladders and review disclosure remain host responsibilities by design.
+Hearsay pins released HF3.0.0, engine2.23.0. The explicit new-game `garden-talk/1` option adopts `confirmObservedReputation` at actual witnessed exchanges. The published helper performs the same `confirm` then `applyReputationBelief` composition, with the same default trait table. Source recalibration and root-specific confrontation still follow that correction. Unmarked runs retain the original composition.
+
+The same option supplies `converse`'s `phrase` callback for the exact selected character claim. The callback uses the claim's subject and value; it does not choose a claim or inspect private author facts. The game delivers the returned percept to the actual listener and uses its summary in the garden record. HF may suppress a percept when a listener already holds the claim; the selected statement still uses the existing transmission graph without pretending it supplied new evidence. Withheld claims and the speaker's private confidence or deceit are not exposed.
+
+The provenance substitution is deliberately rejected. HF's first acquisition and opaque lineage do not replace the host's query for the latest eligible, unretracted transmission to a particular person. Withdrawals, roots and witnessed contradictions require that graph. Adding unused first-acquisition metadata would not implement the request's precise route query. This is an engineering decision, not a future-review deferral.
+
+Space, schedules, economic custom, paid-lunch arrangements and source-route disclosure remain host responsibilities by design.
 
 ## Round 2 playtester diagnosis
 

@@ -121,6 +121,7 @@ export function admitGardenPerson(
     const own = parent.source.game === 'hearsay' && parent.transfer.castPassport === 'hearsay-cast/1';
     const voice =
       parent.source.game === 'voice' &&
+      parent.source.rules === 'cast-1' &&
       parent.transfer.castPassport === 'site-cast/1' &&
       (id === 'riza' || id === 'osman') &&
       GARDEN_ADAPTERS.voice[id] === parent.castId;
