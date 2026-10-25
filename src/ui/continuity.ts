@@ -28,7 +28,7 @@ let store: () => void = () => {};
 let pending: Promise<void> = Promise.resolve();
 let bridgeStatus = '';
 // Historical metadata does not create a separate recording choice.
-let linkageKnown = false;
+let _linkageKnown = false;
 let gateSerial = 0;
 let gatedGame: ContinuityGame | undefined;
 let gatedFile = false;
@@ -37,7 +37,7 @@ export function invalidateContinuity(): void {
   ++gateSerial;
   gatedGame = undefined;
   gatedFile = false;
-  linkageKnown = false;
+  _linkageKnown = false;
   lab.setPersonaRecording('pending-history');
   lab.allowPersonaRecording(false);
 }
@@ -76,7 +76,7 @@ export async function gateContinuity(g: ContinuityGame | undefined, file = false
   gatedGame = g;
   if (g && file) g.fileHistory ??= crypto.randomUUID();
   gatedFile = file || Boolean(g?.fileHistory);
-  linkageKnown = true;
+  _linkageKnown = true;
   lab.setPersonaRecording(null);
 }
 export async function chooseContinuityRecording(_value: boolean): Promise<void> {}
@@ -165,7 +165,7 @@ export async function arrive(seed: number, fresh = false): Promise<ContinuityGam
               })
             : null;
       if (!envelope || envelope.source.game !== ONE_CAST[castId].sourceGame) continue;
-      const departure = await get<ContinuityGame>('persona-departure:' + envelope.branchId);
+      const departure = await get<ContinuityGame>(`persona-departure:${envelope.branchId}`);
       const oldSource = departure?.value.continuity?.entries.some(
         (e) => e.admission.envelope.revision === envelope.revision,
       );
@@ -313,7 +313,7 @@ export function checkpointContinuity(): Promise<void> {
             outcome: 'accepted',
           });
           prefix.continuity = structuredClone(record.continuity);
-          await put('persona-departure:' + envelope.branchId, prefix);
+          await put(`persona-departure:${envelope.branchId}`, prefix);
           if (owner && current() === g && attempt === gateSerial) await gateContinuity(g, scope === 'file');
           if (owner && current() === g && gatedGame === g) store();
           bridgeStatus = 'Derya’s assignment ended. Her chapter is saved. Flat 5 remains her permanent home.';
@@ -367,7 +367,7 @@ export function checkpointContinuity(): Promise<void> {
         if (g.fileHistory) checkpointRow.scope = 'file';
         g.continuity?.rows.push(checkpointRow);
         prefix.continuity = structuredClone(g.continuity);
-        await put('persona-departure:' + envelope.branchId, prefix);
+        await put(`persona-departure:${envelope.branchId}`, prefix);
 
         bridgeStatus =
           'This person’s chapter is saved in this browser. To continue in their original game, that game must support their return and have the matching saved departure.';
@@ -480,7 +480,7 @@ export function continuityPanel(): HTMLElement {
             outcome: 'accepted',
           });
           prefix.continuity = structuredClone(g.continuity);
-          await put('persona-departure:' + envelope.branchId, prefix);
+          await put(`persona-departure:${envelope.branchId}`, prefix);
           if (current() === g) {
             await gateContinuity(g, true);
             if (current() === g) store();
@@ -615,7 +615,7 @@ export function continuityPanel(): HTMLElement {
           }
           if (held.prefix) {
             held.prefix.continuity = structuredClone(held.game.continuity);
-            await put('persona-departure:' + fork.branchId, held.prefix);
+            await put(`persona-departure:${fork.branchId}`, held.prefix);
           }
           conflict = null;
           await gateContinuity(current());

@@ -21,10 +21,10 @@ import {
 import type { Game, Input, Line, LoggedInput, Route, Scene, State, Trait } from './types.ts';
 
 export * from './types.ts';
-export { PEOPLE, PLACES } from './world.ts';
+export { PEOPLE } from './world.ts';
 export { REPUTATION_TRAITS };
 
-import { DERYA_NIGHT_SCHEDULE, neighborNorm, PEOPLE, PLACES, SCHEDULES } from './world.ts';
+import { DERYA_NIGHT_SCHEDULE, neighborNorm, PEOPLE, SCHEDULES } from './world.ts';
 
 function confirm(...args: Parameters<typeof hfConfirm>) {
   const [p, proposition, , at] = args;

@@ -133,7 +133,8 @@ export function admitGardenPerson(
       | { schema: unknown; sourceMinute: unknown; rng: unknown; sha256: string }
       | undefined;
     if (
-      !['2.17.0', '2.21.0'].includes(parent.source.engine) ||
+      !['2.17.0', '2.21.0', '2.23.0'].includes(parent.source.engine) ||
+      (own && parent.source.engine === '2.23.0' && parent.source.rules !== 'hearsay-cast-6') ||
       portable.person.source.engine !== parent.source.engine ||
       !checkpoint ||
       checkpoint.schema !== portable.person.source.schema ||

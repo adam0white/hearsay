@@ -1,4 +1,4 @@
-import { type Browser, chromium, type Page } from 'playwright-core';
+import { type Browser, chromium, type Page, webkit } from 'playwright-core';
 import { createServer, type ViteDevServer } from 'vite';
 import { afterAll, beforeAll, expect, it } from 'vitest';
 
@@ -8,7 +8,7 @@ let page: Page;
 beforeAll(async () => {
   server = await createServer({ server: { host: '127.0.0.1', port: 0, hmr: false, watch: null } });
   await server.listen();
-  browser = await chromium.launch();
+  browser = await (process.env.HEARSAY_BROWSER === 'webkit' ? webkit : chromium).launch();
   page = await browser.newPage();
 });
 afterAll(async () => {
@@ -20,6 +20,7 @@ it.each([
   { width: 1280, height: 800 },
 ])('plays, saves and reloads the canonical UI at $width×$height', async (viewport) => {
   await page.setViewportSize(viewport);
+  expect(await page.evaluate(() => ({ width: innerWidth, height: innerHeight }))).toEqual(viewport);
   await page.goto(`${server.resolvedUrls?.local[0] ?? ''}?lab=1`);
   await page.locator('.cg-title, .cg-game').first().waitFor();
   if (await page.locator('.cg-title').count()) await page.getByText('Lab tools', { exact: true }).click();

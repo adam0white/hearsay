@@ -4,13 +4,6 @@
  * count as a player.
  */
 import { createLab, type Lab } from '@adam0white/lab-client';
-import { compactRun, type RunExport } from './export';
-
-export const notebookRunOptions = {
-  compact: (run: unknown) => compactRun(run as RunExport),
-  compactNote:
-    'This includes the seed, choices, clock and fingerprint. It leaves out the full state of the neighbourhood.',
-};
 
 const quiet: Lab | null =
   typeof navigator !== 'undefined' && navigator.webdriver

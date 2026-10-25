@@ -1,4 +1,4 @@
-import { type Browser, chromium, type Page } from 'playwright-core';
+import { type Browser, chromium, type Page, webkit } from 'playwright-core';
 import { createServer, type ViteDevServer } from 'vite';
 import { afterAll, beforeAll, expect, it } from 'vitest';
 
@@ -9,7 +9,7 @@ beforeAll(async () => {
   server = await createServer({ server: { host: '127.0.0.1', port: 0, hmr: false, watch: null } });
   await server.listen();
   base = server.resolvedUrls?.local[0] ?? '';
-  browser = await chromium.launch();
+  browser = await (process.env.HEARSAY_BROWSER === 'webkit' ? webkit : chromium).launch();
 });
 afterAll(async () => {
   await browser?.close();

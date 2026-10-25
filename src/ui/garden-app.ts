@@ -54,7 +54,7 @@ let checkpointBusy = false;
 const stamps = () => ({
   game: 'hearsay',
   build: lab.build().c ?? 'development',
-  engine: '2.21.0',
+  engine: '2.23.0',
   rules: 'hearsay-cast-6',
 });
 let run: GardenRun | undefined;

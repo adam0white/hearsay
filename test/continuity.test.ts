@@ -4,7 +4,7 @@ import { expect, it, vi } from 'vitest';
 import { newGame } from '../src/sim/game';
 import { checkpointPerson } from '../src/sim/one-cast';
 
-const events = vi.hoisted(() => {
+const _events = vi.hoisted(() => {
   const target = new EventTarget();
   Object.defineProperty(globalThis, 'window', { configurable: true, value: target });
   return target;
@@ -145,7 +145,7 @@ it('refuses a competing old admission even when its earlier claim is retained', 
   expect(state.heads[envelope.castId]).toBe(accepted);
 });
 
-async function admitted() {
+async function _admitted() {
   const envelope = await source();
   fake.request.mockImplementation(async (req) =>
     req.action === 'get'

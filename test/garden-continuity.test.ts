@@ -13,7 +13,7 @@ import { GARDEN_CAST, type GardenPerson, gardenOpening } from '../src/sim/garden
 import { admitGardenPerson, projectGardenPerson } from '../src/sim/garden-continuity.ts';
 import { exportGarden, importGarden } from '../src/sim/garden-export.ts';
 
-const stamps = { game: 'hearsay', build: 'test', engine: '2.21.0', rules: 'hearsay-cast-6' };
+const stamps = { game: 'hearsay', build: 'test', engine: '2.23.0', rules: 'hearsay-cast-6' };
 async function voice(id: GardenPerson) {
   // Synthetic adapter control, never a browser/source journey receipt.
   const person = gardenOpening(id, 17, 707);

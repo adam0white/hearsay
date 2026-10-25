@@ -94,18 +94,6 @@ export async function get<T>(key: string): Promise<{ value: T; at: number } | nu
   }
 }
 
-export async function drop(key: string): Promise<void> {
-  try {
-    const db = await open();
-    await new Promise<void>((res) => {
-      const tx = db.transaction(STORE, 'readwrite');
-      tx.objectStore(STORE).delete(key);
-      tx.oncomplete = () => res();
-      tx.onerror = () => res();
-    });
-  } catch {}
-}
-
 /** Queue the latest JSON transaction synchronously while pagehide still owns a live database connection. */
 export function putNow(key: string, value: unknown): boolean {
   try {

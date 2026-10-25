@@ -8,7 +8,7 @@ it('opts fresh canonical people into persisted plain narration and pins that cho
   for (const id of GARDEN_IDS) {
     expect(run.people[id].lexicon).toMatchObject({ plainEnglish: true });
     expect(run.initialPeople[id].lexicon).toMatchObject({ plainEnglish: true });
-    expect(run.people[id].engine).toBe('2.21.0');
+    expect(run.people[id].engine).toBe('2.23.0');
   }
   advanceGarden(run, 420);
   expect(importGarden(JSON.stringify(exportGarden(run)))).toEqual(run);

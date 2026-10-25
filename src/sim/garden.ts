@@ -411,7 +411,7 @@ export function chooseGarden(g: GardenRun, input: GardenInput): boolean {
       });
     const decision = decide(p, offers, { now: g.minute });
     const chosen = offers.find((a) => a.id === decision.chosenAffordanceId);
-    if (!chosen || chosen.id !== 'talk') {
+    if (chosen?.id !== 'talk') {
       note(
         g,
         'refusal',

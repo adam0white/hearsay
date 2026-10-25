@@ -21,6 +21,8 @@ async function fixture(fitness = 0.5) {
     sex: 'female',
     traits: { honesty: 0.68 },
   });
+  // Synthetic historical adapter control, not an actual source-host journey.
+  source.engine = '2.21.0';
   source.body.fitness = fitness;
   source.memory.episodes.push({
     id: 'e1',
@@ -37,6 +39,8 @@ async function fixture(fitness = 0.5) {
     skills: {},
     episodes: { e1: { id: 'delivery-1', action: 'delivery-work', tags: [] } },
   });
+  // Freeze the historical portable dialect explicitly in this synthetic adapter control.
+  projection.source.engine = '2.21.0';
   const envelope = await createPersona({
     format: 'hf-persona/1',
     castId: 'hf.cast.dilan.murmur',
@@ -186,7 +190,7 @@ describe('one-cast Hearsay boundary', () => {
     const result = encounterOneCast(admission.person, admission, 'support', 1500);
     for (let i = 0; i < 100; i++)
       result.person.memory.episodes.push({
-        id: 'old-' + i,
+        id: `old-${i}`,
         at: i,
         kind: 'outcome',
         action: 'rest',

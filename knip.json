@@ -1,0 +1,11 @@
+{
+  "entry": [
+    "index.html",
+    "src/ui/app.ts",
+    "test/fixtures/legacy.html",
+    "scripts/**/*.ts",
+    "test/**/*.test.ts"
+  ],
+  "project": ["src/**/*.ts", "scripts/**/*.ts", "test/**/*.ts"],
+  "ignoreExportsUsedInFile": true
+}

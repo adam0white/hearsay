@@ -151,15 +151,6 @@ export function neighborNorm(s: Pick<State, 'version'>, id: string): Neighbor['n
   return s.version >= 4 && id === 'derya' ? 'forbidden' : PEOPLE.find((p) => p.id === id)?.norm;
 }
 
-export const DERYA_CANONICAL = {
-  castId: 'hf.cast.derya.stairwell',
-  call: 'Derya Hanım',
-  district: 'Istanbul',
-  permanentHome: 'Flat 5, floor 2, Lale Apartmanı, Istanbul',
-  temporaryHome: 'home-7',
-  single: true,
-} as const;
-
 /** Breakfast after rounds, morning sleep, afternoon errands, night work. */
 export const DERYA_NIGHT_SCHEDULE = [
   'fountain',

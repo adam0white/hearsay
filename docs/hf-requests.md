@@ -12,7 +12,7 @@
 - **Delivered in HF 2.10.0 — Same-source contradiction (`contradicted` / `Percept.reports`, Stairwell 2).** Hearsay does not carry Stairwell's `<source>:dishonest` / 0.75-scale workaround. Its `receiveTestimony` instead penalizes a less trusted source when a different, more trusted speaker disagrees. HF's new operation detects a single source giving opposite accounts, once per proposition. Substitution would change evidence requirements and penalties, so the game's rule stays.
 - **Delivered in HF 2.10.0 — Provenance and opaque lineage (Hearsay 1 / Stairwell 4).** Adoption is deferred in this upgrade. HF retains first acquisition even after a correction; Hearsay chooses an eligible route from current testimony, or starts a new root for firsthand knowledge. Its per-transmission graph also carries bends, incidents, withdrawals and household consequences. Replacing that lookup with first acquisition would change ancestry and confrontation outcomes. Opting in only to store unused metadata would change full-state fixtures without replacing the workaround. The route graph remains authoritative. Reassess provenance with any future route-rule change; no new gameplay work is scheduled here.
 
-The composite observed-reputation correction and conversation narration requests above remain open. No new regard or contradiction mechanics are enabled.
+HF delivered the composite observed-reputation helper in 2.20 and the claim-attached conversation callback in 2.17. Hearsay deliberately retains its equivalent primitive composition and host-owned phrasing. The current garden invokes `converse` once and handles the selected result; phrasing does not select or invent a claim. Its existing graph remains authoritative. No unused provenance metadata is added. Revisit only with a route-rule change; owner review target 2026-11-03.
 
 Space, schedules, economic custom, the engagement decision, bend ladders and review disclosure remain host responsibilities by design.
 
@@ -30,17 +30,17 @@ No change was made to the human-framework checkout. The HF cohort is a local sim
 
 Command: `node scripts/hf-playtest/run.ts run personas=commuter,mischief,rulesLawyer seeds=3 minutes=12 build=polish-r2 out=docs/playtests/2026-10-20-hf-r2.json`. The original JSON output is archived losslessly as `docs/playtests/2026-10-20-hf-r2.json.gz`; it contains all nine raw session traces, persona records and the cohort summary. See `docs/playtests/2026-10-20-hf-r2.md` for the session index. All sessions hit the twelve-minute cap. None quit voluntarily; none completed the fortnight.
 
-| Persona | Seed | Clock at cap | Pace inputs |
-| --- | --- | --- | --- |
-| commuter | 1 | Day 6 07:23 | 21 |
-| commuter | 2 | Day 5 07:05 | 24 |
-| commuter | 3 | Day 7 17:25 | 23 |
-| mischief | 1 | Day 8 07:08 | 31 |
-| mischief | 2 | Day 6 07:55 | 30 |
-| mischief | 3 | Day 6 17:08 | 16 |
-| rulesLawyer | 1 | Day 6 07:13 | 31 |
-| rulesLawyer | 2 | Day 4 19:02 | 24 |
-| rulesLawyer | 3 | Day 7 00:16 | 25 |
+| Persona     | Seed | Clock at cap | Pace inputs |
+| ----------- | ---- | ------------ | ----------- |
+| commuter    | 1    | Day 6 07:23  | 21          |
+| commuter    | 2    | Day 5 07:05  | 24          |
+| commuter    | 3    | Day 7 17:25  | 23          |
+| mischief    | 1    | Day 8 07:08  | 31          |
+| mischief    | 2    | Day 6 07:55  | 30          |
+| mischief    | 3    | Day 6 17:08  | 16          |
+| rulesLawyer | 1    | Day 6 07:13  | 31          |
+| rulesLawyer | 2    | Day 4 19:02  | 24          |
+| rulesLawyer | 3    | Day 7 00:16  | 25          |
 
 The cohort exercised all six verbs across its sessions; Hold your tongue was chosen only once (rulesLawyer seed 1). Every session used pace controls. No session crossed the bored classification threshold. Two rulesLawyer sessions had classified frustration; the other personas had none. RulesLawyer still had a 135-second maximum lull. This establishes that the adapter now reaches later daily scenes and that the prior day-1 stopping pattern is absent under this bounded policy. It does not establish human retention, later-fortnight engagement, a winning route, or acceptance. The altered game content, pace access, appraisal and authored action menu prevent attribution of the result to any single change. The narrow menu follows the latest witnessed scene plus Kemal and Emre; it does not explore every person/trait combination available in the UI.
 
@@ -49,3 +49,11 @@ The cohort exercised all six verbs across its sessions; Hold your tongue was cho
 Fresh canonical garden people and the historical shell’s current constructors persist `lexicon.plainEnglish: true`. Immutable editions 1–3 retain their original replay inputs. Loaded complete people and own archived continuations retain their saved narration choice. Voice’s finite portable snapshot has no lexicon; a new receiving Person uses Hearsay’s narration default. The package and source envelope pin 2.21.0; the dependency override keeps lab-client’s clock on the same package. No bodily, project, social or other faculty opt-in changed.
 
 Lesson: narration belongs to the pinned Person. Set it at construction, never while rendering or loading. The live garden already writes its own sentences and does not display HF intention templates, so package inventory examples are not on-screen evidence. The Voice adapter accepts only the unchanged 2.17.0 and 2.21.0 portable dialects, with matching envelope/snapshot engines, source roles, canonical revisions and mapping identity. Its regression uses a real Voice constructor and checkpoint, not a renamed historical header.
+
+## HF 3.0.0 adoption (2026-10-25)
+
+Exact published HF3.0.0 supplies engine2.23.0. Immutable client0.4.10 and kit0.5.11 resolve one framework graph, without the obsolete framework override. The current garden keeps `hearsay-cast-6`: passport semantics and role mappings are unchanged. Fresh saved Persons pin plain-English narration. Existing complete people retain their saved choices. No mutable tuning or new bodily faculty is enabled.
+
+The old one-cast Derya shell remains historical. It has no current production entry or supported permalink: only the explicit test fixture mounts it. The canonical garden supports its own complete archive and Voice Rıza/Osman calendar adapters. It has no current Stairwell Derya adapter. Do not label historical synthetic controls or an unreachable new tuple as a current round trip. Reassess a new ordinary garden Derya adapter after owner review on 2026-11-03; it would need an actual source passport, explicit semantics and both host exporters.
+
+Lesson: a package upgrade cannot establish a cross-host journey. Match source edition, engine, revision, actual checkpoint and replay together; retain the raw source separately from the portable projection.
