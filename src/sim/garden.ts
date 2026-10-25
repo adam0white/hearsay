@@ -500,10 +500,25 @@ export function chooseGarden(g: GardenRun, input: GardenInput): boolean {
             ? `${GARDEN_CAST[source.id as GardenPerson].name} told me about it.`
             : 'I heard it in an earlier chapter. The details remain in that chapter.'
         : 'Nobody has told me about it.';
+      // Public concerns give an uncertain answer a personal subject without awarding a confidence.
+      const publicConcern: Record<Exclude<GardenPerson, 'hatice'>, string> = {
+        derya: 'I work nights. I need somewhere quiet after my shift.',
+        dilan: 'I have deliveries to finish. I want a break without another errand.',
+        nermin: 'I spend my day arranging work for other people. I want time to think about my own work.',
+        aylin: 'I cook at the school. My evenings are not another shift.',
+        ece: 'I want somewhere to sit between deliveries without having to buy anything.',
+        riza: 'I help deliver bread. I would like to talk about something besides work.',
+        osman: 'I supply produce. A written order matters more to me than praise.',
+      };
+      const uncertain = belief >= 0.3 && belief <= 0.7;
+      const invitation =
+        uncertain && !g.discoveries[input.person]
+          ? ' Choose “Invite a quiet conversation” to listen to them.'
+          : '';
       note(
         g,
         'answer',
-        `${GARDEN_CAST[input.person].name}: “${belief > 0.7 ? 'What I have heard makes me think' : belief < 0.3 ? 'What I have heard makes me doubt that' : 'I have not heard enough to judge whether'} ${GARDEN_CAST[input.about].name} is ${trait}. ${origin} Ask them directly.”`,
+        `${GARDEN_CAST[input.person].name}: “${belief > 0.7 ? 'What I have heard makes me think' : belief < 0.3 ? 'What I have heard makes me doubt that' : 'I have not heard enough to judge whether'} ${GARDEN_CAST[input.about].name} is ${trait}. ${origin} ${uncertain ? publicConcern[input.person] : 'Ask them directly.'}”${invitation}`,
         input.person,
       );
     } else if (input.type === 'amends') {
