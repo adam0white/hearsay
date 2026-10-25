@@ -104,10 +104,18 @@ function input(value: GardenInput) {
   if (!chooseGarden(run, value))
     notice = 'They cannot do this now. Try again when their work or rest ends, or keep the matter private.';
   else {
-    notice = '';
+    notice = value.type === 'ask' ? (run.log.at(-1)?.text ?? '') : '';
     save();
   }
   render();
+  if (value.type === 'ask') {
+    const answer = root.querySelector<HTMLElement>('.cg-notice');
+    if (answer) {
+      const headerHeight = root.querySelector('.cg-header')?.getBoundingClientRect().height ?? 0;
+      answer.style.scrollMarginTop = `${headerHeight + 8}px`;
+      answer.scrollIntoView({ block: 'nearest' });
+    }
+  }
 }
 async function useRun(
   next: GardenRun,
