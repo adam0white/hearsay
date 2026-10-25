@@ -369,4 +369,5 @@ body .hflab :is(input, textarea) {
 .cg-footer .lk-telemetry-notice {
   font-size: max(14px, calc(1rem - 3px)) !important;
   padding: 4px 2px !important;
+  font-family: Arial, "Liberation Sans", sans-serif !important;
 }

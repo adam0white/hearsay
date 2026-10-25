@@ -16,20 +16,28 @@ it('keeps the actual notice and wrapper compact and lets enlarged disclosure wra
     await notice.waitFor({ state: 'visible' });
     await page.evaluate(() => document.fonts.ready);
     const measure = () =>
-      notice.evaluate((el) => ({
-        text: el.textContent,
-        font: Number.parseFloat(getComputedStyle(el).fontSize),
-        height: el.getBoundingClientRect().height,
-        wrapper: el.parentElement?.getBoundingClientRect().height ?? 999,
-        line: Number.parseFloat(getComputedStyle(el).lineHeight),
-        clipped: el.scrollHeight > el.clientHeight + 2 || el.scrollWidth > el.clientWidth + 2,
-        width: el.getBoundingClientRect().width,
-        controls: el.childElementCount,
-      }));
+      notice.evaluate((el) => {
+        const range = document.createRange();
+        range.selectNodeContents(el);
+        return {
+          lineRects: range.getClientRects().length,
+          fontFamily: getComputedStyle(el).fontFamily,
+          text: el.textContent,
+          font: Number.parseFloat(getComputedStyle(el).fontSize),
+          height: el.getBoundingClientRect().height,
+          wrapper: el.parentElement?.getBoundingClientRect().height ?? 999,
+          line: Number.parseFloat(getComputedStyle(el).lineHeight),
+          clipped: el.scrollHeight > el.clientHeight + 2 || el.scrollWidth > el.clientWidth + 2,
+          width: el.getBoundingClientRect().width,
+          controls: el.childElementCount,
+        };
+      });
     const normal = await measure();
     expect(normal.text).toBe('We record and link play across games on this device.');
     expect(normal.font).toBe(14);
     expect(normal.height).toBeLessThan(32);
+    expect(normal.lineRects).toBe(1);
+    expect(normal.fontFamily).toContain('Arial');
     expect(normal.wrapper).toBeLessThanOrEqual(40);
     expect(normal.clipped).toBe(false);
     expect(normal.controls).toBe(0);
