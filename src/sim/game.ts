@@ -722,6 +722,7 @@ export function newGame(
     if (version >= 4 && p.id === 'derya') {
       s.people.derya = createPerson({
         id: 'derya',
+        lexicon: { plainEnglish: true },
         name: 'Derya',
         seed: seed ^ 0x55,
         now: 360,
@@ -737,6 +738,8 @@ export function newGame(
     }
     s.people[p.id] = createPerson({
       id: p.id,
+      // Editions 1–3 are immutable legacy replay constructors.
+      ...(version >= 4 ? { lexicon: { plainEnglish: true } } : {}),
       name: p.name,
       seed: hash(`${seed}:${p.id}`),
       now: 360,

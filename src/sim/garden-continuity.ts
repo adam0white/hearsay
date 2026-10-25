@@ -133,6 +133,8 @@ export function admitGardenPerson(
       | { schema: unknown; sourceMinute: unknown; rng: unknown; sha256: string }
       | undefined;
     if (
+      !['2.17.0', '2.21.0'].includes(parent.source.engine) ||
+      portable.person.source.engine !== parent.source.engine ||
       !checkpoint ||
       checkpoint.schema !== portable.person.source.schema ||
       checkpoint.sourceMinute !== portable.person.source.now ||

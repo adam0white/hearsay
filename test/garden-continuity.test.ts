@@ -13,7 +13,7 @@ import { GARDEN_CAST, type GardenPerson, gardenOpening } from '../src/sim/garden
 import { admitGardenPerson, projectGardenPerson } from '../src/sim/garden-continuity.ts';
 import { exportGarden, importGarden } from '../src/sim/garden-export.ts';
 
-const stamps = { game: 'hearsay', build: 'test', engine: '2.17.0', rules: 'hearsay-cast-6' };
+const stamps = { game: 'hearsay', build: 'test', engine: '2.21.0', rules: 'hearsay-cast-6' };
 async function voice(id: GardenPerson) {
   // Synthetic adapter control, never a browser/source journey receipt.
   const person = gardenOpening(id, 17, 707);
@@ -148,7 +148,9 @@ it('refuses the entire startup before CAS if one allocated source has an unsuppo
 it('publishes a full ordinary closing checkpoint and retains source-bound trust and episodes on return', async () => {
   const { captureGardenSource } = await import('../src/sim/garden-continuity.ts');
   const { seedSourceTrust, trustOf } = await import('@adam0white/human-framework');
-  const run = freshGarden(17);
+  const pinned = gardenOpening('riza', 17);
+  pinned.lexicon = { plainEnglish: false };
+  const run = freshGarden(17, { riza: pinned });
   advanceGarden(run, 20160);
   seedSourceTrust(run.people.riza, 'hatice', 0.91);
   const captured = await captureGardenSource(run, 'riza');
@@ -165,6 +167,7 @@ it('publishes a full ordinary closing checkpoint and retains source-bound trust 
     limitations: captured.limitations,
   });
   const back = admitGardenPerson(preparePersonaLife(parent, 0), 17, [captured.archive]);
+  expect(back.lexicon).toEqual({ plainEnglish: false });
   expect(trustOf(back, 'hatice')).toBe(0.91);
   expect(back.memory.episodes.length).toBe(run.people.riza.memory.episodes.length);
   expect(back.body.sleepDebt).toBe(run.people.riza.body.sleepDebt);

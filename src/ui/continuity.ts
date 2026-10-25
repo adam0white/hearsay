@@ -198,7 +198,7 @@ export async function arrive(seed: number, fresh = false): Promise<ContinuityGam
         source: {
           game: 'hearsay',
           build: build(),
-          engine: '2.14.1',
+          engine: '2.21.0',
           rules: '5',
         },
       });
@@ -540,7 +540,7 @@ export function continuityPanel(): HTMLElement {
             source: {
               game: 'hearsay',
               build: build(),
-              engine: '2.14.1',
+              engine: '2.21.0',
               rules: '5',
             },
           });

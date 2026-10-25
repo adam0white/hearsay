@@ -166,6 +166,7 @@ export function gardenOpening(id: GardenPerson, seed: number, now = 360): Person
   if (!castForGame('hearsay').some((p) => p.castId === c.castId)) throw new Error('Unknown allocation');
   return createPerson({
     id,
+    lexicon: { plainEnglish: true },
     name: c.name,
     seed,
     now,

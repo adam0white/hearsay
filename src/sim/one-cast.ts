@@ -47,6 +47,7 @@ export const ONE_CAST = {
 export function makeDilanOpening(seed: number, minute = 420, projection?: PersonaProjectionSnapshot): Person {
   const person = createPerson({
     id: 'dilan-delivery',
+    lexicon: { plainEnglish: true },
     name: 'Dilan',
     seed,
     now: minute,
@@ -195,7 +196,7 @@ export async function prepareOneCastAdmission(
   if (
     envelope.castRevision !== '1' ||
     envelope.source.game !== contract.sourceGame ||
-    envelope.source.engine !== '2.14.1'
+    !['2.14.1', '2.21.0'].includes(envelope.source.engine)
   )
     fail('The original game or character revision is not supported.');
   const allowed = ['person', 'history', 'checkpoint', 'admission', 'departure'];
@@ -203,6 +204,7 @@ export async function prepareOneCastAdmission(
     fail('The file contains an unsupported source transfer field.');
   const projection = validatePersonaProjection(envelope.transfer.person);
   if (
+    (envelope.source.engine === '2.21.0' && projection.source.engine !== '2.21.0') ||
     projection.mappingVersion !== contract.incoming ||
     projection.source.id !== contract.sourceId ||
     projection.commitments.length ||

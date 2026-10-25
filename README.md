@@ -4,7 +4,7 @@ A static web game about talk, trust and consequences in an Istanbul tea garden. 
 
 The current canonical edition is documented in [canonical adoption](docs/canonical-adoption.md). It uses Hatice, Derya, Dilan, Nermin, Aylin, Ece, Rıza and Osman. The old engagement and its 32-person household cast are historical. [The original design](docs/design.md) and [playtest records](docs/playtests/README.md) retain that history. Adam accepts the game by playing; technical delivery does not establish owner acceptance.
 
-The canonical edition uses HF 2.18.0, lab-client 0.4.0 and lab-kit 0.5.0. Browser continuity admits every compatible allocated head in one atomic batch before starting. Voice Rıza and Osman have explicit calendar adapters. Unsupported source dialects and older cast revisions refuse the whole admission; separate local play remains available. Exact release and browser receipts are recorded in the worker report outside the repository.
+The canonical edition uses HF 2.21.0, lab-client 0.4.7 and lab-kit 0.5.8. Browser continuity admits every compatible allocated head in one atomic batch before starting. Voice Rıza and Osman have explicit calendar adapters. Unsupported source dialects and older cast revisions refuse the whole admission; separate local play remains available. Exact release and browser receipts are recorded in the worker report outside the repository.
 
 Use Homebrew Node 24 or newer:
 
