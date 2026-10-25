@@ -139,6 +139,12 @@ const personName = Object.values(GARDEN_CAST)
 
 export function gardenEnglish(text: string): string {
   let result = wording[text] ?? text;
+  // Imported narration can retain historical wording. Project it without editing the saved record.
+  result = result
+    .replace(/Gıybet, talk behind someone’s back\./g, 'Talking behind someone’s back.')
+    .replace(/\bGıybet\b/g, 'talking behind someone’s back')
+    .replace(/([\p{L}]+) Hanım\b/gu, 'Ms $1')
+    .replace(/kapıcı|\bkapici\b/giu, 'caretaker');
   // Results are sometimes followed by names or quoted inside another log entry.
   for (const [before, after] of Object.entries(wording)) result = result.replaceAll(before, after);
   for (const [before, after] of substitutions) result = result.replaceAll(before, after);

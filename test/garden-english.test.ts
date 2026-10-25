@@ -47,3 +47,12 @@ it.each([
   expect(gardenEnglish(stored)).toContain(expected);
   expect(stored).toContain('actually sit down and pay');
 });
+
+it('translates imported historical terms without changing the saved account or place names', () => {
+  const stored =
+    'Derya Hanım: Gıybet, talk behind someone’s back. They can’t answer us. The kapıcı lives at Lale Apartmanı.';
+  expect(gardenEnglish(stored)).toBe(
+    'Ms Derya: Talking behind someone’s back. They can’t answer us. The caretaker lives at Lale Apartmanı.',
+  );
+  expect(stored).toContain('Derya Hanım: Gıybet');
+});

@@ -2,7 +2,7 @@
 
 Use full grammatical sentences with articles and verbs. Labels and short status fields may name things directly. Say literally what happens. Use one name for each thing throughout the game. Introduce one new idea at a time. Explain a game term when it first appears. Use familiar words for instructions and controls. Aim for grade 7; richer dialogue must still be grammatical. State uncertainty plainly. Cut words the player does not need.
 
-Preserve names, Turkish words, relationships, culture, uncertainty, rules and difficulty. A disclosure is not proof of a character trait. Help does not imply payment, forgiveness, qualifications or completed future plans.
+Keep the setting, places, personal names, relationships and uncertainty. Every sentence must be understandable without Turkish. Use English for common terms. Introduce the building’s caretaker in English and later use caretaker. Keep at most two flavour words per game and explain each within its first sentence. Faith stays quiet background, sourced from the Human Framework research/ records; invent no rulings. Preserve meaning, rules and difficulty. A disclosure is not proof of a character trait. Help does not imply payment, forgiveness, qualifications or completed future plans.
 
 Hearsay renders `garden-english.ts` projections of saved narration. Do not rewrite simulation strings to fix display copy: current exports hash complete state. Keep the original strings and legacy replay tests. The historical shell in `app.ts` is a test fixture, not the shipped entry; keep its legacy controls and tests intact. The live entry is `main.ts` → `garden-app.ts`.
 
