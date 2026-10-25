@@ -123,7 +123,7 @@ export function planChoice(g: GardenRun, choice: PlanChoice): boolean {
       g,
       'agreement',
       choice === 'paid-trial'
-        ? 'You pay for the Day 4 sample. Rıza agrees to bring the agreed number of loaves on Day 13. Osman agrees to a written produce order. These agreements do not prove what they are like in every situation.'
+        ? 'You pay for the Day 4 sample. Rıza agrees to bring the agreed number of loaves on Day 13. Osman agrees to a written produce order. These agreements do not show how Rıza and Osman behave at other times.'
         : choice === 'credit-trial'
           ? 'Osman supplies the sample on credit. You must pay the written invoice before the Day 13 lunch. Buying on credit costs more than paying now. Rıza agrees to the bread order.'
           : 'You decline the sample. No bread or produce is reserved for the lunch.',
@@ -154,7 +154,7 @@ export function planChoice(g: GardenRun, choice: PlanChoice): boolean {
       g,
       'reservations',
       l.reservations.length
-        ? `${l.reservations.map((id) => GARDEN_CAST[id].name).join(', ')} ${l.reservations.length === 1 ? 'reserves one meal' : 'reserve a meal each'}, with the supply and cooking terms you agreed on. They may change their reservations if they hear something new.`
+        ? `${l.reservations.map((id) => GARDEN_CAST[id].name).join(', ')} ${l.reservations.length === 1 ? 'reserves one meal' : 'reserve a meal each'}, with the supply and cooking terms you agreed on. Anyone who hears something new may change a reservation.`
         : 'Nobody is willing to reserve a meal on the current terms. Ask what they have heard and correct what you can.',
     );
   } else return false;
@@ -222,7 +222,7 @@ const ACTS: {
     trait: 'reliable',
     truth: true,
     witness: 'aylin',
-    text: 'Rıza brings the bread order at the agreed delivery time. He and Aylin check the count before she leaves. He is delivering bread. This does not mean he is a baker.',
+    text: 'Rıza brings the bread order at the agreed delivery time. He and Aylin check the count before she leaves. Rıza is the delivery helper.',
   },
   {
     person: 'derya',
@@ -243,7 +243,7 @@ const ACTS: {
     trait: 'honest',
     truth: true,
     witness: 'riza',
-    text: 'Osman returns the corrected eight-crate invoice and hands Hatice the overcharge. Rıza checks the receipt. This correction is for the garden order. It does not settle the account with his former tenant.',
+    text: 'Osman returns the corrected eight-crate invoice and hands Hatice the overcharge. Rıza checks the receipt. Osman still owes his former tenant money from a separate account.',
   },
   {
     person: 'aylin',
@@ -278,7 +278,7 @@ const ACTS: {
     trait: 'kind',
     truth: true,
     witness: 'aylin',
-    text: 'Dilan asks whether Aylin has time to talk before sitting down. Aylin keeps her own evening free. Their friendly conversation does not resolve everything that happened in their family.',
+    text: 'Dilan asks whether Aylin has time to talk before sitting down. Aylin keeps her own evening free. There is still more for the sisters to settle.',
   },
 ];
 export function stakesStep(g: GardenRun, here: (id: GardenPerson) => boolean): void {
@@ -475,7 +475,7 @@ export function reserveLunch(g: GardenRun, id: GardenPerson): boolean {
     'reservation',
     yes
       ? `${GARDEN_CAST[id].name} books one paid meal for Day 13 at 13:00. The reservation does not cancel any work commitments.`
-      : `${GARDEN_CAST[id].name}: “I will not book yet. I need to trust what you say, Osman’s invoice, Aylin’s timing and Rıza’s delivery. Ask me what I heard.”`,
+      : `${GARDEN_CAST[id].name}: “I will not book yet. First I need to trust your word, ${id === 'osman' ? 'my invoice' : 'Osman’s invoice'}, ${id === 'aylin' ? 'my own timing' : 'Aylin’s timing'} and ${id === 'riza' ? 'my delivery' : 'Rıza’s delivery'}. Ask me what I have heard.”`,
     id,
   );
   return true;

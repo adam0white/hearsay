@@ -209,7 +209,7 @@ function endChat(g: GardenRun, completed: boolean) {
         'conversation',
         chat.person === 'hatice'
           ? 'You finish reflecting on your past. You keep these thoughts private.'
-          : `${c.name} finishes another quiet conversation. What they told you earlier stays private.`,
+          : `${c.name} finishes another quiet conversation. What ${c.sex === 'male' ? 'he' : 'she'} told you earlier stays private.`,
         chat.person,
       );
   } else
@@ -261,7 +261,12 @@ function testimony(
         true,
       );
     if (result.withheld.some((w) => w.reason === 'norm:backbiting'))
-      note(g, 'refusal', `${a.name}: “They are not here to answer. I will not repeat that.”`, from);
+      note(
+        g,
+        'refusal',
+        `${a.name}: “${GARDEN_CAST[about].name} is not here to answer. I will not repeat that.”`,
+        from,
+      );
   }
   if (from === 'hatice') {
     const belief = credence(a, prop);
@@ -322,7 +327,7 @@ function testimony(
     note(
       g,
       'testimony',
-      `You tell ${GARDEN_CAST[to].name}: “${GARDEN_CAST[about].name} is ${value ? '' : 'not '}${trait}.” You are making a claim. You have not proved it.`,
+      `You tell ${GARDEN_CAST[to].name}: “${GARDEN_CAST[about].name} is ${value ? '' : 'not '}${trait}.” You have not proved this.`,
       to,
     );
   } else
@@ -349,7 +354,7 @@ function testimony(
         prop: claim.prop,
         value: claim.value,
       });
-      note(g, 'talk', `${a.name} passes on a claim to ${b.name} about ${GARDEN_CAST[target].name}.`, from);
+      note(g, 'talk', `${a.name} tells ${b.name} something about ${GARDEN_CAST[target].name}.`, from);
     }
 }
 export function chooseGarden(g: GardenRun, input: GardenInput): boolean {
@@ -412,7 +417,7 @@ export function chooseGarden(g: GardenRun, input: GardenInput): boolean {
         'refusal',
         input.person === 'hatice'
           ? 'You choose not to reflect on this private matter now.'
-          : `${p.name} keeps this private. Buying tea does not mean they have to explain.`,
+          : `${p.name} keeps this private. Buying tea does not mean ${GARDEN_CAST[input.person].sex === 'male' ? 'he' : 'she'} has to explain.`,
         input.person,
       );
     } else {
@@ -433,7 +438,7 @@ export function chooseGarden(g: GardenRun, input: GardenInput): boolean {
         'chat',
         input.person === 'hatice'
           ? 'You take fifteen minutes to reflect on your past. You can stop early.'
-          : `${p.name} agrees to sit with you for fifteen minutes. Either of you may leave. They still need to return to their next duty.`,
+          : `${p.name} agrees to sit with you for fifteen minutes. Either of you may leave. ${GARDEN_CAST[input.person].sex === 'male' ? 'He' : 'She'} must still leave in time for other plans.`,
         input.person,
       );
     }
@@ -462,7 +467,7 @@ export function chooseGarden(g: GardenRun, input: GardenInput): boolean {
       d.outcome =
         input.person === 'hatice'
           ? 'You share a private matter from your own past at the next table. You add an unkind claim about yourself.'
-          : 'You repeat something told to you in private at the next table. The person who told you hears you. They stop trusting you with private matters.';
+          : `You repeat something told to you in private at the next table. ${p.name} hears you. ${GARDEN_CAST[input.person].sex === 'male' ? 'He' : 'She'} stops trusting you with private matters.`;
       p.memory.sourceTrust.hatice = Math.max(0, trustOf(p, 'hatice') - 0.25);
       testimony(
         g,
@@ -476,7 +481,7 @@ export function chooseGarden(g: GardenRun, input: GardenInput): boolean {
       note(
         g,
         'private-breach',
-        `${GARDEN_CAST[audience!].name} hears you repeat this private information: ${d.fact} You add an unkind conclusion about ${GARDEN_CAST[input.person].name}’s character. The private information does not prove that conclusion.`,
+        `${GARDEN_CAST[audience!].name} hears you repeat this private information: ${d.fact} You use this private information to judge ${GARDEN_CAST[input.person].name} unkindly. It is not proof of character.`,
         audience,
       );
     }
@@ -513,12 +518,12 @@ export function chooseGarden(g: GardenRun, input: GardenInput): boolean {
       const uncertain = belief >= 0.3 && belief <= 0.7;
       const invitation =
         uncertain && !g.discoveries[input.person]
-          ? ' Choose “Invite a quiet conversation” to listen to them.'
+          ? ` Choose “Invite a quiet conversation” to listen to ${GARDEN_CAST[input.person].sex === 'male' ? 'him' : 'her'}.`
           : '';
       note(
         g,
         'answer',
-        `${GARDEN_CAST[input.person].name}: “${belief > 0.7 ? 'What I have heard makes me think' : belief < 0.3 ? 'What I have heard makes me doubt that' : 'I have not heard enough to judge whether'} ${GARDEN_CAST[input.about].name} is ${trait}. ${origin} ${uncertain ? publicConcern[input.person] : 'Ask them directly.'}”${invitation}`,
+        `${GARDEN_CAST[input.person].name}: “${belief > 0.7 ? 'What I have heard makes me think' : belief < 0.3 ? 'What I have heard makes me doubt that' : 'I have not heard enough to judge whether'} ${GARDEN_CAST[input.about].name} is ${trait}. ${origin} ${uncertain ? publicConcern[input.person] : `Ask ${GARDEN_CAST[input.about].sex === 'male' ? 'him' : 'her'} directly.`}”${invitation}`,
         input.person,
       );
     } else if (input.type === 'amends') {

@@ -102,7 +102,7 @@ async function save(): Promise<boolean> {
 function input(value: GardenInput) {
   if (!run) return;
   if (!chooseGarden(run, value))
-    notice = 'They cannot do this now. Try again when their work or rest ends, or keep the matter private.';
+    notice = 'This person cannot do this now. Try again later, or keep the matter private.';
   else {
     notice = value.type === 'ask' ? (run.log.at(-1)?.text ?? '') : '';
     save();
@@ -217,7 +217,7 @@ function render() {
     else if (discovery)
       panel += `<details><summary>About ${esc(c.name)}</summary><p>${esc(c.name)} is ${Math.floor((run.people[id].now - run.people[id].life.bornAt) / (365 * 1440))} years old. ${esc(c.family)}</p></details><p class="cg-confidence">${esc(discovery.fact)}</p>${discovery.response ? `<p>${esc(discovery.outcome ?? '')}</p>${button('Sit and talk again', 'listen', !here)}` : `${button('Offer practical help and keep this private', 'support', !here)}${button('Keep this private', 'keep', !here)}${button('Repeat this at another table', 'spread', !here)}`}`;
     else
-      panel += `<p>${here ? esc(c.cue) : 'They are away or unavailable. They have times set aside for work and rest.'}</p>${button(id === 'hatice' ? 'Reflect on your past for fifteen minutes' : 'Invite a quiet conversation', 'listen', !here)}${id !== 'hatice' ? button('Press for private details', 'pry', !here) : ''}`;
+      panel += `<p>${here ? esc(c.cue) : `${esc(c.name)} is away or unavailable. Try again later.`}</p>${button(id === 'hatice' ? 'Reflect on your past for fifteen minutes' : 'Invite a quiet conversation', 'listen', !here)}${id !== 'hatice' ? button('Press for private details', 'pry', !here) : ''}`;
     const confrontation = run.lunch.confrontations.find(
       (c) => c.person === id && !c.resolved && c.at <= run!.minute,
     );

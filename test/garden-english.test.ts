@@ -1,7 +1,7 @@
 import { expect, it } from 'vitest';
 import { freshGarden, gardenHere } from '../src/sim/garden.ts';
 import { GARDEN_IDS, type GardenPerson } from '../src/sim/garden-cast.ts';
-import { planChoice, stakesStep, wantsLunch } from '../src/sim/garden-stakes.ts';
+import { planChoice, reserveLunch, stakesStep, wantsLunch } from '../src/sim/garden-stakes.ts';
 
 it('does not infer unwilling customers from a short lunch when willing customers are absent', () => {
   const run = freshGarden(17);
@@ -65,3 +65,19 @@ it.each([
     expect(run.log.findLast((line) => line.kind === 'lunch-result')?.text).toContain(served);
   },
 );
+
+// Each supplier can be the speaker; the cook must not name herself in the third person.
+it.each([
+  ['aylin', 'my own timing', 'Aylin’s timing'],
+  ['osman', 'my invoice', 'Osman’s invoice'],
+  ['riza', 'my delivery', 'Rıza’s delivery'],
+] as const)('keeps a refused booking in %s’s own voice', (id, own, named) => {
+  const run = freshGarden(17);
+  run.minute = 7 * 1440 + 720;
+  run.people[id].memory.sourceTrust.hatice = 0;
+  expect(reserveLunch(run, id)).toBe(true);
+  const line = run.log.at(-1)?.text;
+  expect(line).toContain('I will not book yet.');
+  expect(line).toContain(own);
+  expect(line).not.toContain(named);
+});

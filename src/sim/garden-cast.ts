@@ -53,7 +53,7 @@ export const GARDEN_CAST = {
       agreeableness: 0.6,
     },
     cue: 'Dilan checks an old route slip, then looks toward Ece.',
-    fact: 'Dilan once completed a delivery Ece had missed and let Murat believe Dilan had caused the delay. Dilan expected thanks without saying so. Ece thought the matter was settled.',
+    fact: 'Ece once missed a delivery, and Dilan did it for her. Dilan then let Murat, the depot supervisor, think that Dilan had caused the delay. She hoped Ece would thank her, but she never said so. Ece thought the matter was closed.',
     repair:
       'Dilan asks Ece for a short conversation about the old delivery slip. She explains the thanks she expected instead of asking Hatice to pass on an accusation.',
     refusal: 'Dilan keeps the slip. Hatice does not have permission to tell others about the old delivery.',
@@ -77,7 +77,7 @@ export const GARDEN_CAST = {
     cue: 'Nermin asks for a quiet table to review how she runs her agency.',
     fact: 'Nermin described a worker’s placement as a poor match and made the worker’s complaint about unpaid nights sound less serious. She refunded part of the client’s fee before checking what the worker had lost.',
     repair:
-      'With Nermin’s consent, you review what happened without using client names. She drafts a correction and a letter asking the worker which unpaid hours she can document. Payment and forgiveness remain unresolved.',
+      'With Nermin’s consent, you review what happened without using client names. She drafts a correction and a letter asking the worker which unpaid hours she can document. Payment and forgiveness are still unsettled.',
     refusal:
       'Nermin stops reviewing the case. Hatice does not have permission to repeat what Nermin shared in confidence about her work.',
   },
@@ -153,7 +153,7 @@ export const GARDEN_CAST = {
     cue: 'Osman brings the account for his produce crates and stops to look at an older receipt.',
     fact: 'Osman opens his account book himself. A former tenant’s repair contribution was never deducted from the final account. He found the note later but kept the money while waiting for a complaint.',
     repair:
-      'Osman writes the exact correction and addresses a letter about repayment. He has prepared the correction, but this does not prove that he has repaid the money. Halil’s separate rent account remains unchanged.',
+      'Osman writes the exact correction and addresses a letter about repayment. The letter only proposes repayment. Halil’s separate rent account stays as it was.',
     refusal:
       'Osman closes his account book. A generous offer elsewhere would not correct this separate account.',
   },
