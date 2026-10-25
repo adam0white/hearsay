@@ -1,5 +1,7 @@
 # Hearsay
 
+[Play Hearsay](https://hearsay.adamwhite.work).
+
 A static web game about talk, trust and consequences in an Istanbul tea garden. You are Hatice. Open a paid workers’ lunch on Day 13: agree bread and produce on Day 4, agree on Aylin’s paid preparation on Day 8, and earn enough reservations. What people hear changes who comes, what they buy and whether the lunch can open.
 
 The current canonical edition is documented in [canonical adoption](docs/canonical-adoption.md). It uses Hatice, Derya, Dilan, Nermin, Aylin, Ece, Rıza and Osman. The old engagement and its 32-person household cast are historical. [The original design](docs/design.md) and [playtest records](docs/playtests/README.md) retain that history. Adam accepts the game by playing; technical delivery does not establish owner acceptance.
@@ -18,6 +20,8 @@ PATH=/opt/homebrew/bin:$PATH npm run preview
 
 On the shared lab machine, run `npm run check:lane` directly. Its `npm test` child owns the machine-wide suite lock. Do not add an outer lock wrapper unless it explicitly passes lock ownership to its child. CI runs the full suite on every push.
 
+Before Begin or a confirmed New game, the unchecked “Use longer conversations about the garden and lunch” option selects `garden-talk/1` for that run. It gives the seven visitors six replies each about their own public work, followed by the actual supply, cooking or lunch status. Paid fees, completed preparation and served meals mean different things; paying late does not complete a missed preparation session. The option stays fixed through save/reload. It grants no private knowledge or completed outside outcome and changes no cast, deadline, price, attendance or difficulty rule. The canonical cast still has eight people, including Hatice.
+
 To play, choose Begin, then select someone who is at the garden. Invite a quiet conversation. They may decline. If they agree, let its fifteen game minutes finish to hear a volunteered private fact. Leaving early or pressing for details reveals none. Choose whether to offer practical help, keep it private or repeat it. Hatice can reflect on her own past.
 
 Open “Talk about someone else” to ask what a listener has heard, make a positive or damaging claim, or withdraw your accusation. Choose honesty, keeping promises, kindness or generosity. A claim is not proof. If a disproved claim leads back to you, take responsibility and correct it with each listener, or stand by it and lose a day of tea sales. You can also pour tea without sharing news.
@@ -28,7 +32,7 @@ Pause, Slow, Normal and Fast control the clock. Agreement choices, the Game menu
 
 One Recording switch controls lab recording and automatic linkage across games on this device. The first-visit notice covers both; DNT/GPC defaults recording off. Character analysis has its own opt-in. Native browser continuity uses the local shelf independently of recording. Feedback accepts a note without sharing a run. With recording off, its unticked sharing checkbox explicitly enables recording and linked run sharing when selected. No separate continuing-person consent gate is required.
 
-Each current run exports complete pinned initial people, seed, input history, state and a fingerprint. Import replays that opening and verifies the result. Older incompatible exports refuse plainly; their local saves remain stored. IndexedDB stores compressed saves, and pagehide queues the current snapshot immediately. Local play and diagnostic file export remain available with recording off.
+Current full exports contain complete pinned initial people, seed, conversation configuration when selected, input history, final state and a fingerprint. The export API also supports compact files: they omit final state, retain any source/life chapter inputs and verify the complete replay fingerprint. The diagnostic download control still exports the full file. Import replays the captured opening without consulting current clocks or shelf heads. Unmarked runs preserve their exact prior full-state and ending continuation without normalizing prose histories. Older incompatible exports refuse plainly; their local saves remain stored. IndexedDB stores compressed saves, and pagehide queues the current snapshot immediately. Local play and diagnostic file export remain available with recording off.
 
 The current browser tests exercise both 360×690 and 1280×800 through start, a real timed conversation, save and reload. Historical browser tests explicitly load `test/fixtures/legacy.html`; that fixture is not built for production. The old `scripts/drive.ts`, `scripts/policy.ts`, `scripts/measure.ts`, `scripts/hf-playtest/` adapter and `scripts/verify-browser.ts` still describe editions 1–5. Their output is historical regression evidence, not a current-edition playtest. Reassess their current-edition replacement after owner review on 2026-11-03.
 
