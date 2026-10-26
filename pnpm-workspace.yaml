@@ -1,0 +1,18 @@
+engineStrict: true
+hoist: false
+strictPeerDependencies: true
+resolutionMode: highest
+verifyDepsBeforeRun: error
+dedupePeerDependents: true
+minimumReleaseAge: 1440
+minimumReleaseAgeExclude:
+  - "@adam0white/*"
+packageImportMethod: hardlink
+allowBuilds:
+  esbuild@0.28.2: true
+  workerd@1.20261019.1: true
+  fsevents: false
+overrides:
+  sharp: 0.35.5
+  miniflare>undici: 7.30.1
+  "@napi-rs/wasm-runtime": 1.2.6

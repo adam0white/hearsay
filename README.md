@@ -8,17 +8,17 @@ The current canonical edition is documented in [canonical adoption](docs/canonic
 
 The source pins `@adam0white/human-framework` exactly to 3.0.0 (engine 2.23.0), with immutable lab-client 0.4.11 and lab-kit 0.5.12 release artifacts. HF supplies each person’s state, seeded decisions, activities, conversations, beliefs, source trust and received social consequences. Hearsay supplies the tea garden, schedules, private discoveries, testimony routes, prices, invoices and lunch rules. Browser continuity admits every compatible allocated head in one atomic batch before starting. Voice Rıza and Osman have explicit calendar adapters. Unsupported source dialects and older cast revisions refuse the whole admission; separate local play remains available. The current garden has no Stairwell-to-Derya adapter. The unreachable historical shell does not establish that support. See [HANDOFF.md](HANDOFF.md) for the deployed receipt, which is separate from the source dependency pin.
 
-Use Homebrew Node 24 or newer:
+Use shared Homebrew Node 26.12.0 and pnpm 12.14.0 pinned by `.node-version` and `packageManager`:
 
 ```sh
-PATH=/opt/homebrew/bin:$PATH npm ci
-PATH=/opt/homebrew/bin:$PATH npm run dev
-PATH=/opt/homebrew/bin:$PATH npm run check:lane
-PATH=/opt/homebrew/bin:$PATH npm run build
-PATH=/opt/homebrew/bin:$PATH npm run preview
+PATH=/opt/homebrew/bin:$PATH pnpm install --frozen-lockfile
+PATH=/opt/homebrew/bin:$PATH pnpm run dev
+PATH=/opt/homebrew/bin:$PATH pnpm run check:lane
+PATH=/opt/homebrew/bin:$PATH pnpm run build
+PATH=/opt/homebrew/bin:$PATH pnpm run preview
 ```
 
-On the shared lab machine, run `npm run check:lane` directly. Its `npm test` child owns the machine-wide suite lock. Do not add an outer lock wrapper unless it explicitly passes lock ownership to its child. CI runs the full suite on every push.
+On the shared lab machine, run `pnpm run check:lane` directly. Its test child owns the machine-wide suite lock. Do not add an outer lock wrapper unless it explicitly passes lock ownership to its child. CI runs the full suite on every push.
 
 Before Begin or a confirmed New game, the unchecked “Use longer conversations about the garden and lunch” option selects `garden-talk/1` for that run. It gives the seven visitors six replies each about their own public work, followed by the actual supply, cooking or lunch status. Paid fees, completed preparation and served meals mean different things; paying late does not complete a missed preparation session. The option stays fixed through save/reload. It grants no private knowledge or completed outside outcome and changes no cast, deadline, price, attendance or difficulty rule. The canonical cast still has eight people, including Hatice.
 
@@ -36,4 +36,6 @@ Current full exports contain complete pinned initial people, seed, conversation 
 
 The current browser tests exercise both 360×690 and 1280×800 through start, a real timed conversation, save and reload. Historical browser tests explicitly load `test/fixtures/legacy.html`; that fixture is not built for production. The old `scripts/drive.ts`, `scripts/policy.ts`, `scripts/measure.ts`, `scripts/hf-playtest/` adapter and `scripts/verify-browser.ts` still describe editions 1–5. Their output is historical regression evidence, not a current-edition playtest. Reassess their current-edition replacement after owner review on 2026-11-03.
 
-The maintained stack is TypeScript 7.0.2, Vite 8.3.5, Vitest 5.0.5, Biome 2.6.3, Playwright 1.64.1 and Wrangler 4.152.0, on Node 24 or newer. Worker compatibility date: 2026-10-25. Miniflare retains Undici 7.30.1 because its HTTP 421 guard wraps the legacy dispatcher callbacks; review on 2026-11-03 or the next Miniflare release.
+The maintained stack is TypeScript 7.0.2, Vite 8.3.5, Vitest 5.0.5, Biome 2.6.3, Playwright 1.64.1 and Wrangler 4.152.0, on shared Node 26.12.0 and pnpm 12.14.0. Worker compatibility date: 2026-10-25. Miniflare retains Undici 7.30.1 because its HTTP 421 guard wraps the legacy dispatcher callbacks; review on 2026-11-03 or the next Miniflare release.
+
+The pnpm policy uses isolated hardlinks, strict engines and peers, a 1440-minute release age with only the owned package scope exempt, and reviewed esbuild/workerd lifecycle scripts. Unknown install scripts fail. `pnpm run` and `pnpm exec` reject stale dependencies; retained internal `npm run` script calls bypass that guard, so install the frozen lock first. Existing npm trees must remove root/workspace `node_modules`, install the frozen pnpm lock and delete `dist`, `.types` and `*.tsbuildinfo` before rebuilding.

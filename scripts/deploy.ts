@@ -24,9 +24,9 @@ const ci = runs.find(
   (run) => run.headSha === commit && run.status === 'completed' && run.conclusion === 'success',
 );
 if (!ci) throw new Error('Deploy requires successful CI on this exact commit.');
-execFileSync('npm', ['run', 'build'], { stdio: 'inherit' });
+execFileSync('pnpm', ['run', 'build'], { stdio: 'inherit' });
 const stamp = JSON.parse(readFileSync('dist/release.json', 'utf8'));
 if (stamp.commit !== commit || stamp.dirty !== false || git('status', '--porcelain'))
   throw new Error('Build does not match the clean source.');
 console.log('Exact green CI:', ci.url, 'Release:', stamp);
-execFileSync('npx', ['wrangler', 'deploy'], { stdio: 'inherit' });
+execFileSync('pnpm', ['exec', 'wrangler', 'deploy'], { stdio: 'inherit' });
