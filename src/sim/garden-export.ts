@@ -45,11 +45,15 @@ export function importGarden(text: string): GardenRun {
     throw new Error(
       'This is an older or unsupported Hearsay edition. Keep the file for inspection. Start fresh.',
     );
+  const seed = e.seed,
+    minute = e.minute;
   if (
-    !Number.isSafeInteger(e.seed) ||
-    !Number.isSafeInteger(e.minute) ||
-    e.minute! < 360 ||
-    e.minute! > 14 * 1440 ||
+    typeof seed !== 'number' ||
+    !Number.isSafeInteger(seed) ||
+    typeof minute !== 'number' ||
+    !Number.isSafeInteger(minute) ||
+    minute < 360 ||
+    minute > 14 * 1440 ||
     !Array.isArray(e.inputs) ||
     e.inputs.length > 20000 ||
     (!e.state && e.compact !== true) ||
@@ -67,18 +71,11 @@ export function importGarden(text: string): GardenRun {
   }
   let previous = 360;
   for (const row of e.inputs) {
-    if (!row || !Number.isSafeInteger(row.at) || row.at < previous || row.at > e.minute!)
+    if (!row || !Number.isSafeInteger(row.at) || row.at < previous || row.at > minute)
       throw new Error('Invalid input clock.');
     previous = row.at;
   }
-  const run = replayGarden(
-    e.seed!,
-    e.inputs,
-    e.minute!,
-    e.initialPeople,
-    e.state?.chapter ?? e.chapter,
-    e.config,
-  );
+  const run = replayGarden(seed, e.inputs, minute, e.initialPeople, e.state?.chapter ?? e.chapter, e.config);
   if (
     (hash(canonicalPersona(run)).toString(16) !== e.fingerprint &&
       (!e.state || hash(JSON.stringify(e.state)).toString(16) !== e.fingerprint)) ||

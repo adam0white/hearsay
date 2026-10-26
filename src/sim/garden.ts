@@ -356,8 +356,8 @@ function testimony(
       `You tell ${GARDEN_CAST[to].name}: “${GARDEN_CAST[about].name} is ${value ? '' : 'not '}${trait}.” You have not proved this.`,
       to,
     );
-  } else
-    for (const claim of result?.claims ?? []) {
+  } else if (result)
+    for (const claim of result.claims) {
       const target = claim.about as GardenPerson;
       if (!GARDEN_IDS.includes(target)) continue;
       const parent = g.routes.findLast(
@@ -384,12 +384,17 @@ function testimony(
         g,
         'talk',
         g.config
-          ? (result!.told.find((p) => p.claims?.some((c) => c.prop === claim.prop && c.value === claim.value))
+          ? (result.told.find((p) => p.claims?.some((c) => c.prop === claim.prop && c.value === claim.value))
               ?.summary ?? `${a.name} tells ${b.name} something about ${GARDEN_CAST[target].name}.`)
           : `${a.name} tells ${b.name} something about ${GARDEN_CAST[target].name}.`,
         from,
       );
     }
+}
+function dailyPerson(minute: number): GardenPerson {
+  const id = GARDEN_IDS[Math.floor(minute / 1440) % 8];
+  if (id === undefined) throw new Error('Garden day requires a known person.');
+  return id;
 }
 export function chooseGarden(g: GardenRun, input: GardenInput): boolean {
   if (g.ended || !input || typeof input !== 'object') return false;
@@ -498,6 +503,7 @@ export function chooseGarden(g: GardenRun, input: GardenInput): boolean {
       socialEvent(p, { kind: 'help', byMe: false, otherId: 'hatice', magnitude: 0.2, at: g.minute });
     } else if (input.choice === 'keep') d.outcome = GARDEN_CAST[input.person].refusal;
     else {
+      if (!audience) throw new Error('Garden spread requires its checked audience.');
       d.outcome =
         input.person === 'hatice'
           ? 'You share a private matter from your own past at the next table. You add an unkind claim about yourself.'
@@ -506,7 +512,7 @@ export function chooseGarden(g: GardenRun, input: GardenInput): boolean {
       testimony(
         g,
         'hatice',
-        audience!,
+        audience,
         input.person,
         false,
         input.person === 'osman' || input.person === 'nermin' ? 'honest' : 'kind',
@@ -515,7 +521,7 @@ export function chooseGarden(g: GardenRun, input: GardenInput): boolean {
       note(
         g,
         'private-breach',
-        `${GARDEN_CAST[audience!].name} hears you repeat this private information: ${d.fact} You use this private information to judge ${GARDEN_CAST[input.person].name} unkindly. It is not proof of character.`,
+        `${GARDEN_CAST[audience].name} hears you repeat this private information: ${d.fact} You use this private information to judge ${GARDEN_CAST[input.person].name} unkindly. It is not proof of character.`,
         audience,
       );
     }
@@ -628,7 +634,7 @@ function minuteStep(g: GardenRun) {
           at: g.minute,
           needs: completed ? { belonging: 0.01, leisure: 0.005 } : {},
         });
-        if (completed) testimony(g, id, partner, GARDEN_IDS[Math.floor(g.minute / 1440) % 8]!, true);
+        if (completed) testimony(g, id, partner, dailyPerson(g.minute), true);
       }
     }
     if (p.activity && p.now >= p.activity.endsAt) {
@@ -680,35 +686,35 @@ function minuteStep(g: GardenRun) {
         mode: 'sleep',
         advertises: { sleep: 0.2 },
       });
-    else
+    else {
+      const chapterInput = g.chapter?.inputs.find((p) => p.parent.castId === GARDEN_CAST[id].castId);
       offers.push({
         id: 'work',
         action: id === 'osman' ? 'work-market' : 'work',
         ...(id === 'osman' && p.skills.trade ? { skill: { id: 'trade', difficulty: 0.3 } } : {}),
-        label: g.chapter?.inputs.find((p) => p.parent.castId === GARDEN_CAST[id].castId)
-          ? lifeAdmission(
-              g.chapter.inputs.find((p) => p.parent.castId === GARDEN_CAST[id].castId)!,
-              'hearsay',
-            ).assignment
-          : GARDEN_CAST[id].job,
+        label: chapterInput ? lifeAdmission(chapterInput, 'hearsay').assignment : GARDEN_CAST[id].job,
         duration: 15,
         effort: 0.03,
         placeId: place,
         advertises: { competence: 0.02, meaning: 0.01 },
       });
+    }
     if (gardenHere(g, id)) {
       const rotated = [
         ...GARDEN_IDS.slice((g.minute / 15 + g.seed) % 8),
         ...GARDEN_IDS.slice(0, (g.minute / 15 + g.seed) % 8),
       ];
-      const partner = rotated.find(
-        (other) =>
-          other !== id &&
-          other !== g.chat?.person &&
-          gardenHere(g, other) &&
-          actualGardenLocation(g, other) === place &&
-          (!g.people[other].activity || ['rest', 'drink', 'eat'].includes(g.people[other].activity!.action)),
-      );
+      const partner = rotated.find((other) => {
+        if (
+          other === id ||
+          other === g.chat?.person ||
+          !gardenHere(g, other) ||
+          actualGardenLocation(g, other) !== place
+        )
+          return false;
+        const activity = g.people[other].activity;
+        return !activity || ['rest', 'drink', 'eat'].includes(activity.action);
+      });
       if (partner)
         offers.push({
           id: 'garden-chat',
@@ -765,7 +771,7 @@ function minuteStep(g: GardenRun) {
     );
   }
   stakesStep(g, (id) => gardenHere(g, id));
-  if (t === 390) note(g, 'cue', GARDEN_CAST[GARDEN_IDS[Math.floor(g.minute / 1440) % 8]!].cue);
+  if (t === 390) note(g, 'cue', GARDEN_CAST[dailyPerson(g.minute)].cue);
   if (g.minute >= 14 * 1440) {
     if (g.chat) endChat(g, false);
     g.ended = true;

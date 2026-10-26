@@ -41,8 +41,17 @@ import { lab } from './lab.ts';
 import { get, put, putNow } from './store.ts';
 import './garden.css';
 
+function required<T>(value: T | null | undefined, context: string): T {
+  if (value === null || value === undefined) throw new Error(context);
+  return value;
+}
 const esc = (s: string) =>
-  s.replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]!);
+  s.replace(/[&<>"']/g, (c) =>
+    required(
+      { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c],
+      'Garden escaping requires a matched character.',
+    ),
+  );
 const shelf = personaChannel();
 const recordingGuard = new GardenRecordingGuard(lab, shelf);
 let recordingBinding: RecordingBinding | undefined;
@@ -71,7 +80,7 @@ let stopTrack: (() => void) | undefined;
 let fileOrigin = false;
 let uiGeneration = 0;
 let loadGeneration = 0;
-const root = document.getElementById('app')!;
+const root = required(document.getElementById('app'), 'Garden requires its app root.');
 // This footer and the SDK node survive renders and asynchronous notice suppression.
 const footer = document.createElement('footer');
 footer.className = 'cg-footer';
@@ -168,9 +177,9 @@ async function useRun(
   confirmNew = false;
   lastFrame = 0;
   carry = 0;
-  stopTrack = lab.trackRun(() => exportGarden(run!), {
-    getLogs: () => run!.log,
-    runKey: () => `${run!.seed}:${fileOrigin}`,
+  stopTrack = lab.trackRun(() => exportGarden(required(run, 'Garden recording requires a current run.')), {
+    getLogs: () => required(run, 'Garden recording requires a current run.').log,
+    runKey: () => `${required(run, 'Garden recording requires a current run.').seed}:${fileOrigin}`,
   });
   save();
   render();
@@ -200,6 +209,7 @@ function render() {
     bind();
     return;
   }
+  const rendering = run;
   const id = selected,
     c = GARDEN_CAST[id],
     discovery = run.discoveries[id],
@@ -223,7 +233,7 @@ function render() {
     else
       panel += `<p>${here ? esc(c.cue) : `${esc(c.name)} is away or unavailable. Try again later.`}</p>${button(id === 'hatice' ? 'Reflect on your past for fifteen minutes' : 'Invite a quiet conversation', 'listen', !here)}${id !== 'hatice' ? button('Press for private details', 'pry', !here) : ''}`;
     const confrontation = run.lunch.confrontations.find(
-      (c) => c.person === id && !c.resolved && c.at <= run!.minute,
+      (c) => c.person === id && !c.resolved && c.at <= rendering.minute,
     );
     if (confrontation)
       panel = `<h2>${esc(c.name)} confronts you</h2><p>Someone found that the disproved claim came from you. Agree to correct it with each person who heard it, or stand by it and lose a day of tea sales.</p>${button('Take responsibility and agree to correct the claim', 'confront-own', !here)}${button('Stand by the disproved claim', 'confront-stand', !here)}`;
@@ -243,7 +253,7 @@ function render() {
     panel +=
       `<p>Garden cash: ${run.lunch.cash} lira. Unpaid invoice: ${run.lunch.debt} lira.</p>` +
       button(`Pay the ${run.lunch.debt} lira invoice`, 'plan-settle', run.lunch.cash < run.lunch.debt);
-  root.innerHTML = `<main class="cg-game"><header class="cg-header"><div><strong>Hearsay</strong> <span>${clock()}</span></div>${button(menu ? 'Back' : 'Game menu', menu ? 'back' : 'menu')}<p>Day 13 lunch: ${run.lunch.breadDelivered ? 'The bread has been delivered.' : run.lunch.bread ? 'The bread is ordered.' : 'The bread is not ordered.'} ${run.lunch.produceDelivered ? 'The produce has been delivered.' : run.lunch.produce ? 'The produce is ordered.' : 'The produce is not ordered.'} ${run.lunch.prepared ? 'The food has been prepared.' : run.lunch.cook ? 'Paid cooking is arranged.' : 'Paid cooking is not arranged.'} Meals reserved: ${run.lunch.reservations.length}/${run.lunch.trial === 'credit' ? 5 : 4}.</p><p>You have ${run.lunch.cash} lira. You owe ${run.lunch.debt} lira.</p><div class="cg-paces">${[0, 1, 4, 12].map((p, i) => `<button type="button" data-pace="${p}" aria-pressed="${pace === p}">${['Pause', 'Slow', 'Normal', 'Fast'][i]}</button>`).join('')}</div></header><section class="cg-scene" aria-label="The tea garden"><div class="cg-gate">THE GARDEN GATE <span>${run.benchFree ? 'Anyone may sit here without buying.' : 'There are a few chairs in the shade.'}</span></div><div class="cg-tables">${GARDEN_IDS.map((p) => `<button type="button" class="cg-person ${gardenHere(run!, p) ? 'here' : 'away'}" data-person="${p}" aria-pressed="${selected === p}"><span aria-hidden="true">${p === 'hatice' ? '☕' : '◯'}</span><strong>${esc(GARDEN_CAST[p].name)}</strong><small>${gardenHere(run!, p) ? 'at the garden' : esc(gardenPlace(actualGardenLocation(run!, p)))}</small></button>`).join('')}</div><p class="cg-standing">${esc(gardenStanding(run))}</p></section><section class="cg-panel" aria-live="polite">${notice ? `<p class="cg-notice" role="status">${esc(notice)}</p>` : ''}${panel}</section><details class="cg-account"><summary>Garden record: what you heard</summary>${run.log
+  root.innerHTML = `<main class="cg-game"><header class="cg-header"><div><strong>Hearsay</strong> <span>${clock()}</span></div>${button(menu ? 'Back' : 'Game menu', menu ? 'back' : 'menu')}<p>Day 13 lunch: ${run.lunch.breadDelivered ? 'The bread has been delivered.' : run.lunch.bread ? 'The bread is ordered.' : 'The bread is not ordered.'} ${run.lunch.produceDelivered ? 'The produce has been delivered.' : run.lunch.produce ? 'The produce is ordered.' : 'The produce is not ordered.'} ${run.lunch.prepared ? 'The food has been prepared.' : run.lunch.cook ? 'Paid cooking is arranged.' : 'Paid cooking is not arranged.'} Meals reserved: ${run.lunch.reservations.length}/${run.lunch.trial === 'credit' ? 5 : 4}.</p><p>You have ${run.lunch.cash} lira. You owe ${run.lunch.debt} lira.</p><div class="cg-paces">${[0, 1, 4, 12].map((p, i) => `<button type="button" data-pace="${p}" aria-pressed="${pace === p}">${['Pause', 'Slow', 'Normal', 'Fast'][i]}</button>`).join('')}</div></header><section class="cg-scene" aria-label="The tea garden"><div class="cg-gate">THE GARDEN GATE <span>${run.benchFree ? 'Anyone may sit here without buying.' : 'There are a few chairs in the shade.'}</span></div><div class="cg-tables">${GARDEN_IDS.map((p) => `<button type="button" class="cg-person ${gardenHere(rendering, p) ? 'here' : 'away'}" data-person="${p}" aria-pressed="${selected === p}"><span aria-hidden="true">${p === 'hatice' ? '☕' : '◯'}</span><strong>${esc(GARDEN_CAST[p].name)}</strong><small>${gardenHere(rendering, p) ? 'at the garden' : esc(gardenPlace(actualGardenLocation(rendering, p)))}</small></button>`).join('')}</div><p class="cg-standing">${esc(gardenStanding(run))}</p></section><section class="cg-panel" aria-live="polite">${notice ? `<p class="cg-notice" role="status">${esc(notice)}</p>` : ''}${panel}</section><details class="cg-account"><summary>Garden record: what you heard</summary>${run.log
     .slice(-60)
     .map(
       (l) =>
@@ -289,7 +299,8 @@ function bind() {
   root.querySelectorAll<HTMLButtonElement>('[data-action]').forEach((b) => {
     b.onclick = () => {
       if (!valid()) return;
-      void action(b.dataset.action!);
+      const key = required(b.dataset.action, 'Garden action button requires its action key.');
+      void action(key);
     };
   });
   const importer = root.querySelector<HTMLInputElement>('#import-run');
@@ -343,7 +354,8 @@ async function action(key: string) {
     if (starting) return;
     ++loadGeneration;
     const attempt = ++generation;
-    const seed = crypto.getRandomValues(new Uint32Array(1))[0]!;
+    const seedValues = crypto.getRandomValues(new Uint32Array(1));
+    const seed = required(seedValues[0], 'Garden seed requires one random value.');
     const config: GardenConfig | undefined = root.querySelector<HTMLInputElement>('#cg-dialogue')?.checked
       ? { dialogue: 'garden-talk/1' }
       : undefined;
@@ -428,11 +440,14 @@ async function action(key: string) {
     return;
   }
   if (key === 'account') {
-    root.querySelector<HTMLDetailsElement>('.cg-account')!.open = true;
+    required(
+      root.querySelector<HTMLDetailsElement>('.cg-account'),
+      'Garden requires its rendered record.',
+    ).open = true;
     return;
   }
   if (key === 'chat') {
-    selected = run.chat!.person;
+    selected = required(run.chat, 'Garden chat action requires its current conversation.').person;
     render();
     return;
   }
@@ -476,8 +491,14 @@ async function action(key: string) {
     input({
       type: key as 'ask' | 'defend' | 'tell' | 'amends',
       person: selected,
-      about: root.querySelector<HTMLSelectElement>('#cg-about')!.value as GardenPerson,
-      trait: root.querySelector<HTMLSelectElement>('#cg-trait')!.value as ReputationTrait,
+      about: required(
+        root.querySelector<HTMLSelectElement>('#cg-about'),
+        'Garden claim requires its person selector.',
+      ).value as GardenPerson,
+      trait: required(
+        root.querySelector<HTMLSelectElement>('#cg-trait'),
+        'Garden claim requires its trait selector.',
+      ).value as ReputationTrait,
     });
 }
 export async function startGarden() {
