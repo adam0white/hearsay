@@ -18,7 +18,7 @@ export class GardenRecordingGuard {
   private generation = 0;
   constructor(
     private lab: RecordingLab,
-    _shelf: RecordingShelf,
+    _shelf?: RecordingShelf,
   ) {}
   invalidate(): void {
     ++this.generation;

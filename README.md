@@ -39,3 +39,11 @@ The current browser tests exercise both 360×690 and 1280×800 through start, a 
 The maintained stack is TypeScript 7.0.2, Vite 8.3.5, Vitest 5.0.5, Biome 2.6.3, Playwright 1.64.1 and Wrangler 4.152.0, on shared Node 26.12.0 and pnpm 12.14.0. Worker compatibility date: 2026-10-25. Miniflare retains Undici 7.30.1 because its HTTP 421 guard wraps the legacy dispatcher callbacks; review on 2026-11-03 or the next Miniflare release.
 
 The pnpm policy uses isolated hardlinks, strict engines and peers, a 1440-minute release age with only the owned package scope exempt, and reviewed esbuild/workerd lifecycle scripts. Unknown install scripts fail. `pnpm run` and `pnpm exec` reject stale dependencies; retained internal `npm run` script calls bypass that guard, so install the frozen lock first. Existing npm trees must remove root/workspace `node_modules`, install the frozen pnpm lock and delete `dist`, `.types` and `*.tsbuildinfo` before rebuilding.
+
+### Play a game file without replacing this browser’s garden
+
+Open `?file=1` and choose **Open a game file**. This route opens the file in a separate session in the tab. It does not open or replace the browser’s saved garden or use shared person histories. The complete game file keeps its original eight people and replays their recorded inputs. The current prepared file condition has no browser ownership receipts or source archives; this route does not claim ownership of imported histories.
+
+Play normally. Use **Download this game file** in the game menu to keep progress. **Close file session**, hiding the page, or closing the tab never saves over the browser’s garden. Reloading opens the file chooser again. Closing chapters, starting separate histories, and starting new gardens are unavailable in this mode. The file format, simulation rules and difficulty are unchanged.
+
+Recording uses the normal lab client and the existing browser’s actual privacy and identity settings. File progress still calls recording captureSave. Normal recording can change session/run keys and pending uploads; this mode does not clear queues, reset identities, or change continuity preferences. It does not establish an upload acknowledgment or ingestion receipt. Actual existing-profile preservation and file round-trip evidence remain separate from automated source tests.
