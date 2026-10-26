@@ -1,4 +1,4 @@
-import { type Browser, type Page, webkit } from 'playwright-core';
+import { type Browser, chromium, type Page, webkit } from 'playwright-core';
 import { createServer, type ViteDevServer } from 'vite';
 import { afterAll, beforeAll, expect, it } from 'vitest';
 
@@ -10,7 +10,8 @@ beforeAll(async () => {
     server: { host: '127.0.0.1', port: 0, hmr: false, watch: null },
   });
   await server.listen();
-  browser = await webkit.launch();
+  // CI installs Chromium; local controlled checks use WebKit.
+  browser = await (process.env.CI ? chromium : webkit).launch();
   page = await browser.newPage();
 });
 afterAll(async () => {
