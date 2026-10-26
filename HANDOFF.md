@@ -1,3 +1,7 @@
+## Automatic browser recording initialization — 2026-10-26
+
+Remaining: parent ONE review, signed exact green CI, clean app release and actual recorded engineering before B admission. Ordinary automated browsers now initialize the released lab client, including when navigator.webdriver is true. The disabled host stub is removed. The game ID, SDK endpoint/build defaults, Recording switch, DNT/GPC defaults and pending-history startup binding remain. Localhost sends remain suppressed by the SDK default; no QA override is enabled here. Typed agent marking remains separate HF4 work. Historical blocked, 429 and unanswered requests remain historical evidence. This source change establishes no ingestion receipt or owner acceptance.
+
 # Hearsay handoff
 
 ## Garden replay artifact candidate
