@@ -1,0 +1,13 @@
+# Finite Garden7 host replay artifact
+
+Remaining: parent review, clean signed source, exact green CI and generation of the final immutable tar from that source. Adam accepts gameplay by playing. This artifact is a Task2 prerequisite, not Task3 return implementation or owner acceptance.
+
+Use Node 26.12.0 and pnpm 12.14.0. Run `pnpm install --frozen-lockfile`, then `pnpm run build:garden-replay /absolute/fresh/output`. The recipe uses installed Vite to bundle the unchanged host dependency closure and TypeScript 7 to emit declarations from source. It writes outside the checkout and does not change the normal app build. The tar contains its private package manifest, source commit/module hashes, dependency/API/license manifest, NOTICE and MIT LICENSE. Retain the external dependencies' original distributions and licenses. No npm or HF publication is authorized.
+
+The package root exports the existing `validateGardenVisitSave`, `replayGardenVisit`, `exportGardenVisit` and `importGardenVisit` and compiler-emitted types. Exact external requirements are Human Framework 3.0.0 and lab-client 0.4.11. The build verifies installed versions. Consumers must install those exact public distributions. Host rules remain Hearsay-owned; generic cognition is external.
+
+For the offline packed consumer run `pnpm run test:garden-replay-consumer /absolute/artifact /absolute/retained/proofs /absolute/fresh/consumer`. The control vendors the actual host tar and installed public dependency distributions as local files. It installs offline, compiles against the package declarations with TS7, compares every full/compact replay field, checks closing990/raw and exercises missing source-reference and forged input refusal through both public APIs. This is one retained quiet capture control, not a seed matrix. The compiler itself comes from the frozen producer toolchain; the consumer imports no producer source.
+
+Dirty source generates an explicitly dirty prototype manifest. Never restamp that candidate as immutable. After review and signed delivery, rerun the recipe from the exact clean source and retain that new tar SHA with the source signature and exact CI receipt. The final artifact has not yet been generated.
+
+Replay uses pinned saved resources and existing host rules. It does not use Shelf, network, current defaults or wall time. Original dirty51ec/file-origin/accepted:false/submitted:false provenance remains. There is no new admission, ordinary UI, accepted chat, ownership or source return. Future agent QA keeps Recording/linking on without API quarantine; this work launches no browser or player.

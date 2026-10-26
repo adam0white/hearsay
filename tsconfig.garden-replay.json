@@ -1,0 +1,12 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "noEmit": false,
+    "declaration": true,
+    "emitDeclarationOnly": true,
+    "rootDir": "src",
+    "outDir": "scratch/garden-replay-types"
+  },
+  "include": ["src/sim/garden-visit-export.ts"],
+  "exclude": []
+}

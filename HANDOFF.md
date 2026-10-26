@@ -1,5 +1,9 @@
 # Hearsay handoff
 
+## Garden replay artifact candidate
+
+Remaining: parent review, clean signed source, exact green CI and a newly generated immutable tar. The bounded build and offline consumer recipe are in docs/garden-replay-artifact.md. This is a dirty prototype packaging candidate for existing Task2 rules. It does not implement source return or establish ownership, ordinary admission, accepted chat or owner acceptance. Recording/linking must remain on for future agent QA without API quarantine. No browser, server or player was launched.
+
 ## Remaining acceptance
 
 Adam accepts the game by playing. His readiness, later-fortnight feel, actual supported cross-host journeys and recording retests remain due 2026-11-03. Agent checks do not establish that acceptance. Friends’ playtests and Show HN remain paused. Lab-panel rounds on HF 3 builds are allowed under the playtest director. This docs worker runs no rounds.

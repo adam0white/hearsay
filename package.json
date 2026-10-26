@@ -20,7 +20,9 @@
     "check": "npm run lint && npm run typecheck && npm test",
     "deploy": "node scripts/deploy.ts",
     "check:lane": "npm run check",
-    "knip": "knip"
+    "knip": "knip",
+    "build:garden-replay": "node scripts/build-garden-replay.ts",
+    "test:garden-replay-consumer": "node scripts/test-garden-replay-consumer.ts"
   },
   "dependencies": {
     "@adam0white/human-framework": "3.0.0",
