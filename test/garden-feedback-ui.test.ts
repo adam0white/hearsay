@@ -1,4 +1,4 @@
-import { type Browser, chromium, type Page } from 'playwright-core';
+import { type Browser, type Page, webkit } from 'playwright-core';
 import { createServer, type ViteDevServer } from 'vite';
 import { afterAll, beforeAll, expect, it } from 'vitest';
 
@@ -10,7 +10,7 @@ beforeAll(async () => {
     server: { host: '127.0.0.1', port: 0, hmr: false, watch: null },
   });
   await server.listen();
-  browser = await chromium.launch();
+  browser = await webkit.launch();
   page = await browser.newPage();
 });
 afterAll(async () => {
@@ -106,4 +106,32 @@ it.each([false, true])('shares active garden play only when its one checkbox is 
   await page.locator('.hflab button.send').click();
   expect(await page.evaluate('window.gardenFeedback.sharePlay')).toBe(sharePlay);
   expect(await page.evaluate('window.gardenFeedback.note')).toBe('Still send the garden note.');
+});
+
+it('offers quiet feedback choices without sending until Submit', async () => {
+  await page.close();
+  page = await browser.newPage();
+  await page.goto(server.resolvedUrls?.local[0] ?? '');
+  await page.evaluate(`(async()=>{
+    const {lab}=await import('/src/ui/lab.ts');
+    window.feedbackCalls=[];
+    lab.setTelemetryOff(true);
+    lab.sendFeedback=async(note,options)=>{window.feedbackCalls.push({note,...options});return 'queued';};
+  })()`);
+  await page.getByRole('button', { name: 'Feedback', exact: true }).click();
+  await page.getByRole('button', { name: "I'm stopping", exact: true }).click();
+  expect(await page.evaluate('window.feedbackCalls')).toEqual([]);
+  expect(
+    await page.getByRole('button', { name: "I'm stopping", exact: true }).getAttribute('aria-pressed'),
+  ).toBe('true');
+  await page.getByRole('button', { name: "I'm confused", exact: true }).click();
+  expect(await page.evaluate('window.feedbackCalls')).toEqual([]);
+  expect(
+    await page.getByRole('button', { name: "I'm confused", exact: true }).getAttribute('aria-pressed'),
+  ).toBe('true');
+  await page.locator('.hflab button.send').click();
+  const calls = await page.evaluate<{ note: string; sharePlay: boolean }[]>('window.feedbackCalls');
+  expect(calls).toHaveLength(1);
+  expect(calls[0]!.note).toContain("I'm confused");
+  expect(calls[0]!.sharePlay).toBe(false);
 });

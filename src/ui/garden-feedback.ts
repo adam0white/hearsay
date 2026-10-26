@@ -6,5 +6,5 @@ export function openGardenFeedback(
   _choose: (allow: boolean) => Promise<void>,
   _hasRun: boolean,
 ): void {
-  openSendDialog({ lab, getRun });
+  openSendDialog({ lab, getRun, feedbackChoices: true });
 }

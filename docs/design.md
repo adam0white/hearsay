@@ -118,3 +118,9 @@ The UI offers Slow, Walk, Trot and Gallop clock speeds, starting at Walk. Pendin
 New fortnights use edition 3. On Day 6 at 18:00, Elif asks Hatice to keep her request to speak with Emre private before Rıza gives his word. Keeping her confidence raises Elif’s trust in Hatice by 0.06. Calling Rıza over and repeating the request raises his trust by 0.06 and lowers Elif’s by 0.06. Asking Elif to speak with him together leaves trust unchanged; she is not ready today. That is also the unanswered scene’s fallback. The scene changes no wedding doubt, evidence or acceptance threshold. Its risk lines name the trust tradeoff before the answer.
 
 This is an implementation choice for the open Elif-dilemma route, not an owner play verdict. The existing owner acceptance requirement still applies. Editions 1 and 2 never schedule the scene or acquire its marker. Their saves and full or compact playtest exports retain the original edition and replay exactly. Edition 3 inherits edition 2’s telling-memory limits.
+
+## Quiet Feedback adoption (2026-10-25)
+
+The current garden uses immutable lab-client 0.4.11 and lab-kit 0.5.12 release artifacts from SDK source `569bfeed8042607e3b0357277e280e8bc1af01f5`. Its Feedback dialog offers “I'm stopping” and “I'm confused”. Selecting one sends nothing. Submit includes the selected words in the ordinary note. Recording off retains the unchecked option to share the run; an unchecked submission sends only the note. The receipt confirms the note, not optional run chunks. HF stays 3.0.0; simulation, native departure and export sources remain unchanged.
+
+SDK npm publication is **excluded** by the owner guardrail in `human-framework/AGENTS.md`, HF v3 increment: “The lab client and kit stay release artifacts.” This supersedes historical package-publication assumptions. Adam's feel and readiness review remains due 2026-11-03. The playtest director owns panel rounds; this adoption runs none.
