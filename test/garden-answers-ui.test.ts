@@ -19,8 +19,8 @@ it.each([
 ])('shows an Ask reply without opening the record at $width×$height', async (viewport) => {
   const page = await browser.newPage({ viewport });
   try {
-    await page.goto(`${server.resolvedUrls?.local[0] ?? ''}?lab=1`);
-    await page.getByText('Lab tools', { exact: true }).click();
+    await page.goto(`${server.resolvedUrls?.local[0] ?? ''}`);
+    await page.getByText('Other ways to begin', { exact: true }).click();
     await page.getByRole('button', { name: 'Play fourteen days with new local people', exact: true }).click();
     await page.getByRole('button', { name: 'Pause', exact: true }).click();
     await page.getByText('Talk about someone else', { exact: true }).click();

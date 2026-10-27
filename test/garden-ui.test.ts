@@ -21,19 +21,23 @@ it.each([
 ])('plays, saves and reloads the canonical UI at $width×$height', async (viewport) => {
   await page.setViewportSize(viewport);
   expect(await page.evaluate(() => ({ width: innerWidth, height: innerHeight }))).toEqual(viewport);
-  await page.goto(`${server.resolvedUrls?.local[0] ?? ''}?lab=1`);
+  await page.goto(`${server.resolvedUrls?.local[0] ?? ''}`);
   await page.locator('.cg-title, .cg-game').first().waitFor();
-  if (await page.locator('.cg-title').count()) await page.getByText('Lab tools', { exact: true }).click();
+  if (await page.locator('.cg-title').count())
+    await page.getByText('Other ways to begin', { exact: true }).click();
   const start = page.getByRole('button', { name: 'Play fourteen days with new local people', exact: true });
   if (await start.isVisible()) await start.click();
   else {
     await page.getByRole('button', { name: 'Game menu', exact: true }).first().click();
-    await page.getByText('Lab tools', { exact: true }).click();
+    await page.getByText('Other ways to begin', { exact: true }).click();
     await page.getByRole('button', { name: 'Play fourteen days with new local people', exact: true }).click();
   }
   await page.locator('[data-pace="0"]').click();
   expect(await page.locator('.cg-header').innerText()).toContain('Day 13 lunch');
   expect(await page.locator('[data-person]').count()).toBe(8);
+  const privacy = await page.getByRole('link', { name: 'Lab privacy', exact: true }).boundingBox();
+  const debug = await page.locator('.cg-debug > summary').boundingBox();
+  expect(privacy && debug && Math.abs(privacy.y - debug.y) < 12).toBe(true);
   await page.getByRole('button', { name: 'Invite a quiet conversation', exact: true }).click();
   await page.getByRole('button', { name: 'Let the conversation finish', exact: true }).click();
   expect(await page.locator('.cg-confidence').innerText()).toContain('doorway');
@@ -46,11 +50,10 @@ it.each([
   await response.click();
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
   await page.getByRole('button', { name: 'Game menu', exact: true }).first().click();
-  await page.locator('.cg-lab').evaluate((el) => {
+  await page.locator('.cg-starts').evaluate((el) => {
     (el as HTMLDetailsElement).open = true;
   });
-  await page.getByRole('button', { name: 'Save this garden', exact: true }).click();
-  await page.getByRole('status').filter({ hasText: 'Your garden is saved' }).waitFor();
+
   await page.reload();
   await page.locator('[data-pace="0"]').click();
   expect(await page.locator('.cg-confidence').innerText()).toContain('doorway');
@@ -59,12 +62,12 @@ it.each([
 it('requires an unchecked new-game choice and saves that choice through reload', async () => {
   const fresh = await browser.newPage();
   try {
-    await fresh.goto(`${server.resolvedUrls?.local[0] ?? ''}?lab=1`);
+    await fresh.goto(`${server.resolvedUrls?.local[0] ?? ''}`);
     const option = fresh.getByLabel('Use longer conversations about the garden and lunch');
     await option.waitFor();
     expect(await option.isChecked()).toBe(false);
     await option.check();
-    await fresh.getByText('Lab tools', { exact: true }).click();
+    await fresh.getByText('Other ways to begin', { exact: true }).click();
     await fresh
       .getByRole('button', { name: 'Play fourteen days with new local people', exact: true })
       .click();

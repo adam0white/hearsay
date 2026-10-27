@@ -371,3 +371,28 @@ body .hflab :is(input, textarea) {
   padding: 4px 2px !important;
   font-family: Arial, "Liberation Sans", sans-serif !important;
 }
+
+.cg-footer {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.75rem;
+}
+.cg-debug {
+  max-width: 100%;
+  overflow-wrap: anywhere;
+}
+.cg-info button {
+  min-width: 44px;
+  min-height: 44px;
+}
+.cg-info span {
+  display: inline;
+}
+.cg-info span[hidden] {
+  display: none;
+}
+
+.cg-footer .lk-telemetry-notice {
+  flex-basis: 100%;
+}

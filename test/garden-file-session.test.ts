@@ -143,14 +143,35 @@ async function readOwner(page: Page) {
     return rows;
   });
 }
-it('plays a complete foreign file without constructing Shelf or reading/writing occupied native content', async () => {
+it('plays a complete foreign file through the public route without replacing native content', async () => {
   const page = await occupied();
   try {
-    await page.goto(`${origin}?file=1`);
-    await page.locator('.cg-title, .cg-game').first().waitFor();
-    expect(
-      await page.evaluate(() => (window as unknown as { fileSessionBoundary: unknown }).fileSessionBoundary),
-    ).toEqual({ nativeOpens: 0, shelfConstructions: 0 });
+    await page.goto(origin);
+    await page.locator('.cg-game').waitFor();
+    await page.getByRole('button', { name: 'Pause', exact: true }).click();
+    await page.getByRole('button', { name: 'Game menu', exact: true }).click();
+    await page.getByText('Other ways to begin', { exact: true }).click();
+    await page.getByRole('button', { name: 'Open a game file', exact: true }).click();
+    await page.locator('#import-run').waitFor();
+    // An unopened or invalid file must always offer a way back to the native save.
+    expect(await page.getByRole('button', { name: 'Close file session', exact: true }).isVisible()).toBe(
+      true,
+    );
+    await page
+      .locator('#import-run')
+      .setInputFiles({ name: 'invalid.json', mimeType: 'application/json', buffer: Buffer.from('{}') });
+    await page.locator('.cg-title [role=status]').waitFor();
+    await page.getByRole('button', { name: 'Close file session', exact: true }).click();
+    await page.locator('.cg-game').waitFor();
+    await page.getByRole('button', { name: 'Pause', exact: true }).click();
+    await page.getByRole('button', { name: 'Game menu', exact: true }).click();
+    await page.getByText('Other ways to begin', { exact: true }).click();
+    await page.getByRole('button', { name: 'Open a game file', exact: true }).click();
+    await page.locator('#import-run').waitFor();
+    const nativeBefore = await readOwner(page);
+    const boundaryBefore = await page.evaluate(() =>
+      structuredClone((window as unknown as { fileSessionBoundary: unknown }).fileSessionBoundary),
+    );
     await expect.poll(() => page.locator('#import-run').count()).toBe(1);
     await page.evaluate(`(async () => {
       const { lab } = await import('/src/ui/lab.ts');
@@ -204,15 +225,25 @@ it('plays a complete foreign file without constructing Shelf or reading/writing 
     expect(captures.length).toBeGreaterThanOrEqual(2);
     expect(captures.every((c) => c.key.startsWith('garden-file:'))).toBe(true);
     expect(captures.at(-1)?.value.export).toEqual(exported);
+    expect(await readOwner(page)).toEqual(nativeBefore);
+    // Reading the sentinel above opens native storage once; file play itself does not.
+    const boundaryAfter = await page.evaluate(
+      () =>
+        (window as unknown as { fileSessionBoundary: { nativeOpens: number; shelfConstructions: number } })
+          .fileSessionBoundary,
+    );
+    expect(boundaryAfter).toEqual({
+      ...(boundaryBefore as object),
+      nativeOpens: (boundaryBefore as { nativeOpens: number }).nativeOpens + 1,
+    });
     await page.getByRole('button', { name: 'Close file session', exact: true }).click();
-    await page.locator('#import-run').waitFor();
-    expect(
-      await page.evaluate(() => (window as unknown as { fileSessionBoundary: unknown }).fileSessionBoundary),
-    ).toEqual({ nativeOpens: 0, shelfConstructions: 0 });
-    expect(await readOwner(page)).toEqual([
-      { plain: JSON.stringify(owner.value), at: owner.at },
-      { unique: 'source-journal-sentinel' },
-    ]);
+    await page.locator('.cg-game').waitFor();
+    await page.getByRole('button', { name: 'Pause', exact: true }).click();
+    const restored = (await page.evaluate(`(async()=>{
+      const {get}=await import('/src/ui/store.ts');return (await get('garden-cast6')).value.export;
+    })()`)) as ReturnType<typeof exportGarden>;
+    expect(restored.seed).toBe(owner.value.export.seed);
+    expect(restored.inputs).toEqual([]);
     expect(
       await page.evaluate(() => [
         localStorage.getItem('hf-persona-opt-in'),

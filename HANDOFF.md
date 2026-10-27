@@ -4,6 +4,10 @@ Remaining: parent ONE review, signed exact green CI, clean app release and actua
 
 # Hearsay handoff
 
+## Public controls — 2026-10-27 candidate
+
+Remaining: parent review, signed source, exact green CI, deployment and Adam’s separate acceptance. The garden reads no query switches. Pace, replay downloads, New game and Other ways to begin are public. Opening a game file uses a separate save sink; closing it reloads the retained native garden. Shared people carry over automatically without an opt-in. Cast controls remain on the central shelf; native closing checkpoints remain automatic. One read-only Debug item starts collapsed beside the permanent Lab privacy link. Alternate-start explanations use inline information buttons. Simulation and replay rules are unchanged. The unreachable historical shell remains a test fixture.
+
 ## Garden replay artifact candidate
 
 Remaining: parent review, clean signed source, exact green CI and a newly generated immutable tar. The bounded build and offline consumer recipe are in docs/garden-replay-artifact.md. This is a dirty prototype packaging candidate for existing Task2 rules. It does not implement source return or establish ownership, ordinary admission, accepted chat or owner acceptance. Recording/linking must remain on for future agent QA without API quarantine. No browser, server or player was launched.
@@ -24,7 +28,7 @@ Current native receiving routes admit Voice Rıza/Osman and Hearsay’s own supp
 
 Full and compact current exports pin complete initial people, any selected conversation configuration and admitted source/life chapter inputs. Full files include final state; compact files omit it and verify the complete replay fingerprint. The diagnostic download remains full. Replay consults neither current clocks nor shelf heads. Unmarked runs preserve exact prior complete-state and ending continuation without normalization. File imports do not own embedded history receipts. Preserve semantic histories, replay and legacy tests. Native shelf continuity is independent of recording. One Recording switch controls lab recording/linking, including continuing people and imported histories; character analysis alone retains its separate opt-in. Do not restore historical recording gates.
 
-Ordinary controls are Resume, Feedback, Fullscreen, All games, Recording and inline-confirmed New game. Saving and continuity are automatic. Pause/Slow/Normal/Fast remain in the garden; menu, Feedback and pending agreements hold time. Diagnostic controls require exact `?lab=1`. There is no current explanatory About/Credits surface; README supplies that coverage.
+Ordinary controls are Resume, Feedback, Fullscreen, All games, Recording and inline-confirmed New game. Saving and continuity are automatic. Pause/Slow/Normal/Fast remain in the garden; menu, Feedback and pending agreements hold time. All gameplay controls are public; read-only diagnostics sit in the collapsed Debug item beside Lab privacy. There is no current explanatory About/Credits surface; README supplies that coverage.
 
 Ordinary Feedback now offers “I'm stopping” and “I'm confused”. Selection changes the local choice, leaves edited note text intact and sends nothing. Submit includes the selected literal words in the ordinary note. Recording-off unchecked sharing still sends a note without a run or linked play. A stored-note receipt does not prove optional run chunks arrived. No production feedback was sent. Final source, UI, replay, delivery and cleanup receipts are in `~/code/.lab-scratch/games-deferred/hearsay-feedback-report.md` and `hearsay-feedback-STATUS`.
 
