@@ -28,30 +28,38 @@ async function savedGarden(page: Page) {
   await page.reload();
   await page.locator('[data-pace="0"]').click();
 }
-it.each(['', '?lab=0', '?lab=true', '?lab=01', '?lab=1'])(
-  'shows diagnostics only for the exact lab flag %s',
-  async (query) => {
-    const page = await browser.newPage();
-    try {
-      await page.goto(base + query);
-      await page.locator('.cg-title').waitFor();
-      const diagnostic = page.locator('.cg-lab');
-      expect(await diagnostic.count()).toBe(query === '?lab=1' ? 1 : 0);
-      expect(await page.locator('#import-run').count()).toBe(query === '?lab=1' ? 1 : 0);
-      expect(await page.getByRole('link', { name: 'All games' }).getAttribute('target')).toBe('_top');
-      await savedGarden(page);
-      await page.getByRole('button', { name: 'Game menu', exact: true }).click();
-      expect(await page.locator('.cg-lab').count()).toBe(query === '?lab=1' ? 1 : 0);
-      const labels = await page.locator('.cg-panel > button').allTextContents();
-      expect(labels).toEqual(['Resume', 'Feedback', 'Fullscreen', 'New game']);
-      await page.getByRole('button', { name: 'New game', exact: true }).click();
-      await page.getByRole('button', { name: 'Keep this garden', exact: true }).click();
-      expect(await page.locator('.cg-header').innerText()).toContain('Day 1');
-    } finally {
-      await page.close();
-    }
-  },
-);
+it('makes gameplay public and keeps cast controls on the central shelf', async () => {
+  const page = await browser.newPage();
+  try {
+    await page.goto(base);
+    await page.locator('.cg-title').waitFor();
+    await page.getByText('Other ways to begin', { exact: true }).click();
+    expect(await page.getByRole('button', { name: 'Open a game file', exact: true }).isVisible()).toBe(true);
+    expect(
+      await page
+        .getByRole('button', { name: 'Play fourteen days with new local people', exact: true })
+        .isVisible(),
+    ).toBe(true);
+    expect(await page.getByRole('link', { name: 'All games' }).getAttribute('target')).toBe('_top');
+    const debug = page.locator('.cg-footer > .cg-debug');
+    expect(await debug.getAttribute('open')).toBeNull();
+    await debug.locator('summary').click();
+    expect(await debug.innerText()).toContain('Engine: 2.23.0');
+    expect(await debug.locator('button, input, select').count()).toBe(0);
+    await savedGarden(page);
+    await page.getByRole('button', { name: 'Game menu', exact: true }).click();
+    expect(await debug.getAttribute('open')).toBeNull();
+    expect(await page.getByRole('button', { name: 'Download this run', exact: true }).isVisible()).toBe(true);
+    expect(await page.locator('.cg-panel').innerText()).not.toMatch(
+      /Turn browser continuity|separate history|closing chapter/,
+    );
+    await page.getByRole('button', { name: 'New game', exact: true }).click();
+    await page.getByRole('button', { name: 'Keep this garden', exact: true }).click();
+    expect(await page.locator('.cg-header').innerText()).toContain('Day 1');
+  } finally {
+    await page.close();
+  }
+});
 it.each(['prepareBatch', 'putBatch'])(
   'keeps the saved garden and ownership when %s fails, including an uncertain accepted reply',
   async (failure) => {
@@ -65,9 +73,12 @@ it.each(['prepareBatch', 'putBatch'])(
     await context.route('https://human.adamwhite.work/**', async (route) => {
       await route.fulfill({
         contentType: 'text/html',
-        body: `<script>window.addEventListener('message',e=>{
+        body: `<script>window.consentSets=0;window.addEventListener('message',e=>{
           const m=e.data, port=e.ports[0]; if(!port)return;
-          if(m.type==='hf-persona-consent')port.postMessage({type:'hf-persona-consent-reply',id:m.id,value:true});
+          if(m.type==='hf-persona-consent'){
+            if(m.action==='set' && m.enabled===true)window.consentSets++;
+            port.postMessage({type:'hf-persona-consent-reply',id:m.id,value:m.action==='set' && m.enabled===true});
+          }
           if(m.type==='hf-persona-request'){
             if(m.action==='prepareBatch' && '${failure}'!=='prepareBatch')port.postMessage({type:'hf-persona-reply',id:m.id,value:{inputs:[],blocked:[],expectedHeads:Object.fromEntries(m.castIds.map(id=>[id,null]))}});
             else port.postMessage({type:'hf-persona-reply',id:m.id,error:'Shelf unavailable. Use a local file.'});
@@ -76,6 +87,7 @@ it.each(['prepareBatch', 'putBatch'])(
       });
     });
     const page = await context.newPage();
+    await page.addInitScript(() => localStorage.setItem('hf-persona-opt-in', '0'));
     try {
       await page.goto('https://hearsay.adamwhite.work/');
       await page.locator('.cg-title').waitFor();
@@ -90,6 +102,9 @@ it.each(['prepareBatch', 'putBatch'])(
       await page.getByRole('button', { name: 'Start new game', exact: true }).click();
       await page.getByRole('status').filter({ hasText: 'The new garden could not start' }).waitFor();
       expect(await read()).toEqual(before);
+      const frame = await page.locator('iframe[title="Fictional person shelf"]').elementHandle();
+      const central = await frame?.contentFrame();
+      expect(await central?.evaluate('window.consentSets')).toBe(1);
       expect(await page.locator('.cg-panel').innerText()).not.toMatch(/Shelf unavailable|local file/);
       expect(await page.getByRole('button', { name: 'Feedback', exact: true }).isVisible()).toBe(true);
       await page.getByRole('button', { name: 'Resume', exact: true }).click();

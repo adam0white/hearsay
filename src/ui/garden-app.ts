@@ -52,9 +52,9 @@ const esc = (s: string) =>
       'Garden escaping requires a matched character.',
     ),
   );
-const fileSession = new URLSearchParams(location.search).get('file') === '1';
-// Choose the foreign sink before opening native storage or constructing shared continuity.
-const shelf = fileSession ? undefined : personaChannel();
+// File play is a public route. It switches save sinks before importing a run.
+let fileSession = false;
+const shelf = personaChannel();
 const recordingGuard = new GardenRecordingGuard(lab, shelf);
 let recordingBinding: RecordingBinding | undefined;
 let fileKey: string | null = null;
@@ -71,7 +71,6 @@ const stamps = () => ({
 });
 let run: GardenRun | undefined;
 let selected: GardenPerson = 'riza';
-const labTools = new URLSearchParams(location.search).get('lab') === '1';
 let menu = false;
 let confirmNew = false;
 let pace = 1;
@@ -87,6 +86,20 @@ const root = required(document.getElementById('app'), 'Garden requires its app r
 const footer = document.createElement('footer');
 footer.className = 'cg-footer';
 root.after(footer);
+const debug = document.createElement('details');
+debug.className = 'cg-debug';
+const privacy = document.createElement('a');
+privacy.href = 'https://human.adamwhite.work/lab/privacy/';
+privacy.textContent = 'Lab privacy';
+privacy.target = '_blank';
+privacy.rel = 'noopener';
+footer.append(privacy, debug);
+function renderDebug() {
+  debug.innerHTML = `<summary>Debug</summary><p>Build: ${esc(stamps().build)}. Engine: ${esc(stamps().engine)}. Rules: ${esc(stamps().rules)}.</p>${run ? `<p>Seed: ${run.seed}. Minute: ${run.minute}.</p>` : '<p>No game is open.</p>'}`;
+}
+function information(id: string, label: string, text: string) {
+  return `<span class="cg-info"><button type="button" data-info="${id}" aria-label="${label}" aria-expanded="false" aria-controls="${id}">i</button><span id="${id}" hidden>${text}</span></span>`;
+}
 function clock() {
   const m = run?.minute ?? 360,
     t = m % 1440;
@@ -188,6 +201,7 @@ async function useRun(
   if (generation !== current) return;
   notice = '';
   run = next;
+  debug.open = false;
   fileOrigin = file;
   menu = false;
   confirmNew = false;
@@ -200,20 +214,19 @@ async function useRun(
   save();
   render();
 }
-function labControls() {
-  if (!labTools || !shelf) return '';
-  return `<details class="cg-lab"><summary>Lab tools</summary><p>Continuity is ${shelf.enabled ? 'on' : 'off'}. It lets people continue between games in this browser. Saved games keep their original people.</p>${button(shelf.enabled ? 'Turn browser continuity off' : 'Turn browser continuity on', 'continuity')}${button('Play fourteen days with new local people', 'local')}${run ? button('Save this garden', 'save') + button('Download this run', 'export') : ''}<label class="cg-file">Import a run<input type="file" id="import-run" accept=".json,application/json"></label>${run ? `<label>Person whose chapter you want to save<select id="cg-checkpoint-person">${GARDEN_IDS.map((p) => `<option value="${p}">${esc(GARDEN_CAST[p].name)}</option>`).join('')}</select></label>${button('Save their closing chapter if it is ready', 'checkpoint')}${button('Start a separate history for this person', 'fork')}<p>A chapter cannot close while work or invoices remain unfinished. Download this game before replacing a person’s history.</p>${run.chapter?.inputs.map((p) => `<p>${esc(lifeAdmission(p, 'hearsay').line)}</p>`).join('') ?? ''}` : ''}</details>`;
+function otherStarts() {
+  return `<details class="cg-starts"><summary>Other ways to begin</summary>${button('Play fourteen days with new local people', 'local', starting)}${information('cg-local-info', 'About new local people', 'New local people start without a shared history.')}${button('Open a game file', 'open-file', starting)}${information('cg-file-info', 'About opening a game file', 'Opening a file keeps its progress separate from your saved garden.')}</details>`;
 }
 function conversationOption() {
   return `<label class="cg-dialogue"><input type="checkbox" id="cg-dialogue" ${starting ? 'disabled' : ''}> Use longer conversations about the garden and lunch</label>`;
 }
 function fileControls() {
-  return `<p>This file session stays in this tab. Download the game file to keep your progress. Your browser’s saved garden and shared histories are not changed.</p>${run ? button('Download this game file', 'export') + button('Close file session', 'close-file') : '<label class="cg-file">Open a game file<input type="file" id="import-run" accept=".json,application/json"></label>'}<p>Saving a closing chapter, starting a separate history and starting a new garden are unavailable in a file session.</p>`;
+  return `<p>This file session stays in this tab. Download the game file to keep your progress. Your browser’s saved garden and shared histories are not changed.</p>${run ? button('Download this game file', 'export') : '<label class="cg-file">Open a game file<input type="file" id="import-run" accept=".json,application/json"></label>'}${button('Close file session', 'close-file')}<p>Saving a closing chapter, starting a separate history and starting a new garden are unavailable in a file session.</p>`;
 }
 function menuControls() {
   if (fileSession)
     return `${run ? button('Resume', 'back') : ''}${button('Feedback', 'send')}${button('Fullscreen', 'fullscreen')}<a href="https://human.adamwhite.work/games/" target="_top">All games</a><div id="cg-recording"></div>${fileControls()}`;
-  return `${run ? button('Resume', 'back') : ''}${button('Feedback', 'send')}${button('Fullscreen', 'fullscreen')}<a href="https://human.adamwhite.work/games/" target="_top">All games</a><div id="cg-recording"></div>${run ? button('New game', 'new') : ''}${confirmNew ? `<p>Start a new fourteen-day game and replace this device’s saved garden?</p>${conversationOption()}${button('Start new game', 'restart', starting)}${button('Keep this garden', 'cancel-new', starting)}` : ''}${labControls()}`;
+  return `${run ? button('Resume', 'back') : ''}${button('Feedback', 'send')}${button('Fullscreen', 'fullscreen')}<a href="https://human.adamwhite.work/games/" target="_top">All games</a><div id="cg-recording"></div>${run ? button('New game', 'new') : ''}${confirmNew ? `<p>Start a new fourteen-day game and replace this device’s saved garden?</p>${conversationOption()}${button('Start new game', 'restart', starting)}${button('Keep this garden', 'cancel-new', starting)}` : ''}${run ? button('Download this run', 'export') : ''}${otherStarts()}`;
 }
 function renderTitle() {
   root.innerHTML = `<main class="cg-title"><p class="eyebrow">Fourteen days in the neighbourhood</p><h1>Hearsay</h1><p>You are Hatice. You run a tea garden in Istanbul. People visit between shifts, deliveries and appointments.</p><p class="goal">Your goal is to open a paid workers’ lunch on Day 13.</p><details><summary>How to play</summary><p>Arrange supplies on Day 4 and agree on paid cooking on Day 8. You need at least four meal reservations. People decide whether to book based on what they hear.</p><p>Choose a person to talk to. You can listen, repeat a claim or keep it private. Your words affect who trusts you and visits the garden. The clock runs for fourteen days.</p><p>Prices are in lira, the currency of Turkey. ${fileSession ? 'This file session stays in this tab. Download the game file to keep your progress.' : 'Your garden saves automatically on this device.'}</p></details>${notice ? `<p role="status">${esc(notice)}</p>` : ''}${fileSession ? '' : conversationOption() + button('Begin', 'start', starting)}${menuControls()}</main>`;
@@ -221,7 +234,12 @@ function renderTitle() {
 }
 function render() {
   ++uiGeneration;
-  const opened = [...root.querySelectorAll<HTMLDetailsElement>('details')].map((d) => d.open);
+  renderDebug();
+  const opened = new Set(
+    [...root.querySelectorAll<HTMLDetailsElement>('details[open]')].map(
+      (d) => d.querySelector('summary')?.textContent,
+    ),
+  );
   const traitSelected = root.querySelector<HTMLSelectElement>('#cg-trait')?.value;
   const about = root.querySelector<HTMLSelectElement>('#cg-about')?.value;
   const focusedAction = (document.activeElement as HTMLElement | null)?.dataset.action;
@@ -281,8 +299,8 @@ function render() {
         `<p><small>Day ${Math.floor(l.at / 1440) + 1} ${Math.floor((l.at % 1440) / 60)}:${String(l.at % 60).padStart(2, '0')}</small> ${esc(l.text)}</p>`,
     )
     .join('')}</details></main>`;
-  root.querySelectorAll<HTMLDetailsElement>('details').forEach((d, i) => {
-    d.open = opened[i] ?? false;
+  root.querySelectorAll<HTMLDetailsElement>('details').forEach((d) => {
+    d.open = opened.has(d.querySelector('summary')?.textContent);
   });
   if (traitSelected) {
     const select = root.querySelector<HTMLSelectElement>('#cg-trait');
@@ -324,6 +342,14 @@ function bind() {
       void action(key);
     };
   });
+  root.querySelectorAll<HTMLButtonElement>('[data-info]').forEach((b) => {
+    b.onclick = () => {
+      const text = root.querySelector<HTMLElement>(`#${b.dataset.info}`);
+      if (!text) return;
+      text.hidden = !text.hidden;
+      b.setAttribute('aria-expanded', String(!text.hidden));
+    };
+  });
   const importer = root.querySelector<HTMLInputElement>('#import-run');
   if (importer)
     importer.onchange = async () => {
@@ -345,36 +371,31 @@ function bind() {
     };
 }
 async function action(key: string) {
-  if (
-    fileSession &&
-    ['continuity', 'local', 'checkpoint', 'fork', 'save', 'new', 'restart', 'start'].includes(key)
-  )
-    return;
-  if (
-    ['continuity', 'local', 'checkpoint', 'fork', 'save', 'export'].includes(key) &&
-    !labTools &&
-    !(fileSession && key === 'export')
-  )
-    return;
-  if (key === 'close-file') {
-    if (!fileSession) return;
-    await save();
+  if (fileSession && ['local', 'new', 'restart', 'start'].includes(key)) return;
+  if (key === 'open-file') {
+    if (starting || fileSession) return;
+    if (run && !(await save())) return;
     ++loadGeneration;
     ++generation;
     stopTrack?.();
     stopTrack = undefined;
+    recordingGuard.invalidate();
+    fileSession = true;
     run = undefined;
-    fileKey = null;
-    fileOrigin = false;
     ownedHeads = {};
     archives = [];
-    recordingBinding = undefined;
+    fileOrigin = false;
+    fileKey = null;
+    notice = '';
     await recordingGuard.bind({ key: null, file: false, heads: [] });
-    carry = 0;
-    lastFrame = 0;
-    menu = false;
-    notice = 'The file session is closed. Open a game file to continue.';
     render();
+    return;
+  }
+  if (key === 'close-file') {
+    if (!fileSession) return;
+    await save();
+    // Reload restores the native garden without persisting the foreign run there.
+    location.reload();
     return;
   }
   if (key === 'fullscreen') {
@@ -394,15 +415,6 @@ async function action(key: string) {
     return;
   }
   if (key === 'restart' && !confirmNew) return;
-  if (key === 'continuity') {
-    if (!shelf) return;
-    ++generation;
-    recordingGuard.invalidate();
-    shelf.setEnabled(!shelf.enabled);
-    if (recordingBinding) await recordingGuard.bind(recordingBinding);
-    render();
-    return;
-  }
   if (key === 'start' || key === 'restart' || key === 'local') {
     if (!shelf) return;
     if (starting) return;
@@ -420,7 +432,11 @@ async function action(key: string) {
       let next = freshGarden(seed, {}, undefined, config),
         receipts: Record<string, PersonaEnvelope> = {};
       await shelf.ready;
-      if (shelf.enabled && key !== 'local') {
+      if (key !== 'local') {
+        if (!shelf.enabled) {
+          shelf.setEnabled(true);
+          await shelf.ready;
+        }
         const chapter = await claimCastChapterBatch(
           shelf,
           castForGame('hearsay').map((p) => p.castId),
@@ -450,19 +466,12 @@ async function action(key: string) {
       if (generation === attempt) await useRun(next, false, undefined, receipts);
     } catch (e) {
       console.error('Garden start failed', e);
-      notice = labTools
-        ? `${e instanceof Error ? e.message : 'The saved people could not be loaded.'} No new garden was started. Your previous saved garden is kept.`
-        : 'The new garden could not start because the saved people could not be loaded together. Your previous garden is kept. You can try again or send feedback.';
+      notice =
+        'The new garden could not start because the saved people could not be loaded together. Your previous garden is kept. You can try again or send feedback.';
     } finally {
       starting = false;
       render();
     }
-    return;
-  }
-  if (key === 'checkpoint' || key === 'fork') {
-    const id = root.querySelector<HTMLSelectElement>('#cg-checkpoint-person')?.value as GardenPerson;
-    await checkpoint(id, key === 'fork');
-    render();
     return;
   }
   if (key === 'send') {
@@ -477,15 +486,8 @@ async function action(key: string) {
   if (!run) return;
   if (key === 'menu' || key === 'back') {
     menu = key === 'menu';
+    debug.open = false;
     carry = 0;
-    render();
-    return;
-  }
-  if (key === 'save') {
-    const stored = await save();
-    notice = stored
-      ? 'Your garden is saved on this device.'
-      : 'Your garden could not be saved on this device. Download this game before leaving.';
     render();
     return;
   }
@@ -557,7 +559,8 @@ async function action(key: string) {
 }
 export async function startGarden() {
   const recordingNotice = telemetryNotice();
-  if (recordingNotice) footer.append(recordingNotice);
+  if (recordingNotice) footer.prepend(recordingNotice);
+
   root.innerHTML =
     '<main class="cg-loading"><h1>Hearsay</h1><p role="status">Opening your garden…</p></main>';
   recordingGuard.invalidate();
@@ -604,7 +607,7 @@ export async function startGarden() {
   window.addEventListener('storage', (e) => {
     if (e.key === null || e.key === 'hf-persona-opt-in') invalid();
   });
-  if (shelf) watchPersonaCheckpoint(() => checkpoint());
+  watchPersonaCheckpoint(() => (fileSession ? undefined : checkpoint()));
   window.addEventListener('pagehide', () => {
     if (fileSession) {
       if (run) void save();
@@ -650,20 +653,26 @@ export async function startGarden() {
   requestAnimationFrame(frame);
 }
 
-async function checkpoint(selected?: GardenPerson, fork = false) {
-  if (!shelf || !run || !shelf.enabled || starting || checkpointBusy) return;
+async function checkpoint() {
+  if (fileSession || !run || starting || checkpointBusy) return;
   checkpointBusy = true;
   const captured = run,
     atGeneration = generation;
   try {
-    for (const id of selected ? [selected] : GARDEN_IDS) {
+    await shelf.ready;
+    if (!shelf.enabled) {
+      shelf.setEnabled(true);
+      await shelf.ready;
+    }
+    if (fileSession || run !== captured || generation !== atGeneration) return;
+    for (const id of GARDEN_IDS) {
       const cast = canonicalCast(GARDEN_CAST[id].castId),
-        parent = fork ? undefined : ownedHeads[cast.castId];
+        parent = ownedHeads[cast.castId];
       if (parent?.terminal) continue;
       try {
-        if (fileOrigin && !parent && !fork)
+        if (fileOrigin && !parent)
           throw new Error(
-            'People from an imported file cannot replace a history saved in this browser. Keep this game local or start a separate history for this person.',
+            'People from an imported file cannot replace a history saved in this browser. Keep this game file for your own record.',
           );
         const actor = captured.people[id];
         let next: PersonaEnvelope;
@@ -713,7 +722,6 @@ async function checkpoint(selected?: GardenPerson, fork = false) {
         await shelf.request({
           action: 'put',
           envelope: next,
-          ...(fork ? { fork: true } : {}),
         });
         if (generation !== atGeneration || run !== captured) return;
         ownedHeads[cast.castId] = next;
@@ -728,11 +736,10 @@ async function checkpoint(selected?: GardenPerson, fork = false) {
           heads,
         };
         await recordingGuard.bind(recordingBinding);
-        if (labTools)
-          notice = `${cast.name}’s ${next.terminal ? 'death' : 'closing chapter'} is saved in this browser.`;
+
         await save();
-      } catch (e) {
-        if (selected) notice = e instanceof Error ? e.message : 'This person’s chapter could not be saved.';
+      } catch {
+        // A chapter that is not ready stays in this game.
       }
     }
   } finally {

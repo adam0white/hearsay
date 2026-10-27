@@ -2,7 +2,7 @@ import { chromium } from 'playwright-core';
 import { createServer } from 'vite';
 import { expect, it } from 'vitest';
 
-it('keeps the actual notice and wrapper compact and lets enlarged disclosure wrap', async () => {
+it('keeps the notice compact above the privacy and Debug row and lets enlarged disclosure wrap', async () => {
   const server = await createServer({ server: { host: '127.0.0.1', port: 0, hmr: false, watch: null } });
   await server.listen();
   const browser = await chromium.launch();
@@ -38,7 +38,12 @@ it('keeps the actual notice and wrapper compact and lets enlarged disclosure wra
     expect(normal.height).toBeLessThan(32);
     expect(normal.lineRects).toBe(1);
     expect(normal.fontFamily).toContain('Arial');
-    expect(normal.wrapper).toBeLessThanOrEqual(40);
+    // The permanent privacy and Debug row adds one line below the disclosure.
+    expect(normal.wrapper).toBeLessThanOrEqual(96);
+    const privacy = await page.getByRole('link', { name: 'Lab privacy', exact: true }).boundingBox();
+    const debug = await page.locator('.cg-debug > summary').boundingBox();
+    expect(privacy && debug && Math.abs(privacy.y - debug.y) < 12).toBe(true);
+    expect(await page.locator('.cg-debug').getAttribute('open')).toBeNull();
     expect(normal.clipped).toBe(false);
     expect(normal.controls).toBe(0);
     await page.evaluate(() => (document.documentElement.style.fontSize = '32px'));
