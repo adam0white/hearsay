@@ -119,10 +119,11 @@ async function occupied(): Promise<Page> {
   await page.route('**/*lab-client*.js*', async (route) => {
     const response = await route.fetch();
     const text = await response.text();
-    const body = text.replace(
-      'function personaChannel() {',
-      'function personaChannel() { window.fileSessionBoundary.shelfConstructions++;',
-    );
+    // The SDK now accepts options in this signature. A missing probe used to
+    // report zero constructions and fail only the native control. Fail closed.
+    const signature = /\bfunction personaChannel\([^)]*\)\s*\{/g;
+    expect([...text.matchAll(signature)]).toHaveLength(1);
+    const body = text.replace(signature, '$& window.fileSessionBoundary.shelfConstructions++;');
     await route.fulfill({ response, body });
   });
   return page;
