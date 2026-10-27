@@ -316,7 +316,8 @@ body:has(.cg-title),
 }
 .cg-footer {
   max-width: 1366px;
-  padding: 0;
+  padding: 0 16px;
+  box-sizing: border-box;
   margin: auto;
 }
 .cg-footer:empty {
@@ -369,12 +370,12 @@ body .hflab :is(input, textarea) {
 .cg-footer .lk-telemetry-notice {
   font-size: max(14px, calc(1rem - 3px)) !important;
   padding: 4px 2px !important;
-  font-family: Arial, "Liberation Sans", sans-serif !important;
+  font-family: Georgia, serif !important;
 }
 
 .cg-footer {
-  display: flex;
-  flex-wrap: wrap;
+  display: grid;
+  grid-template-columns: max-content minmax(0, 1fr);
   align-items: baseline;
   gap: 0.75rem;
 }
@@ -386,13 +387,23 @@ body .hflab :is(input, textarea) {
   min-width: 44px;
   min-height: 44px;
 }
+.cg-start-row {
+  display: grid;
+  grid-template-columns: minmax(0, max-content) 44px;
+  gap: 0 4px;
+  margin: 8px 0;
+}
+.cg-info {
+  display: contents;
+}
 .cg-info span {
-  display: inline;
+  display: block;
+  grid-column: 1 / -1;
 }
 .cg-info span[hidden] {
   display: none;
 }
 
 .cg-footer .lk-telemetry-notice {
-  flex-basis: 100%;
+  grid-column: 1 / -1;
 }

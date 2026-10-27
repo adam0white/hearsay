@@ -50,6 +50,10 @@ it.each([
   await response.click();
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
   await page.getByRole('button', { name: 'Game menu', exact: true }).first().click();
+  expect(await page.locator('[data-pace]:disabled').count()).toBe(4);
+  await page.getByRole('button', { name: 'Resume', exact: true }).click();
+  expect(await page.locator('[data-pace]:disabled').count()).toBe(0);
+  await page.getByRole('button', { name: 'Game menu', exact: true }).first().click();
   await page.locator('.cg-starts').evaluate((el) => {
     (el as HTMLDetailsElement).open = true;
   });
