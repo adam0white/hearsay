@@ -1,6 +1,7 @@
 import { inspect, validatePortablePerson } from '@adam0white/human-framework';
 import { canonicalCast } from '@adam0white/lab-client';
 import { expect, it } from 'vitest';
+import { gardenOpening } from '../src/sim/garden-cast.ts';
 import {
   advanceGarden,
   chooseGarden,
@@ -10,6 +11,18 @@ import {
   sessionOf,
 } from '../src/sim/garden4.ts';
 import { exportGarden, importGarden } from '../src/sim/garden4-export.ts';
+
+it('preserves the authored reciprocal sibling ties in public state and replay', () => {
+  const garden = freshGarden(17);
+  for (const id of ['aylin', 'dilan'] as const) {
+    const expected = gardenOpening(id, 17).social.relationships.map((tie) => ({
+      ...tie,
+      lastInteraction: tie.lastInteraction * 60000,
+    }));
+    expect(garden.people[id].relationships).toEqual(expected);
+  }
+  expect(importGarden(JSON.stringify(exportGarden(garden)))).toEqual(garden);
+});
 
 /** Public projection control only. It does not publish or establish departure eligibility. */
 function engineeringPassport(garden: GardenRun) {

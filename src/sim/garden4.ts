@@ -127,6 +127,19 @@ export function gardenAuthors(): PersonAuthoring[] {
       p = canonicalCast(c.castId);
     const author = authorGardenPerson(id, c.name, c.sex, c.age, { ...p.traits }, { ...p.values });
     author.identity.castId = c.castId;
+    if (id === 'aylin' || id === 'dilan')
+      author.state.relationships = [
+        {
+          otherId: id === 'aylin' ? 'dilan' : 'aylin',
+          affection: 0.45,
+          trust: 0.65,
+          respect: 0.2,
+          familiarity: 0.85,
+          roles: ['sibling'],
+          ledger: 0,
+          lastInteraction: 360 * MINUTE,
+        },
+      ];
     return author;
   });
 }

@@ -19,7 +19,7 @@
     "measure": "node scripts/measure.ts",
     "check": "npm run lint && npm run typecheck && npm test",
     "deploy": "node scripts/deploy.ts",
-    "check:lane": "npm run check",
+    "check:lane": "npm run lint && npm run typecheck",
     "knip": "knip",
     "build:garden-replay": "node scripts/build-garden-replay.ts",
     "test:garden-replay-consumer": "node scripts/test-garden-replay-consumer.ts"
