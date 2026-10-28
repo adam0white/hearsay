@@ -25,7 +25,7 @@ it('retains an admitted person’s saved narration choice without rewriting it d
 it('admits an actual HF 2.21 Voice constructor checkpoint and refuses altered source stamps or mapping', async () => {
   const { readFileSync } = await import('node:fs');
   const { createPersona, preparePersonaLife, canonicalPersona } = await import('@adam0white/lab-client');
-  const { snapshot } = await import('@adam0white/human-framework');
+  const { snapshot } = await import('@adam0white/hf-legacy');
   const { admitGardenPerson } = await import('../src/sim/garden-continuity.ts');
   const fixture = JSON.parse(
     readFileSync(new URL('./fixtures/voice-hf221-riza.json', import.meta.url), 'utf8'),
@@ -80,7 +80,7 @@ it('opts current historical-shell constructors in while keeping immutable legacy
 });
 
 it('supplies the previously clipped HF package lines as sentences for the opted-in cast', async () => {
-  const { linesFor } = await import('@adam0white/human-framework');
+  const { linesFor } = await import('@adam0white/hf-legacy');
   const lexicon = freshGarden(17).people.hatice.lexicon;
   expect(linesFor('need:food', lexicon)).toContain('My stomach is growling. I will eat first.');
   expect(linesFor('need:autonomy', lexicon)).toContain('I want to make my own choice this time.');

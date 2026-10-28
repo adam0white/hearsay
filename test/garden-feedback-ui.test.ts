@@ -49,8 +49,8 @@ it('keeps the active garden export replayable without any browser consent or own
     keys: string[];
     stateKeys: string[];
   }>(`(async()=>{
-    const {freshGarden,advanceGarden}=await import('/src/sim/garden.ts');
-    const {exportGarden,importGarden}=await import('/src/sim/garden-export.ts');
+    const {freshGarden,advanceGarden}=await import('/src/sim/garden4.ts');
+    const {exportGarden,importGarden}=await import('/src/sim/garden4-export.ts');
     const run=freshGarden(17);advanceGarden(run,375);
     const exported=exportGarden(run);const restored=importGarden(JSON.stringify(exported));
     return {same:JSON.stringify(restored)===JSON.stringify(run),keys:Object.keys(exported),stateKeys:Object.keys(exported.state)};
@@ -82,9 +82,9 @@ it.each([false, true])('shares active garden play only when its one checkbox is 
   // A saved local fixture tests Feedback; it is not a shared admission receipt.
   await page.evaluate(`(async()=>{
     const {put}=await import('/src/ui/store.ts');
-    const {freshGarden}=await import('/src/sim/garden.ts');
-    const {exportGarden}=await import('/src/sim/garden-export.ts');
-    await put('garden-cast6',{export:exportGarden(freshGarden(17)),fileOrigin:false,ownedHeads:{},archives:[]});
+    const {freshGarden}=await import('/src/sim/garden4.ts');
+    const {exportGarden}=await import('/src/sim/garden4-export.ts');
+    await put('garden-hf4-1',{export:exportGarden(freshGarden(17)),fileOrigin:false,ownedHeads:{},archives:[]});
   })()`);
   await page.reload();
   await page.locator('[data-pace="0"]').click();

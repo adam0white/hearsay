@@ -3,37 +3,36 @@ import {
   anchorPersonaLife,
   canonicalCast,
   castForGame,
-  claimCastChapterBatch,
   closePersonaBranch,
   createPersona,
   initialPersonaLife,
-  lifeAdmission,
   type PersonaEnvelope,
   personaChannel,
   validatePersona,
-  watchPersonaCheckpoint,
 } from '@adam0white/lab-client';
 import { downloadJson, telemetryNotice, telemetryToggle } from '@adam0white/lab-kit';
+import { GARDEN_CAST, GARDEN_IDS, type GardenPerson } from '../sim/garden-cast.ts';
+import type { GardenConfig } from '../sim/garden-dialogue.ts';
+import { GARDEN_ENGINE } from '../sim/garden-engine.ts';
 import {
   advanceGarden,
   chooseGarden,
   freshGarden,
   type GardenInput,
   type GardenRun,
+  gardenAuthors,
   gardenHere,
   gardenStanding,
-} from '../sim/garden.ts';
-import { GARDEN_CAST, GARDEN_IDS, type GardenPerson } from '../sim/garden-cast.ts';
+} from '../sim/garden4.ts';
 import {
-  admitGardenPerson,
+  admitGardenBatch,
   captureGardenSource,
+  claimGardenBatch,
   type GardenChapter,
-  gardenId,
   type SourceArchive,
-} from '../sim/garden-continuity.ts';
-import type { GardenConfig } from '../sim/garden-dialogue.ts';
-import { exportGarden, importGarden } from '../sim/garden-export.ts';
-import { actualGardenLocation, type PlanChoice, type ReputationTrait } from '../sim/garden-stakes.ts';
+} from '../sim/garden4-continuity.ts';
+import { exportGarden, importGarden } from '../sim/garden4-export.ts';
+import { actualGardenLocation, type PlanChoice, type ReputationTrait } from '../sim/garden4-stakes.ts';
 import { gardenPlace } from './garden-english.ts';
 import { openGardenFeedback } from './garden-feedback.ts';
 import { GardenRecordingGuard, type RecordingBinding } from './garden-recording.ts';
@@ -66,8 +65,8 @@ let checkpointBusy = false;
 const stamps = () => ({
   game: 'hearsay',
   build: lab.build().c ?? 'development',
-  engine: '2.23.0',
-  rules: 'hearsay-cast-6',
+  engine: GARDEN_ENGINE,
+  rules: 'hearsay-hf4-1',
 });
 let run: GardenRun | undefined;
 let selected: GardenPerson = 'riza';
@@ -130,7 +129,7 @@ async function save(): Promise<boolean> {
       return false;
     }
   }
-  const stored = await put('garden-cast6', value);
+  const stored = await put('garden-hf4-1', value);
   if (!stored) {
     notice =
       'Your garden could not be saved on this device. Keep this page open. You can send feedback from the game menu.';
@@ -163,24 +162,6 @@ async function useRun(
   receipts: Record<string, PersonaEnvelope> = {},
 ) {
   const current = ++generation;
-  if (next.chapter) {
-    if (
-      next.chapter.version !== 'hearsay-batch/1' ||
-      next.chapter.mapping !== 'hearsay-calendar/1' ||
-      next.chapter.inputs.length !== next.chapter.claims.length ||
-      next.chapter.inputs.length > 8 ||
-      new Set(next.chapter.inputs.map((p) => p.parent.castId)).size !== next.chapter.inputs.length
-    )
-      throw new Error('The saved group of people is invalid.');
-    for (const input of next.chapter.inputs) {
-      const parent = await validatePersona(input.parent);
-      lifeAdmission(input, 'hearsay');
-      const claim = next.chapter.claims.find((h) => h.castId === parent.castId);
-      if (!claim || claim.parentRevision !== parent.revision || claim.branchId !== parent.branchId)
-        throw new Error('A saved person does not continue their recorded history.');
-      await validatePersona(claim);
-    }
-  }
   if (generation !== current) return;
   ownedHeads = receipts;
   stopTrack?.();
@@ -268,7 +249,7 @@ function render() {
     else if (running)
       panel += `<p>You are listening to ${esc(GARDEN_CAST[running.person].name)}. Finish or leave that conversation first.</p>${button('Go to the conversation', 'chat')}`;
     else if (discovery)
-      panel += `<details><summary>About ${esc(c.name)}</summary><p>${esc(c.name)} is ${Math.floor((run.people[id].now - run.people[id].life.bornAt) / (365 * 1440))} years old. ${esc(c.family)}</p></details><p class="cg-confidence">${esc(discovery.fact)}</p>${discovery.response ? `<p>${esc(discovery.outcome ?? '')}</p>${button('Sit and talk again', 'listen', !here)}` : `${button('Offer practical help and keep this private', 'support', !here)}${button('Keep this private', 'keep', !here)}${button('Repeat this at another table', 'spread', !here)}`}`;
+      panel += `<details><summary>About ${esc(c.name)}</summary><p>${esc(c.family)}</p></details><p class="cg-confidence">${esc(discovery.fact)}</p>${discovery.response ? `<p>${esc(discovery.outcome ?? '')}</p>${button('Sit and talk again', 'listen', !here)}` : `${button('Offer practical help and keep this private', 'support', !here)}${button('Keep this private', 'keep', !here)}${button('Repeat this at another table', 'spread', !here)}`}`;
     else
       panel += `<p>${here ? esc(c.cue) : `${esc(c.name)} is away or unavailable. Try again later.`}</p>${button(id === 'hatice' ? 'Reflect on your past for fifteen minutes' : 'Invite a quiet conversation', 'listen', !here)}${id !== 'hatice' ? button('Press for private details', 'pry', !here) : ''}`;
     const confrontation = run.lunch.confrontations.find(
@@ -429,7 +410,7 @@ async function action(key: string) {
     recordingGuard.invalidate();
     render();
     try {
-      let next = freshGarden(seed, {}, undefined, config),
+      let next = freshGarden(seed, gardenAuthors(), undefined, config),
         receipts: Record<string, PersonaEnvelope> = {};
       await shelf.ready;
       if (key !== 'local') {
@@ -437,37 +418,27 @@ async function action(key: string) {
           shelf.setEnabled(true);
           await shelf.ready;
         }
-        const chapter = await claimCastChapterBatch(
-          shelf,
-          castForGame('hearsay').map((p) => p.castId),
-          stamps(),
-          async (inputs) => {
-            const people = Object.fromEntries(
-              inputs.map((input) => [
-                gardenId(input.parent.castId),
-                admitGardenPerson(input, seed, archives),
-              ]),
-            );
-            return freshGarden(seed, people, undefined, config);
-          },
-          { isCurrent: () => generation === attempt },
-        );
-        if (chapter) {
-          next = chapter.initial;
-          next.chapter = {
-            version: 'hearsay-batch/1',
-            inputs: chapter.inputs,
-            claims: chapter.claims,
-            mapping: 'hearsay-calendar/1',
-          } satisfies GardenChapter;
-          receipts = Object.fromEntries(chapter.claims.map((h) => [h.castId, h]));
-        }
+        const castIds = castForGame('hearsay').map((p) => p.castId);
+        const batch = await shelf.request<import('@adam0white/lab-client').LifeBatchPreparation>({
+          action: 'prepareBatch',
+          castIds,
+        });
+        if (!batch.expectedHeads || castIds.some((id) => !Object.hasOwn(batch.expectedHeads, id)))
+          throw new Error('The shelf omitted expected heads.');
+        const people = admitGardenBatch(batch);
+        next = freshGarden(seed, people, undefined, config);
+        const claims = await claimGardenBatch(batch, stamps());
+        if (generation !== attempt) throw new Error('The game changed before the chapter was claimed.');
+        await shelf.request({ action: 'putBatch', envelopes: claims, expectedHeads: batch.expectedHeads });
+        if (generation !== attempt) throw new Error('The game changed after the chapter was claimed.');
+        next.chapter = { version: 'hearsay-hf4-batch/1', claims } satisfies GardenChapter;
+        receipts = Object.fromEntries(claims.map((h) => [h.castId, h]));
       }
       if (generation === attempt) await useRun(next, false, undefined, receipts);
     } catch (e) {
       console.error('Garden start failed', e);
       notice =
-        'The new garden could not start because the saved people could not be loaded together. Your previous garden is kept. You can try again or send feedback.';
+        'The new garden could not start. Your saved garden has not changed. Try again later or choose new local people.';
     } finally {
       starting = false;
       render();
@@ -573,7 +544,7 @@ export async function startGarden() {
         fileKey?: string | null;
         ownedHeads?: Record<string, PersonaEnvelope>;
         archives?: SourceArchive[];
-      }>('garden-cast6');
+      }>('garden-hf4-1');
   if (saved) {
     try {
       archives = saved.value.archives ?? [];
@@ -595,6 +566,8 @@ export async function startGarden() {
       render();
     }
   } else {
+    if (await get('garden-cast6'))
+      notice = 'Your earlier garden uses an older edition. Start fresh; its save remains on this device.';
     lab.setPersonaRecording(null);
     render();
   }
@@ -607,14 +580,14 @@ export async function startGarden() {
   window.addEventListener('storage', (e) => {
     if (e.key === null || e.key === 'hf-persona-opt-in') invalid();
   });
-  watchPersonaCheckpoint(() => (fileSession ? undefined : checkpoint()));
+
   window.addEventListener('pagehide', () => {
     if (fileSession) {
       if (run) void save();
       return;
     }
     if (run)
-      putNow('garden-cast6', {
+      putNow('garden-hf4-1', {
         export: exportGarden(run),
         fileOrigin,
         fileKey,
@@ -633,6 +606,7 @@ export async function startGarden() {
       run &&
       !menu &&
       !run.ended &&
+      !checkpointBusy &&
       !run.lunch.pending &&
       !document.hidden &&
       !document.querySelector('.hflab-veil, .hf-lab-veil')
@@ -666,6 +640,8 @@ async function checkpoint() {
     }
     if (fileSession || run !== captured || generation !== atGeneration) return;
     for (const id of GARDEN_IDS) {
+      const capturedMinute = captured.minute,
+        capturedInputs = captured.inputs.length;
       const cast = canonicalCast(GARDEN_CAST[id].castId),
         parent = ownedHeads[cast.castId];
       if (parent?.terminal) continue;
@@ -681,7 +657,7 @@ async function checkpoint() {
             throw new Error(
               'There is no saved living history for this person to close. Their death is still saved in this game.',
             );
-          next = await closePersonaBranch(parent, stamps(), captured.minute);
+          next = await closePersonaBranch(parent, stamps(), Math.round(actor.now * 60_000));
         } else {
           const projected = await captureGardenSource(captured, id);
           const branchId = parent?.branchId ?? crypto.randomUUID();
@@ -702,22 +678,21 @@ async function checkpoint() {
             transfer: { ...projected.transfer, life },
             limitations: projected.limitations,
           });
-          // Keep the full source prefix locally before exposing its bounded passport.
-          archives = [
-            ...archives.filter((a) => a.digest !== projected.archive.digest),
-            projected.archive,
-          ].slice(-8);
-          while (archives.length > 1 && JSON.stringify(archives).length > 8 * 1024 * 1024) archives.shift();
-          if (JSON.stringify(archives).length > 8 * 1024 * 1024)
-            throw new Error(
-              'The saved history is larger than the 8 MiB limit. Download the full game before leaving.',
-            );
-          if (!(await save()))
-            throw new Error(
-              'The full history could not be saved on this device. Download this game before leaving.',
-            );
         }
-        if (generation !== atGeneration || run !== captured)
+        if (
+          generation !== atGeneration ||
+          run !== captured ||
+          captured.minute !== capturedMinute ||
+          captured.inputs.length !== capturedInputs
+        )
+          throw new Error('The game or person changed. Their chapter was not saved.');
+        if (!(await save())) throw new Error('The source game could not be saved on this device.');
+        if (
+          generation !== atGeneration ||
+          run !== captured ||
+          captured.minute !== capturedMinute ||
+          captured.inputs.length !== capturedInputs
+        )
           throw new Error('The game or person changed. Their chapter was not saved.');
         await shelf.request({
           action: 'put',
@@ -739,7 +714,7 @@ async function checkpoint() {
 
         await save();
       } catch {
-        // A chapter that is not ready stays in this game.
+        notice = `A person’s chapter could not be saved. Finish outstanding responsibilities and try again.`;
       }
     }
   } finally {

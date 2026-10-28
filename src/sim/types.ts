@@ -1,4 +1,4 @@
-import type { Person } from '@adam0white/human-framework';
+import type { Person } from '@adam0white/hf-legacy';
 export type Trait =
   | 'honest'
   | 'dishonest'

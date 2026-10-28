@@ -4,9 +4,15 @@ The live entry in this tree now selects the eight-person canonical garden editio
 
 **What done means.** For this first increment: a public, playable build at https://hearsay.adamwhite.work with a playtest export that replays, HF-character playtester runs and two source-unread LLM playtester runs recorded verbatim in `docs/playtests/`, one polish round from them, and an entry on https://human.adamwhite.work/games/ and the lab dashboard. Adam (owner) accepts it by playing it. Later work goes in the Deferred list below, each item with a date.
 
+## HF 4 port update — 2026-10-28
+
+[HF PR 51](https://github.com/adam0white/human-framework/pull/51) fixed G1, negative zero and G3; published 4.6.0 adds bounded journals and has verified provenance against source `db788` and [release run 40661542589](https://github.com/adam0white/human-framework/actions/runs/40661542589), including all 191 files. The uncommitted candidate pins the registry package directly and through the client override. A diagnostic engine `7895dd85` completed seed 17 through minute 20160 with an actual Rıza invitation. Its 54,755,706-byte export passed public import, HF and independent game replay, and byte-identical re-export. The published engine `8ac7b643` still needs that full-fortnight proof. The lane, hosted review, CI, deployment and Adam's acceptance remain. See the [control receipt](hf4-port-2026-10-28.md) and `~/code/.lab-scratch/codex/hearsay-size-fortnight.json`.
+
+The candidate uses a shared public Run, actual receipts and current exact export replay, with immutable lab-client 0.5.2 and lab-kit 0.5.19. Passport checks use public package version metadata and require the exact installed engine and supported source and rules. Older saves are kept and refused with Start fresh. HF3 remains a development dependency for historical tests, and the client retains its chapter clock. The evidence below records the earlier 4.5.1 failure, not the current blocker.
+
 ## HF 4 port blocked — 2026-10-28
 
-**What remains:** the HF director must resolve the first-midnight runtime failure below. Then retry the preserved garden port on the corrected published release, prove the complete fortnight and current-version playtest export, obtain the single hosted review, and deliver exact green CI and a clean release. Recheck on **2026-11-03**. Adam still accepts by playing.
+**At the time:** the HF director needed to resolve the first-midnight runtime failure below. Then retry the preserved garden port on the corrected published release, prove the complete fortnight and current-version playtest export, obtain the single hosted review, and deliver exact green CI and a clean release. Recheck on **2026-11-03**. Adam still accepts by playing.
 
 The matching shared need is **G1 — Run bridge and replay recipe (proof)** in [HF game needs](https://github.com/adam0white/human-framework/blob/main/docs/hf4-game-needs.md). This is a concrete runtime blocker during the host proof, not a missing authoring adapter. HF source was not edited. The released garden remains pinned to **HF 3.0.0**; the shared checkout's 2.10.0 package was stale compared with origin/main.
 

@@ -2,8 +2,8 @@ import { appendFileSync, readFileSync, writeFileSync } from 'node:fs';
 import { type Browser, chromium, type Page } from 'playwright-core';
 import { createServer, type ViteDevServer } from 'vite';
 import { afterAll, beforeAll, expect, it } from 'vitest';
-import { freshGarden } from '../src/sim/garden.ts';
-import { exportGarden, importGarden } from '../src/sim/garden-export.ts';
+import { freshGarden } from '../src/sim/garden4.ts';
+import { exportGarden, importGarden } from '../src/sim/garden4-export.ts';
 
 let server: ViteDevServer;
 let browser: Browser;
@@ -86,26 +86,29 @@ async function occupied(): Promise<Page> {
     route.fulfill({ contentType: 'text/html', body: '<title>Test setup</title>' }),
   );
   await page.goto(`${origin}file-session-empty`);
-  await page.evaluate(async (row) => {
-    if ((await indexedDB.databases()).length !== 0)
-      throw new Error('Test context is not pristine before sentinel setup.');
-    const db = await new Promise<IDBDatabase>((resolve, reject) => {
-      const request = indexedDB.open('hearsay', 1);
-      request.onupgradeneeded = () => request.result.createObjectStore('pages');
-      request.onsuccess = () => resolve(request.result);
-      request.onerror = () => reject(request.error);
-    });
-    await new Promise<void>((resolve, reject) => {
-      const tx = db.transaction('pages', 'readwrite');
-      tx.objectStore('pages').put({ plain: JSON.stringify(row.value), at: row.at }, 'garden-cast6');
-      tx.objectStore('pages').put({ unique: 'source-journal-sentinel' }, 'unrelated-owner-row');
-      tx.oncomplete = () => resolve();
-      tx.onerror = () => reject(tx.error);
-    });
-    db.close();
-    localStorage.setItem('hf-persona-opt-in', '0');
-    localStorage.setItem('unrelated-owner-key', 'keep');
-  }, owner);
+  await page.evaluate(
+    async (row) => {
+      if ((await indexedDB.databases()).length !== 0)
+        throw new Error('Test context is not pristine before sentinel setup.');
+      const db = await new Promise<IDBDatabase>((resolve, reject) => {
+        const request = indexedDB.open('hearsay', 1);
+        request.onupgradeneeded = () => request.result.createObjectStore('pages');
+        request.onsuccess = () => resolve(request.result);
+        request.onerror = () => reject(request.error);
+      });
+      await new Promise<void>((resolve, reject) => {
+        const tx = db.transaction('pages', 'readwrite');
+        tx.objectStore('pages').put({ plain: row.plain, at: row.at }, 'garden-hf4-1');
+        tx.objectStore('pages').put({ unique: 'source-journal-sentinel' }, 'unrelated-owner-row');
+        tx.oncomplete = () => resolve();
+        tx.onerror = () => reject(tx.error);
+      });
+      db.close();
+      localStorage.setItem('hf-persona-opt-in', '0');
+      localStorage.setItem('unrelated-owner-key', 'keep');
+    },
+    { plain: JSON.stringify(owner.value), at: owner.at },
+  );
   await page.addInitScript(() => {
     const state = { nativeOpens: 0, shelfConstructions: 0 };
     Object.assign(window, { fileSessionBoundary: state });
@@ -240,7 +243,7 @@ it('plays a complete foreign file through the public route without replacing nat
     await page.locator('.cg-game').waitFor();
     await page.getByRole('button', { name: 'Pause', exact: true }).click();
     const restored = (await page.evaluate(`(async()=>{
-      const {get}=await import('/src/ui/store.ts');return (await get('garden-cast6')).value.export;
+      const {get}=await import('/src/ui/store.ts');return (await get('garden-hf4-1')).value.export;
     })()`)) as ReturnType<typeof exportGarden>;
     expect(restored.seed).toBe(owner.value.export.seed);
     expect(restored.inputs).toEqual([]);
@@ -268,7 +271,7 @@ it('retains ordinary native startup and persistence outside the foreign-file rou
     await page.getByRole('button', { name: 'Pause', exact: true }).click();
     const saved = await page.evaluate(`(async () => {
       const { get } = await import('/src/ui/store.ts');
-      return (await get('garden-cast6'))?.value.export.inputs;
+      return (await get('garden-hf4-1'))?.value.export.inputs;
     })()`);
     expect(saved).toEqual([{ at: 360, input: { type: 'silence' } }]);
     expect((await readOwner(page)).length).toBe(2);

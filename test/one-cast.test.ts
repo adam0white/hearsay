@@ -1,4 +1,4 @@
-import { createPerson, projectPersona, snapshot } from '@adam0white/human-framework';
+import { createPerson, projectPersona, snapshot } from '@adam0white/hf-legacy';
 import { createPersona } from '@adam0white/lab-client';
 import { describe, expect, it } from 'vitest';
 import {

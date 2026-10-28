@@ -1,4 +1,4 @@
-import { createPerson, projectPersona } from '@adam0white/human-framework';
+import { createPerson, projectPersona } from '@adam0white/hf-legacy';
 import { createPersona } from '@adam0white/lab-client';
 import { expect, it, vi } from 'vitest';
 import { newGame } from '../src/sim/game';

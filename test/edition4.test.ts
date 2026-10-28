@@ -1,4 +1,4 @@
-import { createPerson } from '@adam0white/human-framework';
+import { createPerson } from '@adam0white/hf-legacy';
 import { expect, it } from 'vitest';
 import { act, advance, fingerprint, load, newGame, replay, save } from '../src/sim/game.ts';
 import { dailyIncidents } from '../src/sim/incidents.ts';
@@ -73,7 +73,7 @@ it('preserves baseline rules in all three historical editions after prose change
 });
 
 it('offers an admitted visitor an ordinary boundary encounter and replays the pinned admission', async () => {
-  const { projectPersona } = await import('@adam0white/human-framework');
+  const { projectPersona } = await import('@adam0white/hf-legacy');
   const { createPersona } = await import('@adam0white/lab-client');
   const { checkpointPerson, makeDilanOpening, prepareOneCastAdmission } = await import(
     '../src/sim/one-cast.ts'

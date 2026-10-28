@@ -1,6 +1,6 @@
 /** Public profiles come from the released canonical artifact. Private facts stay author-side. */
 
-import { createPerson, type Person } from '@adam0white/human-framework';
+import { createPerson, type Person } from '@adam0white/hf-legacy';
 import { canonicalCast, castForGame } from '@adam0white/lab-client';
 export const GARDEN_EDITION = 'hearsay-cast/6';
 export const GARDEN_CAST = {

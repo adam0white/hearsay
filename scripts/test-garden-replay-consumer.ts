@@ -14,7 +14,7 @@ const dependencies: Record<string, string> = {
   '@adam0white/hearsay-garden-replay': 'file:vendor/replay.tgz',
 };
 for (const [name, version] of Object.entries({
-  '@adam0white/human-framework': '3.0.0',
+  '@adam0white/hf-legacy': '3.0.0',
   '@adam0white/lab-client': '0.4.11',
 })) {
   const source = realpathSync(`node_modules/${name}`);
@@ -46,7 +46,7 @@ writeFileSync(
 );
 writeFileSync(
   resolve(consumer, 'pnpm-workspace.yaml'),
-  "overrides:\n  '@adam0white/human-framework': file:vendor/human-framework.tgz\n",
+  "overrides:\n  '@adam0white/hf-legacy': file:vendor/hf-legacy.tgz\n",
 );
 for (const file of ['full.json', 'compact.json', 'closing-raw.json'])
   cpSync(resolve(captures, file), resolve(consumer, file));

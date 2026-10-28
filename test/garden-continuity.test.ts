@@ -1,4 +1,4 @@
-import type { Person } from '@adam0white/human-framework';
+import type { Person } from '@adam0white/hf-legacy';
 import {
   canonicalPersona,
   claimCastChapterBatch,
@@ -147,7 +147,7 @@ it('refuses the entire startup before CAS if one allocated source has an unsuppo
 });
 it('publishes a full ordinary closing checkpoint and retains source-bound trust and episodes on return', async () => {
   const { captureGardenSource } = await import('../src/sim/garden-continuity.ts');
-  const { seedSourceTrust, trustOf } = await import('@adam0white/human-framework');
+  const { seedSourceTrust, trustOf } = await import('@adam0white/hf-legacy');
   const pinned = gardenOpening('riza', 17);
   pinned.lexicon = { plainEnglish: false };
   const run = freshGarden(17, { riza: pinned });

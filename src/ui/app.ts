@@ -1,5 +1,5 @@
 import '@adam0white/lab-kit/stage.css';
-import { credence } from '@adam0white/human-framework';
+import { credence } from '@adam0white/hf-legacy';
 import { telemetryNotice, telemetryToggle } from '@adam0white/lab-kit';
 import {
   act,

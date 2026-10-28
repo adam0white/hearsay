@@ -17,7 +17,7 @@ if (!process.argv[2] || !outside(root, output) || !outside(realpathSync(root), r
 mkdirSync(output, { recursive: false });
 const pkg = resolve(output, 'package');
 mkdirSync(pkg);
-const dependencies = { '@adam0white/human-framework': '3.0.0', '@adam0white/lab-client': '0.4.11' };
+const dependencies = { '@adam0white/hf-legacy': '3.0.0', '@adam0white/lab-client': '0.4.11' };
 for (const [name, version] of Object.entries(dependencies)) {
   const installed = JSON.parse(readFileSync(`node_modules/${name}/package.json`, 'utf8'));
   if (installed.version !== version) throw new Error(`Required ${name}@${version}`);

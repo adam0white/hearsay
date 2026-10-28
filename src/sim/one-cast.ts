@@ -11,7 +11,7 @@ import {
   projectPersona,
   snapshot,
   validatePersonaProjection,
-} from '@adam0white/human-framework';
+} from '@adam0white/hf-legacy';
 import {
   boundedPersonaJson,
   canonicalPersona,

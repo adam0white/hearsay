@@ -9,7 +9,7 @@ import {
   restore,
   snapshot,
   validateCalendarPersona,
-} from '@adam0white/human-framework';
+} from '@adam0white/hf-legacy';
 import {
   canonicalCast,
   canonicalPersona,
