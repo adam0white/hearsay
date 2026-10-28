@@ -22,7 +22,8 @@ import {
 } from '@adam0white/human-framework';
 export const MINUTE = 60_000;
 const START = 360 * MINUTE,
-  DAY = 86400000 as const;
+  DAY = 86400000 as const,
+  END = 14 * DAY;
 type NormTag = Offer['norms'][number];
 type Inspection = ReturnType<typeof inspect> extends Result<infer T> ? T : never;
 type HostView = Extract<Inspection['people'][number], { kind: 'host' }>;
@@ -343,7 +344,10 @@ function receipt(s: GardenSession, h: Host, r: DeepReadonly<HostRequest>): Input
     );
   const action = { ...base, person: r.person, activityId: r.activityId, stage: r.stage };
   const offer = s.offers[r.person]?.find((o) => o.id === r.offerId);
-  if (r.stage === 'start' && (!offer || s.available?.(r.person, offer, 'start') === false))
+  if (
+    r.stage === 'start' &&
+    (!offer || r.boundaryAt + offer.durationMs > END || s.available?.(r.person, offer, 'start') === false)
+  )
     return envelope(
       s,
       'action.resolved',
@@ -463,24 +467,28 @@ export function gardenEvidence<K extends keyof Payloads>(s: GardenSession, kind:
 export function decideGardenAction(s: GardenSession, person: string, offers: readonly GardenOffer[]) {
   const revision = (s.offerRevision[person] ?? 0) + 1;
   s.offerRevision[person] = revision;
-  const converted: Offer[] = offers.map((o) => ({
-    id: o.id,
-    actionId: o.action,
-    label: o.label,
-    person,
-    durationMs: o.duration * MINUTE,
-    ...(o.targetId ? { target: o.targetId } : {}),
-    ...(o.placeId ? { place: o.placeId } : {}),
-    participants: o.with ?? [],
-    alongside: [],
-    demands: { effort: o.effort ?? 0, focus: o.focus ?? 0, mode: o.mode ?? 'awake', requires: {} },
-    tags: o.action === 'rest' ? ['rest'] : [],
-    norms: o.norms ?? [],
-    expected: { needs: o.advertises ?? {}, followedBy: [], provenance: ['authored:garden'] },
-    fulfills: o.fulfills ?? [],
-    advances: [],
-    diminishes: [],
-  }));
+  // Offers start at the next actual HF input boundary, not the rounded garden minute.
+  // Keep their real durations: the chapter ending cannot settle unfinished work.
+  const converted: Offer[] = offers
+    .filter((o) => s.clock + 1 + o.duration * MINUTE <= END)
+    .map((o) => ({
+      id: o.id,
+      actionId: o.action,
+      label: o.label,
+      person,
+      durationMs: o.duration * MINUTE,
+      ...(o.targetId ? { target: o.targetId } : {}),
+      ...(o.placeId ? { place: o.placeId } : {}),
+      participants: o.with ?? [],
+      alongside: [],
+      demands: { effort: o.effort ?? 0, focus: o.focus ?? 0, mode: o.mode ?? 'awake', requires: {} },
+      tags: o.action === 'rest' ? ['rest'] : [],
+      norms: o.norms ?? [],
+      expected: { needs: o.advertises ?? {}, followedBy: [], provenance: ['authored:garden'] },
+      fulfills: o.fulfills ?? [],
+      advances: [],
+      diminishes: [],
+    }));
   s.offers[person] = converted;
   const at = s.clock + 1;
   serve(s, at, [

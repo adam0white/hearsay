@@ -510,32 +510,20 @@ export function chooseGarden(g: GardenRun, input: GardenInput): boolean {
       if (!routes.length) return false;
       const p = g.people[input.person],
         prop = `${input.about}:${trait}`;
+      // HF withdraws this listener's retained source account for this proposition.
+      // It neither confirms the opposite nor retracts another person's repetition.
+      // An evicted source has no separately withdrawable contribution in HF's bounded history.
+      const contribution = p.memory.beliefs
+        .find((b) => b.prop === prop)
+        ?.sources.find((s) => s.id === 'hatice');
+      if (contribution?.value === false && contribution.contribution !== undefined)
+        gardenEvidence(sessionOf(g), 'testimony.withdrawn', {
+          person: input.person,
+          evidenceId: gardenEvidenceId(sessionOf(g)),
+          sourceId: 'hatice',
+          prop,
+        });
       for (const r of routes) r.retractedAt = g.minute;
-      // Retraction is a received account of withdrawing earlier speech, not proof of character.
-      const sid = gardenEvidenceId(sessionOf(g));
-      gardenEvidence(sessionOf(g), 'observation.received', {
-        person: input.person,
-        evidenceId: sid,
-        percepts: [
-          {
-            id: sid,
-            occurredAt: sessionOf(g).clock,
-            channel: 'told',
-            kind: 'withdrawal',
-            actorId: 'hatice',
-            salience: 1,
-            summary: `Hatice withdraws her accusation about ${GARDEN_CAST[input.about].name}. She says she is no longer sure.`,
-            claims: [],
-            norms: [],
-            advice: [],
-            consequences: [],
-            withdrawConsequences: [],
-            witnesses: [],
-            reports: [],
-            provenance: [],
-          },
-        ],
-      });
       gardenSocial(
         sessionOf(g),
         input.person,

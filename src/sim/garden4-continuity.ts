@@ -10,12 +10,17 @@ import { GARDEN_CAST, GARDEN_IDS, type GardenPerson } from './garden-cast.ts';
 import { departureReason } from './garden-departure-rules.ts';
 import { GARDEN_ENGINE } from './garden-engine.ts';
 import { type GardenRun, gardenAuthors, sessionOf } from './garden4.ts';
+import type { GardenExport } from './garden4-export.ts';
 
 export interface GardenChapter {
   version: 'hearsay-hf4-batch/1';
   claims: PersonaEnvelope[];
 }
-export type SourceArchive = never;
+export interface SourceArchive {
+  source: PersonaEnvelope['source'];
+  export: GardenExport;
+}
+
 export function gardenId(castId: string): GardenPerson {
   const id = GARDEN_IDS.find((person) => GARDEN_CAST[person].castId === castId);
   if (!id) throw new Error('This person has no Hearsay role.');

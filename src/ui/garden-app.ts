@@ -36,6 +36,7 @@ import { actualGardenLocation, type PlanChoice, type ReputationTrait } from '../
 import { gardenPlace } from './garden-english.ts';
 import { openGardenFeedback } from './garden-feedback.ts';
 import { GardenRecordingGuard, type RecordingBinding } from './garden-recording.ts';
+import { retainGardenSource } from './garden-source-archive.ts';
 import { lab } from './lab.ts';
 import { get, put, putNow } from './store.ts';
 import './garden.css';
@@ -339,7 +340,7 @@ function bind() {
       if (!file) return;
       recordingGuard.invalidate();
       try {
-        if (file.size > 8 * 1024 * 1024) throw new Error('This game file is larger than the 8 MiB limit.');
+        if (file.size > 64 * 1024 * 1024) throw new Error('This game file is larger than the 64 MiB limit.');
         const text = await file.text();
         if (attempt !== loadGeneration || !valid()) return;
         ++generation;
@@ -660,6 +661,7 @@ async function checkpoint() {
           next = await closePersonaBranch(parent, stamps(), Math.round(actor.now * 60_000));
         } else {
           const projected = await captureGardenSource(captured, id);
+          const sourceArchive = await retainGardenSource(captured, stamps());
           const branchId = parent?.branchId ?? crypto.randomUUID();
           const life = parent?.transfer.life
             ? anchorPersonaLife(
@@ -675,7 +677,7 @@ async function checkpoint() {
             branchId,
             parentRevision: parent?.revision ?? null,
             source: stamps(),
-            transfer: { ...projected.transfer, life },
+            transfer: { ...projected.transfer, life, sourceArchive },
             limitations: projected.limitations,
           });
         }
