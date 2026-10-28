@@ -573,6 +573,7 @@ export function chooseGarden(g: GardenRun, input: GardenInput): boolean {
 
 function minuteStep(g: GardenRun) {
   const session = sessionOf(g);
+  const chatBefore = g.chat;
   const activeBefore = new Map(
     Object.entries(g.people)
       .filter(([, p]) => p.activity)
@@ -607,7 +608,8 @@ function minuteStep(g: GardenRun) {
       earlier.action === 'chat' &&
       !g.people[id as GardenPerson].activity &&
       g.minute >= earlier.endsAt &&
-      id !== g.chat?.person &&
+      id !== chatBefore?.person &&
+      !(chatBefore && id === 'hatice') &&
       session.host.outcomes.some((o) => o.id === earlier.id && o.status === 'completed')
     ) {
       const to = earlier.targetId as GardenPerson;

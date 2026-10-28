@@ -15,7 +15,8 @@ const dependencies: Record<string, string> = {
 };
 for (const [name, version] of Object.entries({
   '@adam0white/hf-legacy': '3.0.0',
-  '@adam0white/lab-client': '0.4.11',
+  '@adam0white/human-framework': '4.6.0',
+  '@adam0white/lab-client': '0.5.2',
 })) {
   const source = realpathSync(`node_modules/${name}`);
   const meta = JSON.parse(readFileSync(resolve(source, 'package.json'), 'utf8'));
@@ -46,7 +47,7 @@ writeFileSync(
 );
 writeFileSync(
   resolve(consumer, 'pnpm-workspace.yaml'),
-  "overrides:\n  '@adam0white/hf-legacy': file:vendor/hf-legacy.tgz\n",
+  "overrides:\n  '@adam0white/hf-legacy': file:vendor/hf-legacy.tgz\n  '@adam0white/human-framework': file:vendor/human-framework.tgz\n",
 );
 for (const file of ['full.json', 'compact.json', 'closing-raw.json'])
   cpSync(resolve(captures, file), resolve(consumer, file));

@@ -1,7 +1,14 @@
 import { inspect, validatePortablePerson } from '@adam0white/human-framework';
 import { canonicalCast } from '@adam0white/lab-client';
 import { expect, it } from 'vitest';
-import { advanceGarden, chooseGarden, freshGarden, type GardenRun, sessionOf } from '../src/sim/garden4.ts';
+import {
+  advanceGarden,
+  chooseGarden,
+  freshGarden,
+  type GardenRun,
+  refreshGarden,
+  sessionOf,
+} from '../src/sim/garden4.ts';
 import { exportGarden, importGarden } from '../src/sim/garden4-export.ts';
 
 /** Public projection control only. It does not publish or establish departure eligibility. */
@@ -54,6 +61,38 @@ it('records a completed invited conversation and replays the current export', ()
     );
   expect(retained.filter((outcome) => outcome?.status === 'completed')).toHaveLength(2);
   expect(importGarden(JSON.stringify(later))).toEqual(garden);
+});
+
+it('keeps a completed invitation private without fabricating testimony or refusal', () => {
+  const garden = freshGarden(17);
+  advanceGarden(garden, 400);
+  expect(chooseGarden(garden, { type: 'listen', person: 'riza', approach: 'invite' })).toBe(true);
+  advanceGarden(garden, 416);
+  expect(garden.discoveries.riza).toBeDefined();
+  expect(garden.routes.filter((route) => route.from === 'hatice' && route.to === 'riza')).toEqual([]);
+  expect(garden.log.filter((entry) => entry.kind === 'refusal' && entry.person === 'hatice')).toEqual([]);
+});
+
+it('still delivers testimony after a completed ordinary chat', async () => {
+  const { decideGardenAction } = await import('../src/sim/garden-hf4.ts');
+  const garden = freshGarden(17);
+  const decision = decideGardenAction(sessionOf(garden), 'hatice', [
+    {
+      id: 'ordinary-chat',
+      action: 'chat',
+      label: 'Talk',
+      duration: 15,
+      targetId: 'riza',
+      with: ['riza'],
+      placeId: 'garden',
+    },
+  ]);
+  expect(decision.chosen).toBe('ordinary-chat');
+  refreshGarden(garden);
+  advanceGarden(garden, 376);
+  expect(garden.routes).toContainEqual(
+    expect.objectContaining({ from: 'hatice', to: 'riza', prop: 'hatice:reliable', value: true }),
+  );
 });
 
 it('keeps a released conversation private', () => {

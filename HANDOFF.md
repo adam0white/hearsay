@@ -25,6 +25,10 @@ Remaining: parent review, clean signed source, exact green CI and a newly genera
 
 Adam accepts the game by playing. His readiness, later-fortnight feel, actual supported cross-host journeys and recording retests remain due 2026-11-03. Agent checks do not establish that acceptance. Friends’ playtests and Show HN remain paused. Lab-panel rounds on HF 3 builds are allowed under the playtest director. This docs worker runs no rounds.
 
+## Current source — HF 4 candidate
+
+The current candidate pins Human Framework 4.6.0, immutable lab-client 0.5.2 and lab-kit 0.5.19. The HF 3.0.0 development dependency remains for historical replay and the garden replay artifact. The artifact uses lab-client 0.5.2 with that legacy framework; its offline consumer control checks retained HF 3 captures. This candidate is not a new signed source, CI, deployment or owner acceptance receipt. The next section describes the historical 2026-10-25 release.
+
 ## Current source and live receipt — 2026-10-25
 
 The Feedback delivery source is signed `99a30092fa4eed1c76f3787a40e7a64a77f45241`. [Exact CI 40250286119](https://github.com/adam0white/hearsay/actions/runs/40250286119) succeeded on that SHA. The final Feedback report records clean deployment `33ad2cba-d838-4d87-a433-ca2d8e1655bc` and matching [live release.json](https://hearsay.adamwhite.work/release.json): app `0.1.0`, framework `3.0.0`, exact source and `dirty:false`. Its normal lane passed 316 tests in 48 files, lint and types, with 508 existing warnings. These are recorded delivery receipts, not a new docsweb live check. Earlier mechanics source `df6beed03d7ad4dae8110ec341cbe237c40a1bba` and helper source `6658092cfe04b212271efed3d049be05485f8434` retain their separate receipts. Source-only documentation requires no app deployment.
