@@ -1,4 +1,4 @@
-import { credence, trustOf } from '@adam0white/human-framework';
+import { credence, trustOf } from '@adam0white/hf-legacy';
 import { afterAll, describe, expect, it } from 'vitest';
 import { runPolicy } from '../scripts/policy.ts';
 import { act, advance, newGame, PEOPLE, spokenClaim } from '../src/sim/game.ts';

@@ -1,5 +1,5 @@
-import type { Percept, Person } from '@adam0white/human-framework';
-import { perceive, trustOf } from '@adam0white/human-framework';
+import type { Percept, Person } from '@adam0white/hf-legacy';
+import { perceive, trustOf } from '@adam0white/hf-legacy';
 
 export const OPPOSITE: Record<string, string> = {
   honest: 'dishonest',

@@ -79,7 +79,7 @@ it('requires an unchecked new-game choice and saves that choice through reload',
     const config = () =>
       fresh.evaluate(`(async()=>{
       const {get}=await import('/src/ui/store.ts');
-      return (await get('garden-cast6')).value.export.config;
+      return (await get('garden-hf4-1')).value.export.config;
     })()`);
     expect(await config()).toEqual({ dialogue: 'garden-talk/1' });
     await fresh.reload();

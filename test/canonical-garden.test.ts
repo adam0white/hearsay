@@ -32,7 +32,7 @@ describe('canonical garden encounters', () => {
 });
 
 it('preserves a carried social goal and advances it only by completed real chats', async () => {
-  const { adoptGoal } = await import('@adam0white/human-framework');
+  const { adoptGoal } = await import('@adam0white/hf-legacy');
   const { gardenOpening } = await import('../src/sim/garden-cast.ts');
   const p = gardenOpening('riza', 17);
   adoptGoal(
@@ -57,7 +57,7 @@ it('preserves a carried social goal and advances it only by completed real chats
   expect(g.initialPeople.riza.agenda.goals[0]!.progress).toBe(0);
 });
 it('uses actual company for Hatice’s carried chat goal, not solitary reflection', async () => {
-  const { adoptGoal } = await import('@adam0white/human-framework');
+  const { adoptGoal } = await import('@adam0white/hf-legacy');
   const { gardenOpening } = await import('../src/sim/garden-cast.ts');
   const p = gardenOpening('hatice', 17);
   adoptGoal(

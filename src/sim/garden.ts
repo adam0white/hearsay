@@ -20,7 +20,7 @@ import {
   socialEvent,
   tick,
   trustOf,
-} from '@adam0white/human-framework';
+} from '@adam0white/hf-legacy';
 import { lifeAdmission } from '@adam0white/lab-client';
 import {
   GARDEN_CAST,

@@ -1,7 +1,7 @@
 /** Task2 native garden7 codec only. Complete pinned initial people and digest resources
  * reconstruct public-driver state without current constructors, shelf/network or wall time.
  * Full includes derived state; compact omits only that state. Neither confers ownership. */
-import { restore, snapshot } from '@adam0white/human-framework';
+import { restore, snapshot } from '@adam0white/hf-legacy';
 import { boundedPersonaJson, checkRun } from '@adam0white/lab-client';
 import {
   advanceGardenVisit,

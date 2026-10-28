@@ -2,7 +2,7 @@
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { gunzipSync } from 'node:zlib';
-import { snapshot } from '@adam0white/human-framework';
+import { snapshot } from '@adam0white/hf-legacy';
 import { canonicalPersona } from '@adam0white/lab-client';
 import { expect, it } from 'vitest';
 import {

@@ -1,4 +1,4 @@
-import { trustOf } from '@adam0white/human-framework';
+import { trustOf } from '@adam0white/hf-legacy';
 import { afterAll, describe, expect, it } from 'vitest';
 import { policyStep, runPolicy } from '../scripts/policy.ts';
 import { act, advance, fingerprint, load, newGame, replay, save, view } from '../src/sim/game.ts';

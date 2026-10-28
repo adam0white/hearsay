@@ -1,4 +1,4 @@
-import { believe } from '@adam0white/human-framework';
+import { believe } from '@adam0white/hf-legacy';
 import { expect, it } from 'vitest';
 import { act, advance, fingerprint, load, newGame, replay, save, view } from '../src/sim/game.ts';
 

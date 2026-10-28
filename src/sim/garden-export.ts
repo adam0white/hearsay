@@ -1,5 +1,5 @@
 /** Current edition files replay the captured opening. Shelf state and wall time are never consulted. */
-import { restore } from '@adam0white/human-framework';
+import { restore } from '@adam0white/hf-legacy';
 import { canonicalPersona } from '@adam0white/lab-client';
 import { type GardenRun, replayGarden } from './garden.ts';
 import { GARDEN_CAST, GARDEN_EDITION, GARDEN_IDS } from './garden-cast.ts';

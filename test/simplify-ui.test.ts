@@ -1,6 +1,7 @@
 import { type Browser, chromium, type Page, webkit } from 'playwright-core';
 import { createServer, type ViteDevServer } from 'vite';
 import { afterAll, beforeAll, expect, it } from 'vitest';
+import { GARDEN_ENGINE } from '../src/sim/garden-engine.ts';
 
 let server: ViteDevServer;
 let browser: Browser;
@@ -19,11 +20,12 @@ async function savedGarden(page: Page) {
   // Local fixture: this does not prove shared admission.
   await page.evaluate(`(async()=>{
     const {put}=await import('/src/ui/store.ts');
-    const {freshGarden}=await import('/src/sim/garden.ts');
-    const {exportGarden}=await import('/src/sim/garden-export.ts');
+    const {freshGarden}=await import('/src/sim/garden4.ts');
+    const {exportGarden}=await import('/src/sim/garden4-export.ts');
+    const {GARDEN_ENGINE}=await import('/src/sim/garden-engine.ts');
     const {createPersona}=await import('/node_modules/@adam0white/lab-client/dist/index.js');
-    const receipt=await createPersona({format:'hf-persona/1',castId:'hf.cast.riza.voice',castRevision:'1',branchId:'fixture',parentRevision:null,source:{game:'hearsay',build:'fixture',engine:'2.17.0',rules:'hearsay-cast-6'},transfer:{},limitations:[]});
-    await put('garden-cast6',{export:exportGarden(freshGarden(17)),fileOrigin:false,ownedHeads:{[receipt.castId]:receipt},archives:[]});
+    const receipt=await createPersona({format:'hf-persona/1',castId:'hf.cast.riza.voice',castRevision:'1',branchId:'fixture',parentRevision:null,source:{game:'hearsay',build:'fixture',engine:GARDEN_ENGINE,rules:'hearsay-hf4-1'},transfer:{},limitations:[]});
+    await put('garden-hf4-1',{export:exportGarden(freshGarden(17)),fileOrigin:false,ownedHeads:{[receipt.castId]:receipt},archives:[]});
   })()`);
   await page.reload();
   await page.locator('[data-pace="0"]').click();
@@ -44,7 +46,7 @@ it('makes gameplay public and keeps cast controls on the central shelf', async (
     const debug = page.locator('.cg-footer > .cg-debug');
     expect(await debug.getAttribute('open')).toBeNull();
     await debug.locator('summary').click();
-    expect(await debug.innerText()).toContain('Engine: 2.23.0');
+    expect(await debug.innerText()).toContain(`Engine: ${GARDEN_ENGINE}`);
     expect(await debug.locator('button, input, select').count()).toBe(0);
     await savedGarden(page);
     await page.getByRole('button', { name: 'Game menu', exact: true }).click();
@@ -94,7 +96,7 @@ it.each(['prepareBatch', 'putBatch'])(
       await savedGarden(page);
       const read = () =>
         page.evaluate(`(async()=>{
-        const {get}=await import('/src/ui/store.ts');return (await get('garden-cast6')).value;
+        const {get}=await import('/src/ui/store.ts');return (await get('garden-hf4-1')).value;
       })()`);
       await page.getByRole('button', { name: 'Game menu', exact: true }).click();
       const before = await read();

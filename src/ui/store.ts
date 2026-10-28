@@ -132,3 +132,38 @@ export function putImmediate(key: string, value: unknown): Promise<boolean> {
     }
   });
 }
+
+/** Store a recovery record once; an existing key must contain exactly the same data. */
+export async function putImmutable(key: string, value: unknown): Promise<boolean> {
+  try {
+    const text = JSON.stringify(value);
+    const matches = async () => {
+      const existing = await get<unknown>(key);
+      return existing !== null && JSON.stringify(existing.value) === text;
+    };
+    if (await matches()) return true;
+    const db = await open();
+    const add = (row: Row) =>
+      new Promise<void>((resolve, reject) => {
+        const tx = db.transaction(STORE, 'readwrite');
+        tx.objectStore(STORE).add(row, key);
+        tx.oncomplete = () => resolve();
+        tx.onerror = () => reject(tx.error);
+        tx.onabort = () => reject(tx.error);
+      });
+    try {
+      await add({ blob: await gzip(text), at: Date.now() });
+      return true;
+    } catch {
+      if (await matches()) return true;
+      try {
+        await add({ plain: text, at: Date.now() });
+        return true;
+      } catch {
+        return await matches();
+      }
+    }
+  } catch {
+    return false;
+  }
+}

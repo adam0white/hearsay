@@ -72,7 +72,7 @@ const publicWords: Record<Exclude<GardenPerson, 'hatice'>, readonly string[]> = 
     'Please tell me whether you want an order or advice. I should not treat one as the other.',
   ],
 };
-function lunchWords(g: GardenRun): string {
+function lunchWords(g: Pick<GardenRun, 'lunch' | 'log'>): string {
   const l = g.lunch;
   if (l.result === 'cancelled')
     return 'The lunch could not open. A conversation now cannot turn it into a meal that was served.';
@@ -97,7 +97,10 @@ function lunchWords(g: GardenRun): string {
     return 'The supply terms are agreed. The Day 8 cooking arrangement still needs an answer.';
   return 'The Day 4 supply decision is still ahead. A meal reservation does not arrange its ingredients.';
 }
-export function gardenConversation(g: GardenRun, person: Exclude<GardenPerson, 'hatice'>): string {
+export function gardenConversation(
+  g: Pick<GardenRun, 'lunch' | 'log'>,
+  person: Exclude<GardenPerson, 'hatice'>,
+): string {
   const words = publicWords[person];
   const heard = g.log.filter((line) => line.kind === 'answer' && line.person === person).length;
   return `${words[heard % words.length]} ${lunchWords(g)}`;

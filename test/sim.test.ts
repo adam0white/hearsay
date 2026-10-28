@@ -15,7 +15,7 @@ describe('deterministic fortnight', () => {
   });
 });
 
-import { believe, confirm, converse, credence, relationshipWith, trustOf } from '@adam0white/human-framework';
+import { believe, confirm, converse, credence, relationshipWith, trustOf } from '@adam0white/hf-legacy';
 import { runPolicy } from '../scripts/policy';
 
 it('forbidden backbiting refuses while permitted can relay', () => {

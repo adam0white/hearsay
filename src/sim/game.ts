@@ -1,4 +1,4 @@
-import type { Affordance, Percept, Person } from '@adam0white/human-framework';
+import type { Affordance, Percept, Person } from '@adam0white/hf-legacy';
 import {
   applyReputationBelief,
   begin,
@@ -17,7 +17,7 @@ import {
   tick,
   trustOf,
   understandNorm,
-} from '@adam0white/human-framework';
+} from '@adam0white/hf-legacy';
 import type { Game, Input, Line, LoggedInput, Route, Scene, State, Trait } from './types.ts';
 
 export * from './types.ts';

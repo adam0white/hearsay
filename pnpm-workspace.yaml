@@ -16,3 +16,4 @@ overrides:
   sharp: 0.35.5
   miniflare>undici: 7.30.1
   "@napi-rs/wasm-runtime": 1.2.6
+  "@adam0white/lab-client>@adam0white/human-framework": 4.6.0

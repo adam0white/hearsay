@@ -19,15 +19,15 @@
     "measure": "node scripts/measure.ts",
     "check": "npm run lint && npm run typecheck && npm test",
     "deploy": "node scripts/deploy.ts",
-    "check:lane": "npm run check",
+    "check:lane": "npm run lint && npm run typecheck",
     "knip": "knip",
     "build:garden-replay": "node scripts/build-garden-replay.ts",
     "test:garden-replay-consumer": "node scripts/test-garden-replay-consumer.ts"
   },
   "dependencies": {
-    "@adam0white/human-framework": "3.0.0",
-    "@adam0white/lab-client": "file:vendor/adam0white-lab-client-0.4.15.tgz",
-    "@adam0white/lab-kit": "file:vendor/adam0white-lab-kit-0.5.17.tgz"
+    "@adam0white/human-framework": "4.6.0",
+    "@adam0white/lab-client": "file:vendor/adam0white-lab-client-0.5.2.tgz",
+    "@adam0white/lab-kit": "file:vendor/adam0white-lab-kit-0.5.19.tgz"
   },
   "devDependencies": {
     "@biomejs/biome": "2.6.3",
@@ -37,7 +37,8 @@
     "vite": "8.3.5",
     "vitest": "5.0.5",
     "wrangler": "4.152.0",
-    "knip": "6.43.0"
+    "knip": "6.43.0",
+    "@adam0white/hf-legacy": "npm:@adam0white/human-framework@3.0.0"
   },
   "packageManager": "pnpm@12.14.0+sha512.c18ba6d87993d3d164cb5e8948f32b2c06ee854487e06cd8d86781342fb3e5bb4634367034711e86802baa9c37bea906ce1929ad08d70884c97d801df13389a6"
 }

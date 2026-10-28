@@ -1,4 +1,4 @@
-import { believe } from '@adam0white/human-framework';
+import { believe } from '@adam0white/hf-legacy';
 import { type Browser, chromium, type Page } from 'playwright-core';
 import { createServer, type ViteDevServer } from 'vite';
 import { afterAll, beforeAll, expect, it } from 'vitest';

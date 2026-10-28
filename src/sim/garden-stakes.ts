@@ -10,7 +10,7 @@ import {
   socialEvent,
   trustOf,
   violatesAbstention,
-} from '@adam0white/human-framework';
+} from '@adam0white/hf-legacy';
 import type { GardenRun } from './garden.ts';
 import { GARDEN_CAST, GARDEN_IDS, type GardenPerson, gardenLocation } from './garden-cast.ts';
 export type ReputationTrait = 'honest' | 'reliable' | 'kind' | 'generous';
