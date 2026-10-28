@@ -3,6 +3,18 @@ import { expect, it } from 'vitest';
 import { advanceGarden, chooseGarden, freshGarden, gardenAuthors } from '../src/sim/garden4.ts';
 import { exportGarden, importGarden } from '../src/sim/garden4-export.ts';
 
+it('leaves both activities and the replay unchanged when the visitor cannot be invited', () => {
+  const garden = freshGarden(17);
+  advanceGarden(garden, 423);
+  expect(garden.people.hatice.activity?.action).toBe('work');
+  expect(garden.people.derya.activity?.action).toBe('chat');
+  const before = JSON.stringify(exportGarden(garden));
+  expect(chooseGarden(garden, { type: 'listen', person: 'derya', approach: 'invite' })).toBe(false);
+  const after = JSON.stringify(exportGarden(garden));
+  expect(importGarden(after)).toEqual(garden);
+  expect(after).toBe(before);
+});
+
 it('offers the next ordinary task after genuine completion instead of losing a quarter-hour', () => {
   const garden = freshGarden(17);
   advanceGarden(garden, 407);

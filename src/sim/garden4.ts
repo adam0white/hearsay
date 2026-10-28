@@ -349,13 +349,13 @@ export function chooseGarden(g: GardenRun, input: GardenInput): boolean {
   } else if (input.type === 'listen') {
     if (!['invite', 'pry'].includes(input.approach) || g.chat || !gardenHere(g, input.person)) return false;
     const p = g.people[input.person];
+    if (p.activity && !['rest', 'eat', 'drink'].includes(p.activity.action)) return false;
+    if (input.person !== 'hatice' && g.people.hatice.activity?.action === 'chat') return false;
     if (input.person !== 'hatice' && g.people.hatice.activity) {
-      if (g.people.hatice.activity.action === 'chat') return false;
       interruptGardenAction(sessionOf(g), 'hatice');
       refreshGarden(g);
     }
     if (p.activity) {
-      if (!['rest', 'eat', 'drink'].includes(p.activity.action)) return false;
       interruptGardenAction(sessionOf(g), input.person);
       refreshGarden(g);
     }
