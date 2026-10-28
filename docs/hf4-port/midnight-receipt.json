@@ -1,0 +1,19 @@
+{
+  "engine": {
+    "package": "@adam0white/human-framework@4.5.1",
+    "build": "3cc286c9c3bd6b8ef75d227b726147d8ed4e3f829b7f26698a3cc308e9f547ae",
+    "schema": "20f919eccff8ed79c9c58f0a4614b5b70aae73a5f5b314810db6ce6df1f8de4e"
+  },
+  "archiveAt": 86340000,
+  "until": 86400000,
+  "fullHash": "f84d15b8bce5ae681020aa3e826e0f1d676c9761036eab0d3819302026e5e661",
+  "result": {
+    "ok": false,
+    "error": {
+      "code": "invalid-admission",
+      "path": "$.runtime",
+      "message": "Effect was already applied"
+    }
+  },
+  "refusalAtomic": true
+}

@@ -4,6 +4,22 @@ The live entry in this tree now selects the eight-person canonical garden editio
 
 **What done means.** For this first increment: a public, playable build at https://hearsay.adamwhite.work with a playtest export that replays, HF-character playtester runs and two source-unread LLM playtester runs recorded verbatim in `docs/playtests/`, one polish round from them, and an entry on https://human.adamwhite.work/games/ and the lab dashboard. Adam (owner) accepts it by playing it. Later work goes in the Deferred list below, each item with a date.
 
+## HF 4 port blocked — 2026-10-28
+
+**What remains:** the HF director must resolve the first-midnight runtime failure below. Then retry the preserved garden port on the corrected published release, prove the complete fortnight and current-version playtest export, obtain the single hosted review, and deliver exact green CI and a clean release. Recheck on **2026-11-03**. Adam still accepts by playing.
+
+The matching shared need is **G1 — Run bridge and replay recipe (proof)** in [HF game needs](https://github.com/adam0white/human-framework/blob/main/docs/hf4-game-needs.md). This is a concrete runtime blocker during the host proof, not a missing authoring adapter. HF source was not edited. The released garden remains pinned to **HF 3.0.0**; the shared checkout's 2.10.0 package was stale compared with origin/main.
+
+npm published **4.5.1** was available. The isolated candidate used that exact package, lab-client **0.5.2** and lab-kit **0.5.19** release artifacts. The client declares HF 4.4.0; the candidate forced its HF dependency to 4.5.1 so both public callers used one current runtime. These dependency changes are preserved in the candidate patch, not shipped here.
+
+The eight-person garden reached minute **1439** with ordinary host actions and no player inputs. Its complete HF archive replayed with `verified:true` and full hash `fbfd8f8561a504108f52f03871399833de0cd4891c5574e0a368ae44bfeea11b`. Restoring that archive and calling only `step(run, {until: 86400000, inputs: []})` failed with `invalid-admission` at `$.runtime`: **“Effect was already applied”**. The refused call left the archive unchanged. A separate invited-conversation run reproduced the same failure; its minute-1439 archive replayed exactly with full hash `f84d15b8bce5ae681020aa3e826e0f1d676c9761036eab0d3819302026e5e661`. Shorter active-conversation JSON restore and exact replay controls passed. A person or two people with no host actions crossed midnight; the failure therefore does not establish that all midnight advances fail.
+
+Published engine build: `3cc286c9c3bd6b8ef75d227b726147d8ed4e3f829b7f26698a3cc308e9f547ae`; schema: `20f919eccff8ed79c9c58f0a4614b5b70aae73a5f5b314810db6ce6df1f8de4e`. The exact internal cause is unconfirmed. A fortnight cannot pass while its first midnight fails. Skipping the boundary or disabling faculties would not prove the port.
+
+Evidence and runnable probes are retained at `~/code/.lab-scratch/codex/hearsay-hf4-proof/`. The complete unreviewed candidate is saved in `~/code/.lab-scratch/stale-patches/hearsay-hf4-port.patch` and `.untracked.tar.gz`, with its base in `.json`. [The control receipt](hf4-port-2026-10-28.md) explains reproduction and the evidence limits.
+
+The public gameplay audit found the current garden already exposes pace, New game, alternate starts, file play and downloads. Shared-person admission is automatic; cast controls remain on the central shelf. Diagnostics are in one collapsed Debug item beside Lab privacy. No additional public-control gap was found.
+
 ## The idea
 
 A small mahalle on a hill: about 32 neighbours in 12 households, a fountain, a bakery, a grocer, a tailor, a barber, a mosque courtyard, a coffee house and doorsteps. You are **Hatice**, who keeps the tea garden beside the fountain. Everyone passes you. You hear things.

@@ -1,3 +1,9 @@
+## HF 4 port attempt — 2026-10-28
+
+Remaining: HF director resolves the first-midnight **G1** runtime blocker, then retry the preserved candidate, prove a whole fortnight and exact playtest replay, and deliver the port. Recheck 2026-11-03. See [design](docs/design.md#hf-4-port-blocked--2026-10-28) and [control receipt](docs/hf4-port-2026-10-28.md). No owner question is pending.
+
+Published HF4.5.1 accepted the candidate's eight-person run through minute1439 and replayed its archive exactly. A restored archive failed a plain empty-input advance to midnight with `invalid-admission $.runtime: Effect was already applied`. The refusal preserved the archive. The released source pin remains HF3.0.0. Candidate source/dependencies and raw archives are retained outside the repo; they are incomplete, unreviewed work, not a delivered port. No HF source or deployment changed. Existing public gameplay controls already meet the audited visibility requirements.
+
 ## Automatic browser recording initialization — 2026-10-26
 
 Remaining: parent ONE review, signed exact green CI, clean app release and actual recorded engineering before B admission. Ordinary automated browsers now initialize the released lab client, including when navigator.webdriver is true. The disabled host stub is removed. The game ID, SDK endpoint/build defaults, Recording switch, DNT/GPC defaults and pending-history startup binding remain. Localhost sends remain suppressed by the SDK default; no QA override is enabled here. Typed agent marking remains separate HF4 work. Historical blocked, 429 and unanswered requests remain historical evidence. This source change establishes no ingestion receipt or owner acceptance.
