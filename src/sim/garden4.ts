@@ -19,6 +19,8 @@ import {
   gardenEvidenceId,
   gardenSocial,
   interruptGardenAction,
+  MINUTE,
+  performGardenStatement,
   restoreGardenSession,
   sessionPeople,
   trustOf,
@@ -222,6 +224,25 @@ function testimony(
   const session = sessionOf(g);
   const prop = `${about}:${trait}`;
   if (from === 'hatice') {
+    const credence = 1 / (1 + Math.exp(-beliefEvidence(g.people.hatice, prop)));
+    const lie = value ? credence < 0.3 : credence > 0.7;
+    const norms: NonNullable<GardenOffer['norms']> = [
+      ...(lie ? [{ normId: 'lying', relation: 'violates' as const }] : []),
+      ...(!value && !gardenHere(g, about) ? [{ normId: 'backbiting', relation: 'violates' as const }] : []),
+    ];
+    const spoken = performGardenStatement(session, from, norms);
+    refreshGarden(g);
+    if (!spoken) {
+      note(g, 'refusal', 'Hatice does not complete the statement. No claim reaches the listener.', 'hatice');
+      return false;
+    }
+    if (lie)
+      note(
+        g,
+        'own-statement',
+        'You do not believe this claim yourself. The listener does not know that.',
+        'hatice',
+      );
     const evidenceId = gardenEvidenceId(session);
     gardenEvidence(session, 'testimony.received', {
       person: to,
@@ -291,6 +312,7 @@ function testimony(
     }
   }
   refreshGarden(g);
+  return true;
 }
 function dailyPerson(minute: number): GardenPerson {
   return GARDEN_IDS[Math.floor(minute / 1440) % 8]!;
@@ -387,6 +409,24 @@ export function chooseGarden(g: GardenRun, input: GardenInput): boolean {
       return false;
     const audience = GARDEN_IDS.find((id) => id !== 'hatice' && id !== input.person && gardenHere(g, id));
     if (input.choice === 'spread' && !audience) return false;
+    if (
+      input.choice === 'spread' &&
+      audience &&
+      !testimony(
+        g,
+        'hatice',
+        audience,
+        input.person,
+        false,
+        input.person === 'osman' || input.person === 'nermin' ? 'honest' : 'kind',
+        input.person,
+      )
+    ) {
+      // A refused attempt remains an ordered player input, without disclosure or its consequences.
+      refreshGarden(g);
+      g.inputs.push({ at: g.minute, input: copy(input) });
+      return true;
+    }
     d.response = input.choice;
     const p = g.people[input.person];
     if (input.choice === 'support') {
@@ -409,15 +449,6 @@ export function chooseGarden(g: GardenRun, input: GardenInput): boolean {
         0.6,
       );
       refreshGarden(g);
-      testimony(
-        g,
-        'hatice',
-        audience,
-        input.person,
-        false,
-        input.person === 'osman' || input.person === 'nermin' ? 'honest' : 'kind',
-        input.person,
-      );
       note(
         g,
         'private-breach',
@@ -584,10 +615,17 @@ function minuteStep(g: GardenRun) {
         testimony(g, id as GardenPerson, to, dailyPerson(g.minute), true);
     }
   }
-  if (g.minute % 15 === 0 && g.minute < 14 * 1440) {
+  if (g.minute < 14 * 1440) {
     for (const id of GARDEN_IDS) {
       const p = g.people[id];
       if (p.activity || id === g.chat?.person || (id === 'hatice' && g.chat)) continue;
+      const completed = session.host.outcomes.some(
+        (outcome) =>
+          outcome.person === id && outcome.status === 'completed' && outcome.end > (g.minute - 1) * MINUTE,
+      );
+      // Completion can fall milliseconds after a quarter-hour. Offer the next task
+      // when that actual completion is visible, rather than waiting another quarter-hour.
+      if (g.minute % 15 !== 0 && !completed) continue;
       const place = actualGardenLocation(g, id);
       const sleeping =
         place.includes('sleep') ||

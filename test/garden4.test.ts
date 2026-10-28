@@ -32,7 +32,7 @@ it('records a completed invited conversation and replays the current export', ()
   advanceGarden(garden, 376);
   expect(garden.discoveries.riza?.fact).toContain('doorway');
   expect(garden.people.riza.activity).toBeUndefined();
-  expect(garden.people.hatice.activity).toBeUndefined();
+  expect(garden.people.hatice.activity?.start).toBeGreaterThanOrEqual(376);
   const exported = exportGarden(garden);
   if (!exported.state.engine) throw new Error('Missing engine checkpoint');
   const chatOutcomes = exported.state.engine.host.outcomes.filter((outcome) => outcome.action === 'chat');
