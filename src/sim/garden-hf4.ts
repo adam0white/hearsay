@@ -29,6 +29,26 @@ type Inspection = ReturnType<typeof inspect> extends Result<infer T> ? T : never
 type HostView = Extract<Inspection['people'][number], { kind: 'host' }>;
 type HostParts = { [P in HostView['parts'][number] as P['select']]: P['value'] };
 const HOST = { type: 'host' as const, id: 'hearsay' };
+// Place identities must remain known when supported memories return to this garden.
+// This finite vocabulary includes scheduled places and actualGardenLocation's alternatives.
+const PLACES = [
+  ['garden', 'garden'],
+  ['hospital', 'hospital'],
+  ['temporary-lodging', 'temporary lodging (morning sleep)'],
+  ['lodging', 'lodging'],
+  ['fountain', 'fountain'],
+  ['delivery-route', 'delivery route'],
+  ['own-evening', 'own evening'],
+  ['school-kitchen', 'school kitchen'],
+  ['agency-appointment', 'agency appointment'],
+  ['bread-round', 'bread round'],
+  ['produce-round', 'produce round'],
+  ['market-stall', 'market stall'],
+  ['quiet-corner', 'a quiet corner'],
+  ['derya-home', 'flat 5, Lale Apartmanı'],
+  ['other-tea-stop', 'another tea stop'],
+] as const;
+
 const clone = <T>(v: T): T => structuredClone(v);
 const need = <T>(r: Result<T>): T => {
   if (!r.ok) throw new Error(`${r.error.code} ${r.error.path}: ${r.error.message}`);
@@ -284,16 +304,14 @@ export function createGardenSession(seed: number, people: readonly PersonAuthori
     lifecycle: { kinPremises: [], kinScopes: [] },
     world: {
       revision: 0,
-      facts: [
-        {
-          id: 'place:garden',
-          subject: 'garden',
-          predicate: 'place-kind',
-          value: 'garden',
-          at: START,
-          provenance: { source: HOST.id, evidenceId: 'authored-place:garden' },
-        },
-      ],
+      facts: PLACES.map(([key, place]) => ({
+        id: `place:${key}`,
+        subject: place,
+        predicate: 'place-kind',
+        value: key === 'garden' ? 'garden' : 'place',
+        at: START,
+        provenance: { source: HOST.id, evidenceId: `authored-place:${key}` },
+      })),
       hostState: { completed: 0, active: [], outcomes: [] },
     },
   };

@@ -306,7 +306,7 @@ function testimony(
       const id = g.routes.length + 1;
       g.routes.push({
         id,
-        parent: parent?.id,
+        ...(parent ? { parent: parent.id } : {}),
         root: parent?.root ?? parent?.id ?? id,
         at: g.minute,
         from,
