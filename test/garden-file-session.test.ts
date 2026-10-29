@@ -265,6 +265,8 @@ it('retains ordinary native startup and persistence outside the foreign-file rou
     await page.getByRole('button', { name: 'Pause', exact: true }).click();
     await page.getByRole('button', { name: 'Pour tea without sharing news', exact: true }).click();
     await page.getByRole('button', { name: 'Game menu', exact: true }).click();
+    // The menu appears after its complete native checkpoint has settled.
+    await page.getByRole('button', { name: 'New game', exact: true }).waitFor();
     expect(await page.getByRole('button', { name: 'New game', exact: true }).count()).toBe(1);
     await page.reload();
     await page.locator('.cg-game').waitFor();

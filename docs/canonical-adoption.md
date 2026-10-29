@@ -1,6 +1,6 @@
 # Canonical garden edition
 
-What remains: Adam’s owner readiness and ordinary played cross-host journey acceptance, target 2026-11-03. Current technical receipts live in the v3 worker report. A source adapter control does not establish an ordinary browser journey.
+What remains: Adam’s owner readiness and ordinary played cross-host feel, target 2026-11-03. Current HF4 source, delivered base and exact technical prerequisites are in [the 2026-10-29 reconciliation](followthrough-2026-10-29.md). Older version/adapter/recording paragraphs below retain historical implementation evidence. They do not override the current single recording preference or HF4 source path. A source adapter control does not establish an ordinary browser journey.
 
 ## The playable objective
 

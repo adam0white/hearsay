@@ -6,7 +6,7 @@ A static web game about talk, trust and consequences in an Istanbul tea garden. 
 
 The current canonical edition is documented in [canonical adoption](docs/canonical-adoption.md). It uses Hatice, Derya, Dilan, Nermin, Aylin, Ece, Rıza and Osman. The old engagement and its 32-person household cast are historical. [The original design](docs/design.md) and [playtest records](docs/playtests/README.md) retain that history. Adam accepts the game by playing; technical delivery does not establish owner acceptance.
 
-The HF4 candidate pins Human Framework 4.8.0 and immutable lab-client 0.5.6 and lab-kit 0.5.23. It keeps current exports replayable and refuses incompatible older files with a Start fresh message. Portable writes stay closed for each person until all peers have verified compatible live readers and per-person skips. The client has no Voice source binding, so Voice portable heads are skipped without replacing them. See [HANDOFF.md](HANDOFF.md) for delivery and owner acceptance.
+The current source pins Human Framework 4.8.0 and immutable lab-client 0.5.6 and lab-kit 0.5.24. It keeps current exports replayable and refuses incompatible older files with a Start fresh message. Portable writes stay closed for each person until all peers have verified compatible live readers and per-person skips. The client has no Voice source binding, so Voice portable heads are skipped without replacing them. See [HANDOFF.md](HANDOFF.md) for delivery and owner acceptance.
 
 Use shared Homebrew Node 26.12.0 and pnpm 12.14.0 pinned by `.node-version` and `packageManager`:
 
@@ -18,7 +18,7 @@ PATH=/opt/homebrew/bin:$PATH pnpm run build
 PATH=/opt/homebrew/bin:$PATH pnpm run preview
 ```
 
-On the shared lab machine, run `pnpm run check:lane` directly. Its test child owns the machine-wide suite lock. Do not add an outer lock wrapper unless it explicitly passes lock ownership to its child. CI runs the full suite on every push.
+On the shared lab machine, run `pnpm run check:lane` directly. It runs lint and types without the machine-wide suite lock. CI runs the full suite on every push.
 
 Before Begin or a confirmed New game, the unchecked “Use longer conversations about the garden and lunch” option selects `garden-talk/1` for that run. It gives the seven visitors six replies each about their own public work, followed by the actual supply, cooking or lunch status. Paid fees, completed preparation and served meals mean different things; paying late does not complete a missed preparation session. The option stays fixed through save/reload. It grants no private knowledge or completed outside outcome and changes no cast, deadline, price, attendance or difficulty rule. The canonical cast still has eight people, including Hatice.
 
@@ -28,7 +28,7 @@ Open “Talk about someone else” to ask what a listener has heard, make a posi
 
 On Day 4, arrange bread and produce. On Day 8, agree on paid preparation with Aylin; pay her before 17:00 on Day 10. Invite visitors to reserve lunch from midday on Day 8 until lunch on Day 13. Four meals cover costs if you paid for the sample immediately; credit raises the cost and requires five. Actual deliveries, preparation, payment and attendance determine the result. Read the garden record to review what you heard and did.
 
-Pause, Slow, Normal and Fast control the clock. Agreement choices, the Game menu and Feedback hold time. No time passes while the page is hidden or closed. The ordinary menu contains Resume, Feedback, Fullscreen, All games, Recording and New game with inline confirmation. Saving is automatic on this device. Replay downloads and Other ways to begin are public. Shared people carry over automatically without an opt-in. Cast controls live on the central shelf. Build, engine, rules and seed diagnostics sit in the collapsed Debug item beside Lab privacy.
+Automatic pace is the default. The garden slows while you read and restores the chosen running pace afterward. Pause, Slow, Normal and Fast remain public; the menu can restore Automatic. Agreement choices, the Game menu and Feedback hold time. No time passes while the page is hidden or closed. The ordinary menu contains Resume, Feedback, Fullscreen, All games, Recording and New game with inline confirmation. Saving is automatic on this device. Replay downloads and Other ways to begin are public. Shared people carry over automatically without an opt-in. Cast controls live on the central shelf. Build, engine, rules and seed diagnostics sit in the collapsed Debug item beside Lab privacy.
 
 One Recording switch controls lab recording and automatic linkage across games on this device. The first-visit notice covers both; DNT/GPC defaults recording off. Character analysis has its own opt-in. Native browser continuity uses the local shelf independently of recording. Feedback offers “I'm stopping” and “I'm confused”. Selection sends nothing and leaves your edited note intact. Submit includes the selected words in the ordinary note. Feedback accepts a note without sharing a run. With recording off, its unticked sharing checkbox enables recording and linked run sharing only when checked on Submit. No separate continuing-person consent gate is required.
 
