@@ -1,10 +1,15 @@
-/** HF4 continuity: only validated native garden passports enter this edition. */
+/** HF4 continuity: validated portable people enter their authored garden roles. */
 import { inspect, type PersonAuthoring, validatePortablePerson } from '@adam0white/human-framework';
 import {
+  admitPortablePerson,
   canonicalCast,
+  claimPortablePerson,
   createPersona,
   type LifeBatchPreparation,
   type PersonaEnvelope,
+  portablePassport,
+  portablePersonOwner,
+  portableWriteBlockers,
 } from '@adam0white/lab-client';
 import { GARDEN_CAST, GARDEN_IDS, type GardenPerson } from './garden-cast.ts';
 import { departureReason } from './garden-departure-rules.ts';
@@ -36,38 +41,59 @@ export function admitGardenBatch(batch: LifeBatchPreparation): PersonAuthoring[]
       throw new Error('A saved person is closed or uses an older cast edition.');
     if (parent.transfer.castPassport === 'authored-cast/1') continue;
     if (
-      parent.source.game !== 'hearsay' ||
-      parent.source.engine !== GARDEN_ENGINE ||
-      parent.source.rules !== 'hearsay-hf4-1'
+      parent.source.game === 'hearsay' &&
+      (parent.source.engine !== GARDEN_ENGINE || parent.source.rules !== 'hearsay-hf4-1')
     )
-      throw new Error(
-        'This saved person uses an unsupported chapter. Keep that chapter or start with new local people.',
-      );
+      throw new Error('This saved person uses an unsupported chapter. Keep the file. Start fresh.');
     const portable = validatePortablePerson(parent.transfer.portable);
-    if (
-      portable.castId !== parent.castId ||
-      portable.castRevision !== parent.castRevision ||
-      portable.source.personId !== id ||
-      portable.source.game !== 'hearsay' ||
-      portable.source.engine !== GARDEN_ENGINE ||
-      parent.transfer.castPassport !== `hf-portable-person/${portable.version}`
-    )
-      throw new Error('This saved person has incompatible source details.');
-    const owner = parent.transfer.portableClaim as { game?: string } | undefined;
-    if (owner && owner.game !== 'hearsay') throw new Error('This person still belongs to another chapter.');
-    const author = authors.find((p) => p.id === id);
+    if (portable.version !== 2)
+      throw new Error('This older saved person cannot continue here. Keep the source file. Start fresh.');
+    const authorIndex = authors.findIndex((p) => p.id === id);
+    const author = authors[authorIndex];
     if (!author) throw new Error('This person has no authored garden role.');
-    if (portable.version === 2) {
-      author.state.heldNorms = [];
-      author.state.sourceTrust = [];
+    const mapping = { offsetMs: 360 * 60000 - portable.retained.at, references: [] };
+    const owner = portablePersonOwner(parent);
+    if (owner === 'hearsay') {
+      author.portable = { person: portable, mapping };
+    } else {
+      authors[authorIndex] = admitPortablePerson(parent, 'hearsay', author, mapping);
     }
-    author.portable = {
-      person: portable,
-      mapping: { offsetMs: portable.version === 2 ? 360 * 60000 - portable.retained.at : 0, references: [] },
-    };
+
+    const admitted = authors[authorIndex];
+    if (!admitted) throw new Error('This person has no authored garden role.');
+    admitted.state.heldNorms = [];
+    admitted.state.sourceTrust = [];
   }
   return authors;
 }
+
+/** Keep each refused shelf head untouched while opening the remaining people. */
+export function eligibleGardenBatch(batch: LifeBatchPreparation): LifeBatchPreparation {
+  const blockedIds = new Set(batch.blocked.map((entry) => entry.castId));
+  const inputs = batch.inputs.filter((input) => {
+    const id = input.parent.castId;
+    if (portablePassport(input.parent) && portableWriteBlockers(id, 'hearsay').length) {
+      blockedIds.add(id);
+      return false;
+    }
+    try {
+      admitGardenBatch({ expectedHeads: {}, inputs: [input], blocked: [] });
+      return true;
+    } catch {
+      blockedIds.add(id);
+      return false;
+    }
+  });
+  return {
+    ...batch,
+    inputs,
+    blocked: [],
+    expectedHeads: Object.fromEntries(
+      Object.entries(batch.expectedHeads).filter(([id]) => !blockedIds.has(id)),
+    ),
+  };
+}
+
 export async function claimGardenBatch(
   batch: LifeBatchPreparation,
   source: PersonaEnvelope['source'],
@@ -78,13 +104,10 @@ export async function claimGardenBatch(
       return createPersona({
         ...body,
         parentRevision: revision,
-        source,
+        source: portablePassport(parent) ? parent.source : source,
         transfer: {
-          ...parent.transfer,
+          ...(portablePassport(parent) ? claimPortablePerson(parent, 'hearsay') : parent.transfer),
           life,
-          ...(String(parent.transfer.castPassport).startsWith('hf-portable-person/')
-            ? { portableClaim: { game: 'hearsay' } }
-            : {}),
         },
       });
     }),
@@ -110,6 +133,8 @@ export function captureGardenSource(g: GardenRun, id: GardenPerson) {
   const part = person.parts.find((p) => p.select === 'persona');
   if (part?.select !== 'persona') throw new Error('The portable person is unavailable.');
   const portable = validatePortablePerson(part.value);
+  const blockers = portableWriteBlockers(cast.castId, 'hearsay');
+  if (blockers.length) throw new Error('This person cannot be saved across games yet. Keep this chapter.');
   return {
     transfer: {
       castPassport: `hf-portable-person/${portable.version}`,

@@ -15,8 +15,8 @@ const dependencies: Record<string, string> = {
 };
 for (const [name, version] of Object.entries({
   '@adam0white/hf-legacy': '3.0.0',
-  '@adam0white/human-framework': '4.6.0',
-  '@adam0white/lab-client': '0.5.2',
+  '@adam0white/human-framework': '4.8.0',
+  '@adam0white/lab-client': '0.5.6',
 })) {
   const source = realpathSync(`node_modules/${name}`);
   const meta = JSON.parse(readFileSync(resolve(source, 'package.json'), 'utf8'));

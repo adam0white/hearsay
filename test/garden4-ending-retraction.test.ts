@@ -70,7 +70,7 @@ it('settles the actual final ordinary activities before freezing the fortnight',
     expect(outcome.end - outcome.start).toBe(15 * 60000);
   }
   // The real source capture may now evaluate body and duties; no activity is erased for it.
-  expect(() => captureGardenSource(g, 'riza')).not.toThrow();
+  expect(() => captureGardenSource(g, 'riza')).toThrow('cannot be saved across games yet');
   g.lunch.debt = 1; // Explicit fixture obligation; the ending does not settle an invoice.
   expect(() => captureGardenSource(g, 'hatice')).toThrow('unpaid');
   expect(g.lunch.debt).toBe(1);

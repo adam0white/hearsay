@@ -248,3 +248,36 @@ it('finishes one ordinary host opportunity without restarting a stale offer', as
   });
   expect(session.offers.riza).toEqual([]);
 });
+
+// The released client has no Voice source binding. Skip it without changing its head.
+it('skips a Voice portable head while the other garden roles open', async () => {
+  const { createPersona } = await import('@adam0white/lab-client');
+  const { admitGardenBatch, eligibleGardenBatch } = await import('../src/sim/garden4-continuity.ts');
+  const { GARDEN_ENGINE } = await import('../src/sim/garden-engine.ts');
+  const captured = engineeringPassport(freshGarden(17));
+  const portable = structuredClone(captured.transfer.portable);
+  portable.source.game = 'voice';
+  const source = { game: 'voice', engine: GARDEN_ENGINE, rules: 'synthetic', build: 'control' };
+  const parent = await createPersona({
+    format: 'hf-persona/1',
+    castId: portable.castId,
+    castRevision: portable.castRevision,
+    branchId: 'voice-role-control',
+    parentRevision: null,
+    source,
+    transfer: { ...captured.transfer, portable },
+    limitations: captured.limitations,
+  });
+  const before = JSON.stringify(parent);
+  const batch = {
+    expectedHeads: { [parent.castId]: parent.revision },
+    blocked: [],
+    inputs: [{ parent, life: {}, clockMs: 0 }],
+  } as unknown as import('@adam0white/lab-client').LifeBatchPreparation;
+  expect(() => admitGardenBatch(batch)).toThrow('incompatible identity or source');
+  const eligible = eligibleGardenBatch(batch);
+  expect(eligible.inputs).toEqual([]);
+  expect(eligible.expectedHeads).toEqual({});
+  expect(freshGarden(18, admitGardenBatch(eligible)).people.osman).toBeDefined();
+  expect(JSON.stringify(parent)).toBe(before);
+});

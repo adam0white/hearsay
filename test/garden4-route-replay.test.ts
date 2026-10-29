@@ -1,3 +1,4 @@
+import { replay } from '@adam0white/human-framework';
 import { canonicalPersona } from '@adam0white/lab-client';
 import { expect, it } from 'vitest';
 import { advanceGarden, chooseGarden, freshGarden } from '../src/sim/garden4.ts';
@@ -10,6 +11,10 @@ it('replays a JSON export after automatic testimony without losing fingerprint f
   advanceGarden(garden, 450);
   expect(garden.routes.some((route) => route.parent === undefined)).toBe(true);
   const exported = exportGarden(garden);
+  if (!exported.state.engine) throw new Error('Missing engine archive');
+  const archive = exported.state.engine.archive;
+  const proof = replay(archive);
+  expect(proof.ok && proof.value.verified && proof.value.fullHash === archive.hashes.full).toBe(true);
   const text = JSON.stringify(exported);
   const parsed = JSON.parse(text);
   expect(hash(canonicalPersona(parsed.state)).toString(16)).toBe(exported.fingerprint);

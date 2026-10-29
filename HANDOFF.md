@@ -1,3 +1,7 @@
+## HF 4.8 candidate — 2026-10-28
+
+Remaining: hosted review, exact CI and deployment, then Adam's separate play acceptance by 2026-11-03. HF 4.8.0, client 0.5.6 and kit 0.5.23 are pinned. Portable writes remain closed until each peer has a verified live client 0.5.5 or later and per-person skips; blocked people are skipped without replacing their heads. Client 0.5.6 has no Voice source role, so Voice portable heads cannot yet arrive. Hearsay and Left Hand share no direct registry role. The historical Voice adapters remain intact. Old incompatible files can be kept and refused with Start fresh. The prior 4.6 candidate and historical evidence below are not this release's receipts.
+
 ## HF 4 port candidate — 2026-10-28
 
 Owner play acceptance remains separate, due2026-11-03. Technical delivery requires a published-build full fortnight, exact export/import replay below64MiB, the normal game lane, hosted review, exact merged CI and a clean deployment. The port PR and live release manifest record those delivery receipts. Full-duration browser continuity remains a separate verification limit. See [design](docs/design.md#hf-4-port-update--2026-10-28) and the [control receipt](docs/hf4-port-2026-10-28.md).

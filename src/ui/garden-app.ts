@@ -8,9 +8,11 @@ import {
   initialPersonaLife,
   type PersonaEnvelope,
   personaChannel,
+  portablePassport,
+  portableWriteBlockers,
   validatePersona,
 } from '@adam0white/lab-client';
-import { downloadJson, telemetryNotice, telemetryToggle } from '@adam0white/lab-kit';
+import { downloadJson, PEOPLE_ACROSS_GAMES, telemetryNotice, telemetryToggle } from '@adam0white/lab-kit';
 import { GARDEN_CAST, GARDEN_IDS, type GardenPerson } from '../sim/garden-cast.ts';
 import type { GardenConfig } from '../sim/garden-dialogue.ts';
 import { GARDEN_ENGINE } from '../sim/garden-engine.ts';
@@ -28,6 +30,7 @@ import {
   admitGardenBatch,
   captureGardenSource,
   claimGardenBatch,
+  eligibleGardenBatch,
   type GardenChapter,
   type SourceArchive,
 } from '../sim/garden4-continuity.ts';
@@ -207,8 +210,8 @@ function fileControls() {
 }
 function menuControls() {
   if (fileSession)
-    return `${run ? button('Resume', 'back') : ''}${button('Feedback', 'send')}${button('Fullscreen', 'fullscreen')}<a href="https://human.adamwhite.work/games/" target="_top">All games</a><div id="cg-recording"></div>${fileControls()}`;
-  return `${run ? button('Resume', 'back') : ''}${button('Feedback', 'send')}${button('Fullscreen', 'fullscreen')}<a href="https://human.adamwhite.work/games/" target="_top">All games</a><div id="cg-recording"></div>${run ? button('New game', 'new') : ''}${confirmNew ? `<p>Start a new fourteen-day game and replace this device’s saved garden?</p>${conversationOption()}${button('Start new game', 'restart', starting)}${button('Keep this garden', 'cancel-new', starting)}` : ''}${run ? button('Download this run', 'export') : ''}${otherStarts()}`;
+    return `${run ? button('Resume', 'back') : ''}${button('Feedback', 'send')}${button('Fullscreen', 'fullscreen')}<a href="https://human.adamwhite.work/games/" target="_top">All games</a><a href="https://human.adamwhite.work/lab/people/" target="_top">${PEOPLE_ACROSS_GAMES}</a><div id="cg-recording"></div>${fileControls()}`;
+  return `${run ? button('Resume', 'back') : ''}${button('Feedback', 'send')}${button('Fullscreen', 'fullscreen')}<a href="https://human.adamwhite.work/games/" target="_top">All games</a><a href="https://human.adamwhite.work/lab/people/" target="_top">${PEOPLE_ACROSS_GAMES}</a><div id="cg-recording"></div>${run ? button('New game', 'new') : ''}${confirmNew ? `<p>Start a new fourteen-day game and replace this device’s saved garden?</p>${conversationOption()}${button('Start new game', 'restart', starting)}${button('Keep this garden', 'cancel-new', starting)}` : ''}${run ? button('Download this run', 'export') : ''}${otherStarts()}`;
 }
 function renderTitle() {
   root.innerHTML = `<main class="cg-title"><p class="eyebrow">Fourteen days in the neighbourhood</p><h1>Hearsay</h1><p>You are Hatice. You run a tea garden in Istanbul. People visit between shifts, deliveries and appointments.</p><p class="goal">Your goal is to open a paid workers’ lunch on Day 13.</p><details><summary>How to play</summary><p>Arrange supplies on Day 4 and agree on paid cooking on Day 8. You need at least four meal reservations. People decide whether to book based on what they hear.</p><p>Choose a person to talk to. You can listen, repeat a claim or keep it private. Your words affect who trusts you and visits the garden. The clock runs for fourteen days.</p><p>Prices are in lira, the currency of Turkey. ${fileSession ? 'This file session stays in this tab. Download the game file to keep your progress.' : 'Your garden saves automatically on this device.'}</p></details>${notice ? `<p role="status">${esc(notice)}</p>` : ''}${fileSession ? '' : conversationOption() + button('Begin', 'start', starting)}${menuControls()}</main>`;
@@ -426,11 +429,17 @@ async function action(key: string) {
         });
         if (!batch.expectedHeads || castIds.some((id) => !Object.hasOwn(batch.expectedHeads, id)))
           throw new Error('The shelf omitted expected heads.');
-        const people = admitGardenBatch(batch);
+        const eligible = eligibleGardenBatch(batch);
+        const people = admitGardenBatch(eligible);
         next = freshGarden(seed, people, undefined, config);
-        const claims = await claimGardenBatch(batch, stamps());
+        const claims = await claimGardenBatch(eligible, stamps());
         if (generation !== attempt) throw new Error('The game changed before the chapter was claimed.');
-        await shelf.request({ action: 'putBatch', envelopes: claims, expectedHeads: batch.expectedHeads });
+        if (claims.length || Object.keys(eligible.expectedHeads).length)
+          await shelf.request({
+            action: 'putBatch',
+            envelopes: claims,
+            expectedHeads: eligible.expectedHeads,
+          });
         if (generation !== attempt) throw new Error('The game changed after the chapter was claimed.');
         next.chapter = { version: 'hearsay-hf4-batch/1', claims } satisfies GardenChapter;
         receipts = Object.fromEntries(claims.map((h) => [h.castId, h]));
@@ -653,6 +662,8 @@ async function checkpoint() {
           );
         const actor = captured.people[id];
         let next: PersonaEnvelope;
+        if (parent && portablePassport(parent) && portableWriteBlockers(cast.castId, 'hearsay').length)
+          throw new Error('This person cannot be saved across games yet. Keep this chapter.');
         if (!actor.body.alive) {
           if (!parent)
             throw new Error(
