@@ -42,8 +42,8 @@ it('does not deliver a statement refused under Hatice’s actual held prohibitio
   const garden = freshGarden(17);
   advanceGarden(garden, 400);
   expect(
-    garden.people.hatice.memory.beliefs.find((belief) => belief.prop === 'osman:honest')?.logOdds,
-  ).toBeLessThan(-1);
+    garden.people.hatice.memory.beliefs.find((belief) => belief.prop === 'osman:honest')?.credence,
+  ).toBeLessThan(1 / (1 + Math.exp(1)));
   expect(chooseGarden(garden, { type: 'defend', person: 'riza', about: 'osman', trait: 'honest' })).toBe(
     true,
   );

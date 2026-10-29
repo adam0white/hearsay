@@ -1,5 +1,6 @@
 /** A current export retains the complete HF archive and the ordered garden inputs. */
 import { canonicalPersona } from '@adam0white/lab-client';
+import { GARDEN_ENGINE } from './garden-engine.ts';
 import { checkpointGarden, GARDEN_EDITION, type GardenRun, gardenAuthors, replayGarden } from './garden4.ts';
 import { hash } from './hash.ts';
 export interface GardenExport {
@@ -55,6 +56,8 @@ export function importGarden(text: string): GardenRun {
       .join()
   )
     throw Error('The garden cast is incompatible. Keep the file. Start fresh.');
+  if (e.state.engine.archive.engine.package !== `@adam0white/human-framework@${GARDEN_ENGINE}`)
+    throw Error('This game file uses an older engine. Keep the file. Start fresh.');
   let previous = 360;
   for (const row of e.inputs) {
     if (!row || !Number.isSafeInteger(row.at) || row.at < previous || row.at > e.minute)

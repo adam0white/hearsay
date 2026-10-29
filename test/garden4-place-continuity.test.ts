@@ -7,7 +7,14 @@ import {
   type RunSpec,
 } from '@adam0white/human-framework';
 import type { LifeBatchPreparation } from '@adam0white/lab-client';
-import { expect, it } from 'vitest';
+import { expect, it, vi } from 'vitest';
+
+// Exercise the retained-history bridge independently of the live deployment gate.
+vi.mock('@adam0white/lab-client', async (original) => ({
+  ...(await original<typeof import('@adam0white/lab-client')>()),
+  portableWriteBlockers: () => [],
+}));
+
 import { GARDEN_ENGINE } from '../src/sim/garden-engine.ts';
 import {
   converseGarden,

@@ -682,7 +682,8 @@ export function restoreGardenSession(c: GardenCheckpoint): GardenSession {
 }
 
 export function beliefEvidence(p: GardenActor, prop: string): number {
-  return p.memory.beliefs.find((b) => b.prop === prop)?.logOdds ?? 0;
+  const credence = p.memory.beliefs.find((b) => b.prop === prop)?.credence ?? 0.5;
+  return Math.log(credence / (1 - credence));
 }
 export function trustOf(p: GardenActor, source: string): number {
   return p.memory.sourceTrust[source] ?? 0.5;
