@@ -19,8 +19,8 @@ const pkg = resolve(output, 'package');
 mkdirSync(pkg);
 const dependencies = {
   '@adam0white/hf-legacy': '3.0.0',
-  '@adam0white/human-framework': '4.6.0',
-  '@adam0white/lab-client': '0.5.2',
+  '@adam0white/human-framework': '4.8.0',
+  '@adam0white/lab-client': '0.5.6',
 };
 for (const [name, version] of Object.entries(dependencies)) {
   const installed = JSON.parse(readFileSync(`node_modules/${name}/package.json`, 'utf8'));
@@ -65,7 +65,7 @@ const manifest = {
 writeFileSync(resolve(pkg, 'manifest.json'), `${JSON.stringify(manifest, null, 2)}\n`);
 writeFileSync(
   resolve(pkg, 'NOTICE'),
-  'Hearsay-owned host replay module. MIT LICENSE included. Exact external Human Framework 3.0.0 and 4.6.0 and lab-client 0.5.2 retain their own licenses. Original dirty51ec provenance is unchanged.\n',
+  'Hearsay-owned host replay module. MIT LICENSE included. Exact external Human Framework 3.0.0 and 4.8.0 and lab-client 0.5.6 retain their own licenses. Original dirty51ec provenance is unchanged.\n',
 );
 writeFileSync(
   resolve(pkg, 'package.json'),
