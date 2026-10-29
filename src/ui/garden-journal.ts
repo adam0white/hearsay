@@ -6,6 +6,7 @@ import {
   type RunJournalOpening,
   restoreRunJournal,
 } from '@adam0white/human-framework';
+import { requireCurrentGardenConfig } from '../sim/garden-dialogue.ts';
 import { type GardenCheckpoint, restoreGardenSessionFromRun } from '../sim/garden-hf4.ts';
 import { attachGardenSession, type GardenRun, sessionOf } from '../sim/garden4.ts';
 import { get, putJournal } from './store.ts';
@@ -81,6 +82,7 @@ export async function loadGardenJournal(): Promise<{ run: GardenRun; meta: Garde
   if (!saved) return null;
   const head = saved.value;
   if (head.version !== 1 || !Array.isArray(head.chunkKeys)) throw Error('Invalid saved garden. Start fresh.');
+  requireCurrentGardenConfig(head.state?.config);
   const opening = await get<RunJournalOpening>(head.openingKey);
   const chunks = await Promise.all(head.chunkKeys.map((key) => get<RunJournalChunk>(key)));
   if (!opening || chunks.some((chunk) => !chunk)) throw Error('Incomplete saved garden. Start fresh.');

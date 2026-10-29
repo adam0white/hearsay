@@ -162,10 +162,21 @@ it('plays a complete foreign file through the public route without replacing nat
     expect(await page.getByRole('button', { name: 'Close file session', exact: true }).isVisible()).toBe(
       true,
     );
-    await page
-      .locator('#import-run')
-      .setInputFiles({ name: 'invalid.json', mimeType: 'application/json', buffer: Buffer.from('{}') });
-    await page.locator('.cg-title [role=status]').waitFor();
+    const beforeRefusal = await readOwner(page);
+    const oldFile = structuredClone(file);
+    delete oldFile.config;
+    delete oldFile.state.config;
+    const oldBytes = Buffer.from(JSON.stringify(oldFile));
+    await page.locator('#import-run').setInputFiles({
+      name: 'old-garden.json',
+      mimeType: 'application/json',
+      buffer: oldBytes,
+    });
+    await expect
+      .poll(() => page.locator('.cg-title [role=status]').textContent())
+      .toContain('Keep the file. Start fresh.');
+    expect(await readOwner(page)).toEqual(beforeRefusal);
+    expect(JSON.parse(oldBytes.toString())).toEqual(oldFile);
     await page.getByRole('button', { name: 'Close file session', exact: true }).click();
     await page.locator('.cg-game').waitFor();
     await page.getByRole('button', { name: 'Pause', exact: true }).click();

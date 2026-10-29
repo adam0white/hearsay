@@ -14,7 +14,6 @@ import {
 } from '@adam0white/lab-client';
 import { downloadJson, PEOPLE_ACROSS_GAMES, telemetryNotice, telemetryToggle } from '@adam0white/lab-kit';
 import { GARDEN_CAST, GARDEN_IDS, type GardenPerson } from '../sim/garden-cast.ts';
-import type { GardenConfig } from '../sim/garden-dialogue.ts';
 import { GARDEN_ENGINE } from '../sim/garden-engine.ts';
 import {
   advanceGarden,
@@ -200,19 +199,16 @@ async function useRun(
 function otherStarts() {
   return `<details class="cg-starts"><summary>Other ways to begin</summary><div class="cg-start-row">${button('Play fourteen days with new local people', 'local', starting)}${information('cg-local-info', 'About new local people', 'These people have not met Hatice in any other game. Begin uses people you have met in other games when available.')}</div><div class="cg-start-row">${button('Open a game file', 'open-file', starting)}${information('cg-file-info', 'About opening a game file', 'Opening a file keeps its progress separate from your saved garden.')}</div></details>`;
 }
-function conversationOption() {
-  return `<label class="cg-dialogue"><input type="checkbox" id="cg-dialogue" ${starting ? 'disabled' : ''}> Use longer conversations about the garden and lunch</label>`;
-}
 function fileControls() {
   return `<p>This file session stays in this tab. Download the game file to keep your progress. Your browser’s saved garden and shared histories are not changed.</p>${run ? button('Download this game file', 'export') : '<label class="cg-file">Open a game file<input type="file" id="import-run" accept=".json,application/json"></label>'}${button('Close file session', 'close-file')}<p>Saving a closing chapter, starting a separate history and starting a new garden are unavailable in a file session.</p>`;
 }
 function menuControls() {
   if (fileSession)
     return `${run ? button('Resume', 'back') + button('Use automatic pace', 'automatic') : ''}${button('Feedback', 'send')}${button('Fullscreen', 'fullscreen')}<a href="https://human.adamwhite.work/games/" target="_top">All games</a><a href="https://human.adamwhite.work/lab/people/" target="_top">${PEOPLE_ACROSS_GAMES}</a><div id="cg-recording"></div>${fileControls()}`;
-  return `${run ? button('Resume', 'back') + button('Use automatic pace', 'automatic') : ''}${button('Feedback', 'send')}${button('Fullscreen', 'fullscreen')}<a href="https://human.adamwhite.work/games/" target="_top">All games</a><a href="https://human.adamwhite.work/lab/people/" target="_top">${PEOPLE_ACROSS_GAMES}</a><div id="cg-recording"></div>${run ? button('New game', 'new') : ''}${confirmNew ? `<p>Start a new fourteen-day game and replace this device’s saved garden?</p>${conversationOption()}${button('Start new game', 'restart', starting)}${button('Keep this garden', 'cancel-new', starting)}` : ''}${run ? button('Download this run', 'export') : ''}${otherStarts()}`;
+  return `${run ? button('Resume', 'back') + button('Use automatic pace', 'automatic') : ''}${button('Feedback', 'send')}${button('Fullscreen', 'fullscreen')}<a href="https://human.adamwhite.work/games/" target="_top">All games</a><a href="https://human.adamwhite.work/lab/people/" target="_top">${PEOPLE_ACROSS_GAMES}</a><div id="cg-recording"></div>${run ? button('New game', 'new') : ''}${confirmNew ? `<p>Start a new fourteen-day game and replace this device’s saved garden?</p>${button('Start new game', 'restart', starting)}${button('Keep this garden', 'cancel-new', starting)}` : ''}${run ? button('Download this run', 'export') : ''}${otherStarts()}`;
 }
 function renderTitle() {
-  root.innerHTML = `<main class="cg-title"><p class="eyebrow">Fourteen days in the neighbourhood</p><h1>Hearsay</h1><p>You are Hatice. You run a tea garden in Istanbul. People visit between shifts, deliveries and appointments.</p><p class="goal">Your goal is to open a paid workers’ lunch on Day 13.</p><details><summary>How to play</summary><p>Arrange supplies on Day 4 and agree on paid cooking on Day 8. You need at least four meal reservations. People decide whether to book based on what they hear.</p><p>Choose a person to talk to. You can listen, repeat a claim or keep it private. Your words affect who trusts you and visits the garden. The clock runs for fourteen days.</p><p>Prices are in lira, the currency of Turkey. ${fileSession ? 'This file session stays in this tab. Download the game file to keep your progress.' : 'Your garden saves automatically on this device.'}</p></details>${notice ? `<p role="status">${esc(notice)}</p>` : ''}${fileSession ? '' : conversationOption() + button('Begin', 'start', starting)}${menuControls()}</main>`;
+  root.innerHTML = `<main class="cg-title"><p class="eyebrow">Fourteen days in the neighbourhood</p><h1>Hearsay</h1><p>You are Hatice. You run a tea garden in Istanbul. People visit between shifts, deliveries and appointments.</p><p class="goal">Your goal is to open a paid workers’ lunch on Day 13.</p><details><summary>How to play</summary><p>Arrange supplies on Day 4 and agree on paid cooking on Day 8. You need at least four meal reservations. People decide whether to book based on what they hear.</p><p>Choose a person to talk to. You can listen, repeat a claim or keep it private. Your words affect who trusts you and visits the garden. The clock runs for fourteen days.</p><p>Prices are in lira, the currency of Turkey. ${fileSession ? 'This file session stays in this tab. Download the game file to keep your progress.' : 'Your garden saves automatically on this device.'}</p></details>${notice ? `<p role="status">${esc(notice)}</p>` : ''}${fileSession ? '' : button('Begin', 'start', starting)}${menuControls()}</main>`;
   root.querySelector('#cg-recording')?.append(telemetryToggle(lab));
 }
 function render() {
@@ -410,14 +406,11 @@ async function action(key: string) {
     const attempt = ++generation;
     const seedValues = crypto.getRandomValues(new Uint32Array(1));
     const seed = required(seedValues[0], 'Garden seed requires one random value.');
-    const config: GardenConfig | undefined = root.querySelector<HTMLInputElement>('#cg-dialogue')?.checked
-      ? { dialogue: 'garden-talk/1' }
-      : undefined;
     starting = true;
     recordingGuard.invalidate();
     render();
     try {
-      let next = freshGarden(seed, gardenAuthors(), undefined, config),
+      let next = freshGarden(seed, gardenAuthors()),
         receipts: Record<string, PersonaEnvelope> = {};
       await shelf.ready;
       if (key !== 'local') {
@@ -434,7 +427,7 @@ async function action(key: string) {
           throw new Error('The shelf omitted expected heads.');
         const eligible = eligibleGardenBatch(batch);
         const people = admitGardenBatch(eligible);
-        next = freshGarden(seed, people, undefined, config);
+        next = freshGarden(seed, people);
         const claims = await claimGardenBatch(eligible, stamps());
         if (generation !== attempt) throw new Error('The game changed before the chapter was claimed.');
         if (claims.length || Object.keys(eligible.expectedHeads).length)
