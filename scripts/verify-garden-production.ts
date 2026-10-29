@@ -2,7 +2,7 @@
 import assert from 'node:assert/strict';
 import { writeFile } from 'node:fs/promises';
 import { chromium, type Page, webkit } from 'playwright-core';
-import { preview } from 'vite';
+import { createServer, preview } from 'vite';
 import { advanceGarden, chooseGarden, freshGarden } from '../src/sim/garden4.ts';
 import { exportGarden, importGarden } from '../src/sim/garden4-export.ts';
 
@@ -21,6 +21,10 @@ assert.deepEqual(exportGarden(cold), exportGarden(fixture));
 const foreign = exportGarden(freshGarden(202));
 const rows: unknown[] = [];
 const server = await preview({ preview: { host: '127.0.0.1', port: 0, strictPort: false } });
+const fixtureServer = await createServer({ server: { host: '127.0.0.1', port: 0, hmr: false, watch: null } });
+await fixtureServer.listen();
+const fixtureOrigin = fixtureServer.resolvedUrls?.local[0];
+assert(fixtureOrigin);
 const origin = server.resolvedUrls?.local[0];
 assert(origin);
 async function readNative(page: Page) {
@@ -76,32 +80,25 @@ try {
             route.fulfill({ contentType: 'text/html', body: '<title>Control setup</title>' }),
           );
           await page.goto(`${origin}__control_setup`);
-          await page.evaluate(
-            async (text: string) => {
-              localStorage.setItem('hf-telemetry-off', '1');
-              const db = await new Promise<IDBDatabase>((resolve, reject) => {
-                const request = indexedDB.open('hearsay', 1);
-                request.onupgradeneeded = () => request.result.createObjectStore('pages');
-                request.onsuccess = () => resolve(request.result);
-                request.onerror = () => reject(request.error);
-              });
-              await new Promise<void>((resolve, reject) => {
-                const tx = db.transaction('pages', 'readwrite');
-                tx.objectStore('pages').put({ plain: text, at: 123 }, 'garden-hf4-1');
-                tx.objectStore('pages').put({ plain: '{"sentinel":"keep"}', at: 456 }, 'unrelated-control');
-                tx.oncomplete = () => resolve();
-                tx.onerror = () => reject(tx.error);
-              });
-              db.close();
-            },
-            JSON.stringify({
-              export: native,
-              fileOrigin: false,
-              fileKey: null,
-              ownedHeads: {},
-              archives: [],
-            }),
-          );
+          // Serve source modules only while preparing the fixture, under the production origin.
+          const fixtureModules = async (route: import('playwright-core').Route) => {
+            const url = new URL(route.request().url());
+            const response = await route.fetch({
+              url: new URL(url.pathname + url.search, fixtureOrigin).href,
+            });
+            await route.fulfill({ response });
+          };
+          await page.route(/\/(src|node_modules)\//, fixtureModules);
+          await page.evaluate(`(async () => {
+            localStorage.setItem('hf-telemetry-off', '1');
+            const { importGarden } = await import('/src/sim/garden4-export.ts');
+            const { saveGardenJournal } = await import('/src/ui/garden-journal.ts');
+            const { put } = await import('/src/ui/store.ts');
+            const fixture = ${JSON.stringify(native)};
+            if (!await saveGardenJournal(importGarden(JSON.stringify(fixture)), { fileOrigin: false, fileKey: null, ownedHeads: {}, archives: [] })) throw Error('Fixture save failed');
+            if (!await put('unrelated-control', { sentinel: 'keep' })) throw Error('Sentinel save failed');
+          })()`);
+          await page.unroute(/\/(src|node_modules)\//, fixtureModules);
           await page.clock.install();
           await page.clock.pauseAt(new Date());
           await page.goto(origin);
@@ -230,4 +227,5 @@ try {
     );
 } finally {
   await server.close();
+  await fixtureServer.close();
 }

@@ -1,4 +1,4 @@
-import { inspect, validatePortablePerson } from '@adam0white/human-framework';
+import { inspect, readRunHistory, validatePortablePerson } from '@adam0white/human-framework';
 import { canonicalCast } from '@adam0white/lab-client';
 import { expect, it } from 'vitest';
 import { gardenOpening } from '../src/sim/garden-cast.ts';
@@ -65,7 +65,7 @@ it('records a completed invited conversation and replays the current export', ()
   if (!laterCheckpoint) throw new Error('Missing engine checkpoint');
   const originalIds = new Set(chatOutcomes.map((outcome) => outcome.id));
   expect(laterCheckpoint.host.outcomes.some((outcome) => originalIds.has(outcome.id))).toBe(false);
-  const retained = laterCheckpoint.archive.history
+  const retained = readRunHistory(laterCheckpoint.archive)
     .flatMap((transaction) => transaction.inputs)
     .flatMap((input) =>
       input.kind === 'action.resolved' && originalIds.has(input.payload.activityId)
@@ -181,7 +181,7 @@ it('retains the latest actual outcome per person in the host checkpoint', () => 
   const outcomes = checkpoint.host.outcomes;
   expect(outcomes.length).toBeGreaterThan(0);
   expect(new Set(outcomes.map((outcome) => outcome.person)).size).toBe(outcomes.length);
-  const resolutions = checkpoint.archive.history
+  const resolutions = readRunHistory(checkpoint.archive)
     .flatMap((transaction) => transaction.inputs)
     .filter((input) => input.kind === 'action.resolved' && input.payload.outcome);
   expect(resolutions.length).toBeGreaterThan(outcomes.length);
@@ -249,7 +249,7 @@ it('finishes one ordinary host opportunity without restarting a stale offer', as
   expect(session.offers.riza).toEqual([]);
 });
 
-// The released client has no Voice source binding. Skip it without changing its head.
+// The released client reads Voice roles, but its peer write gate still blocks this shelf head.
 it('skips a Voice portable head while the other garden roles open', async () => {
   const { createPersona } = await import('@adam0white/lab-client');
   const { admitGardenBatch, eligibleGardenBatch } = await import('../src/sim/garden4-continuity.ts');
@@ -274,7 +274,7 @@ it('skips a Voice portable head while the other garden roles open', async () => 
     blocked: [],
     inputs: [{ parent, life: {}, clockMs: 0 }],
   } as unknown as import('@adam0white/lab-client').LifeBatchPreparation;
-  expect(() => admitGardenBatch(batch)).toThrow('incompatible identity or source');
+  expect(admitGardenBatch(batch).find((person) => person.id === 'riza')?.portable?.person).toEqual(portable);
   const eligible = eligibleGardenBatch(batch);
   expect(eligible.inputs).toEqual([]);
   expect(eligible.expectedHeads).toEqual({});

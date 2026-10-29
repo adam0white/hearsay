@@ -13,14 +13,15 @@ it('retains a complete source separately when the active garden is replaced', as
       const { freshGarden, advanceGarden, chooseGarden } = await import('/src/sim/garden4.ts');
       const { exportGarden } = await import('/src/sim/garden4-export.ts');
       const { retainGardenSource } = await import('/src/ui/garden-source-archive.ts');
-      const { put } = await import('/src/ui/store.ts');
+      const { saveGardenJournal, loadGardenJournal } = await import('/src/ui/garden-journal.ts');
       const garden = freshGarden(17);
       chooseGarden(garden, { type: 'listen', person: 'riza', approach: 'invite' });
       advanceGarden(garden, 376);
       const source = { game: 'hearsay', build: 'test', engine: 'test', rules: 'hearsay-hf4-1' };
       const expected = exportGarden(garden);
       const key = await retainGardenSource(garden, source);
-      await put('garden-hf4-1', { export: exportGarden(freshGarden(42)) });
+      if (!await saveGardenJournal(freshGarden(42), { fileOrigin: false, fileKey: null, ownedHeads: {}, archives: [] })) throw Error('Fixture save failed');
+      if ((await loadGardenJournal()).run.seed !== 42) throw Error('Replacement was not saved');
       return { expected: JSON.stringify(expected), key };
     })()`)) as { expected: string; key: string };
     await page.reload();

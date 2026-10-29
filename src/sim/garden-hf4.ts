@@ -16,10 +16,13 @@ import {
   type Run,
   type RunArchive,
   type RunSpec,
+  readRunHistory,
   restoreRun,
   type StepResult,
   step,
 } from '@adam0white/human-framework';
+import { GARDEN_ENGINE } from './garden-engine.ts';
+import { GARDEN_WORDINGS } from './garden-phrasebook.ts';
 export const MINUTE = 60_000;
 const START = 360 * MINUTE,
   DAY = 86400000 as const,
@@ -292,6 +295,7 @@ export function createGardenSession(seed: number, people: readonly PersonAuthori
         roles: {},
         prefer: 'name',
         actions: {},
+        wordings: GARDEN_WORDINGS,
       },
       calendar: {
         id: 'garden-days',
@@ -642,12 +646,21 @@ const stable = (value: unknown): string =>
       : v,
   );
 export function restoreGardenSession(c: GardenCheckpoint): GardenSession {
-  const run = need(restoreRun(c.archive));
+  if (c.archive.engine.package !== `@adam0white/human-framework@${GARDEN_ENGINE}`)
+    throw new Error('Your saved garden uses an older engine. Start fresh.');
+  return restoreGardenSessionFromRun(c, need(restoreRun(c.archive)));
+}
+export function restoreGardenSessionFromRun(
+  checkpoint: Omit<GardenCheckpoint, 'archive'>,
+  run: Run,
+): GardenSession {
+  const c = { ...checkpoint, archive: exportRun(run) };
   if (
     !Number.isSafeInteger(c.serial) ||
     c.serial < 0 ||
     !Number.isSafeInteger(c.clock) ||
-    (c.clock !== c.archive.current.at && !(c.archive.history.length === 0 && c.clock === START - 1)) ||
+    (c.clock !== c.archive.current.at &&
+      !(readRunHistory(c.archive).length === 0 && c.clock === START - 1)) ||
     c.host.revision !== c.archive.current.world.revision ||
     !Array.isArray(c.host.active) ||
     !Array.isArray(c.host.outcomes) ||

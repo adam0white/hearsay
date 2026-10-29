@@ -167,3 +167,36 @@ export async function putImmutable(key: string, value: unknown): Promise<boolean
     return false;
   }
 }
+
+/** Commit new journal records and their matching head in one transaction. */
+export async function putJournal(
+  records: readonly [string, unknown][],
+  headKey: string,
+  head: unknown,
+): Promise<boolean> {
+  try {
+    const db = await open();
+    const rows = records.map(([key, value]) => [key, JSON.stringify(value)] as const);
+    const headText = JSON.stringify(head);
+    await new Promise<void>((resolve, reject) => {
+      const tx = db.transaction(STORE, 'readwrite');
+      const store = tx.objectStore(STORE);
+      try {
+        for (const [key, text] of rows) store.add({ plain: text, at: Date.now() }, key);
+        store.put({ plain: headText, at: Date.now() }, headKey);
+      } catch (error) {
+        tx.abort();
+        reject(error);
+        return;
+      }
+      tx.oncomplete = () => resolve();
+      tx.onerror = () => reject(tx.error);
+      tx.onabort = () => reject(tx.error);
+    });
+    for (const [key, text] of rows) captureStored(key, text);
+    captureStored(headKey, headText);
+    return true;
+  } catch {
+    return false;
+  }
+}

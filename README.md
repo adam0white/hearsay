@@ -6,7 +6,7 @@ A static web game about talk, trust and consequences in an Istanbul tea garden. 
 
 The current canonical edition is documented in [canonical adoption](docs/canonical-adoption.md). It uses Hatice, Derya, Dilan, Nermin, Aylin, Ece, Rıza and Osman. The old engagement and its 32-person household cast are historical. [The original design](docs/design.md) and [playtest records](docs/playtests/README.md) retain that history. Adam accepts the game by playing; technical delivery does not establish owner acceptance.
 
-The current source pins Human Framework 4.8.0 and immutable lab-client 0.5.6 and lab-kit 0.5.24. It keeps current exports replayable and refuses incompatible older files with a Start fresh message. Portable writes stay closed for each person until all peers have verified compatible live readers and per-person skips. The client has no Voice source binding, so Voice portable heads are skipped without replacing them. See [HANDOFF.md](HANDOFF.md) for delivery and owner acceptance.
+The current source pins Human Framework 4.12.0 and immutable lab-client 0.5.12 and lab-kit 0.5.29. It keeps current exports replayable and refuses incompatible older files with a Start fresh message. Portable writes stay closed for each person until all peers have verified compatible live readers and per-person skips. The client reads Voice source roles; peer write blockers still skip unsupported shelf heads without replacing them. See [HANDOFF.md](HANDOFF.md) for delivery and owner acceptance.
 
 Use shared Homebrew Node 26.12.0 and pnpm 12.14.0 pinned by `.node-version` and `packageManager`:
 

@@ -19,13 +19,12 @@ afterAll(async () => {
 async function savedGarden(page: Page) {
   // Local fixture: this does not prove shared admission.
   await page.evaluate(`(async()=>{
-    const {put}=await import('/src/ui/store.ts');
+    const {saveGardenJournal}=await import('/src/ui/garden-journal.ts');
     const {freshGarden}=await import('/src/sim/garden4.ts');
-    const {exportGarden}=await import('/src/sim/garden4-export.ts');
     const {GARDEN_ENGINE}=await import('/src/sim/garden-engine.ts');
     const {createPersona}=await import('/node_modules/@adam0white/lab-client/dist/index.js');
     const receipt=await createPersona({format:'hf-persona/1',castId:'hf.cast.riza.voice',castRevision:'1',branchId:'fixture',parentRevision:null,source:{game:'hearsay',build:'fixture',engine:GARDEN_ENGINE,rules:'hearsay-hf4-1'},transfer:{},limitations:[]});
-    await put('garden-hf4-1',{export:exportGarden(freshGarden(17)),fileOrigin:false,ownedHeads:{[receipt.castId]:receipt},archives:[]});
+    if (!await saveGardenJournal(freshGarden(17),{fileOrigin:false,fileKey:null,ownedHeads:{[receipt.castId]:receipt},archives:[]})) throw Error('Fixture save failed');
   })()`);
   await page.reload();
   await page.locator('[data-pace="0"]').click();
@@ -51,7 +50,7 @@ it('makes gameplay public and keeps cast controls on the central shelf', async (
     await savedGarden(page);
     await page.getByRole('button', { name: 'Game menu', exact: true }).click();
     expect(await debug.getAttribute('open')).toBeNull();
-    expect(await page.getByRole('button', { name: 'Download this run', exact: true }).isVisible()).toBe(true);
+    await page.getByRole('button', { name: 'Download this run', exact: true }).waitFor();
     expect(await page.locator('.cg-panel').innerText()).not.toMatch(
       /Turn browser continuity|separate history|closing chapter/,
     );
@@ -96,7 +95,9 @@ it.each(['prepareBatch', 'putBatch'])(
       await savedGarden(page);
       const read = () =>
         page.evaluate(`(async()=>{
-        const {get}=await import('/src/ui/store.ts');return (await get('garden-hf4-1')).value;
+        const {loadGardenJournal}=await import('/src/ui/garden-journal.ts');
+        const {exportGarden}=await import('/src/sim/garden4-export.ts');
+        const saved=await loadGardenJournal();return {export:exportGarden(saved.run),...saved.meta};
       })()`);
       await page.getByRole('button', { name: 'Game menu', exact: true }).click();
       const before = await read();

@@ -50,7 +50,7 @@ it.each([
   await response.click();
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
   await page.getByRole('button', { name: 'Game menu', exact: true }).first().click();
-  expect(await page.locator('[data-pace]:disabled').count()).toBe(4);
+  await expect.poll(() => page.locator('[data-pace]:disabled').count()).toBe(4);
   await page.getByRole('button', { name: 'Resume', exact: true }).click();
   expect(await page.locator('[data-pace]:disabled').count()).toBe(0);
   await page.getByRole('button', { name: 'Game menu', exact: true }).first().click();
@@ -78,8 +78,8 @@ it('requires an unchecked new-game choice and saves that choice through reload',
     await fresh.locator('[data-pace="0"]').click();
     const config = () =>
       fresh.evaluate(`(async()=>{
-      const {get}=await import('/src/ui/store.ts');
-      return (await get('garden-hf4-1')).value.export.config;
+      const {loadGardenJournal}=await import('/src/ui/garden-journal.ts');
+      return (await loadGardenJournal()).run.config;
     })()`);
     expect(await config()).toEqual({ dialogue: 'garden-talk/1' });
     await fresh.reload();
