@@ -38,11 +38,13 @@ import { exportGarden, importGarden } from '../sim/garden4-export.ts';
 import { actualGardenLocation, type PlanChoice, type ReputationTrait } from '../sim/garden4-stakes.ts';
 import { gardenPlace } from './garden-english.ts';
 import { openGardenFeedback } from './garden-feedback.ts';
+import { loadGardenJournal, saveGardenJournal } from './garden-journal.ts';
+import { gardenReadings } from './garden-readings.ts';
 import { GardenRecordingGuard, type RecordingBinding } from './garden-recording.ts';
 import { retainGardenSource } from './garden-source-archive.ts';
 import { gardenPace } from './garden-ui-pace.ts';
 import { lab } from './lab.ts';
-import { get, put, putNow } from './store.ts';
+import { get } from './store.ts';
 import './garden.css';
 
 function required<T>(value: T | null | undefined, context: string): T {
@@ -115,14 +117,8 @@ function button(label: string, key: string, disabled = false) {
 }
 async function save(): Promise<boolean> {
   if (!run) return false;
-  const value = {
-    export: exportGarden(run),
-    fileOrigin,
-    fileKey,
-    ownedHeads,
-    archives,
-  };
   if (fileSession) {
+    const value = { export: exportGarden(run), fileOrigin, fileKey, ownedHeads, archives };
     try {
       lab.captureSave({
         key: `garden-file:${required(fileKey, 'File recording requires its file key.')}`,
@@ -135,7 +131,7 @@ async function save(): Promise<boolean> {
       return false;
     }
   }
-  const stored = await put('garden-hf4-1', value);
+  const stored = await saveGardenJournal(run, { fileOrigin, fileKey, ownedHeads, archives });
   if (!stored) {
     notice =
       'Your garden could not be saved on this device. Keep this page open. You can send feedback from the game menu.';
@@ -250,6 +246,9 @@ function render() {
     panel = `<h2>${run.lunch.result === 'open' ? 'The workers’ lunch opened' : run.lunch.result === 'short' ? 'The lunch made a loss' : 'The lunch could not open'}</h2><p>${esc(run.lunch.reason ?? 'No lunch result was recorded.')}</p><p>${run.lunch.debt ? 'You still have an unpaid invoice. Starting another chapter does not cancel that debt.' : 'All lunch invoices are paid.'}</p><p>${esc(gardenStanding(run))}</p><p>${run.routes.filter((r) => r.from === 'hatice').length ? 'You made claims to other people. The garden record shows who heard them.' : 'You did not make any claims about other people.'}</p>${button('Read the garden record', 'account')}${button('Game menu', 'menu')}`;
   } else {
     panel = `<h2>${esc(c.name)} <small>${id === 'hatice' ? '· you' : ''}</small></h2><p>${esc(c.job)} · ${esc(gardenPlace(actualGardenLocation(run, id)))}</p>`;
+    panel += gardenReadings(run, id)
+      .map((line) => `<p>${esc(line)}</p>`)
+      .join('');
     if (running?.person === id)
       panel += `<p role="status">${id === 'hatice' ? 'You are reflecting on your past for fifteen minutes' : 'You are in a fifteen-minute conversation'}. It finishes at ${Math.floor((running.until % 1440) / 60)}:${String(running.until % 60).padStart(2, '0')}. You can leave early.</p>${button('Let the conversation finish', 'finish')}${button('Leave the conversation', 'release')}`;
     else if (running)
@@ -558,39 +557,27 @@ export async function startGarden() {
     '<main class="cg-loading"><h1>Hearsay</h1><p role="status">Opening your garden…</p></main>';
   recordingGuard.invalidate();
   await shelf?.ready;
-  const saved = fileSession
-    ? null
-    : await get<{
-        export: ReturnType<typeof exportGarden>;
-        fileOrigin: boolean;
-        fileKey?: string | null;
-        ownedHeads?: Record<string, PersonaEnvelope>;
-        archives?: SourceArchive[];
-      }>('garden-hf4-1');
-  if (saved) {
-    try {
-      archives = saved.value.archives ?? [];
+  try {
+    const saved = fileSession ? null : await loadGardenJournal();
+    if (saved) {
+      archives = (saved.meta.archives ?? []) as SourceArchive[];
       const receipts: Record<string, PersonaEnvelope> = {};
-      for (const [id, head] of Object.entries(saved.value.ownedHeads ?? {})) {
+      for (const [id, head] of Object.entries(
+        (saved.meta.ownedHeads ?? {}) as Record<string, PersonaEnvelope>,
+      )) {
         const valid = await validatePersona(head);
         if (id !== valid.castId) throw new Error('The saved person’s history belongs to someone else.');
         receipts[id] = valid;
       }
-      await useRun(
-        importGarden(JSON.stringify(saved.value.export)),
-        saved.value.fileOrigin,
-        saved.value.fileKey,
-        receipts,
-      );
-    } catch {
-      notice =
-        'Your saved garden could not open. It is still stored on this device. Try reloading, or send feedback before starting a new garden.';
+      await useRun(saved.run, saved.meta.fileOrigin, saved.meta.fileKey, receipts);
+    } else {
+      if ((await get('garden-hf4-1')) || (await get('garden-cast6')))
+        notice = 'Your earlier garden uses an older edition. Start fresh; its save remains on this device.';
+      lab.setPersonaRecording(null);
       render();
     }
-  } else {
-    if (await get('garden-cast6'))
-      notice = 'Your earlier garden uses an older edition. Start fresh; its save remains on this device.';
-    lab.setPersonaRecording(null);
+  } catch {
+    notice = 'Your saved garden could not open. It is still stored on this device. Start fresh.';
     render();
   }
   const invalid = () => {
@@ -604,18 +591,7 @@ export async function startGarden() {
   });
 
   window.addEventListener('pagehide', () => {
-    if (fileSession) {
-      if (run) void save();
-      return;
-    }
-    if (run)
-      putNow('garden-hf4-1', {
-        export: exportGarden(run),
-        fileOrigin,
-        fileKey,
-        ownedHeads,
-        archives,
-      });
+    if (run) void save();
   });
   document.addEventListener('visibilitychange', () => {
     carry = 0;

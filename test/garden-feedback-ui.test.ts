@@ -81,10 +81,9 @@ it.each([false, true])('shares active garden play only when its one checkbox is 
   await page.reload();
   // A saved local fixture tests Feedback; it is not a shared admission receipt.
   await page.evaluate(`(async()=>{
-    const {put}=await import('/src/ui/store.ts');
+    const {saveGardenJournal}=await import('/src/ui/garden-journal.ts');
     const {freshGarden}=await import('/src/sim/garden4.ts');
-    const {exportGarden}=await import('/src/sim/garden4-export.ts');
-    await put('garden-hf4-1',{export:exportGarden(freshGarden(17)),fileOrigin:false,ownedHeads:{},archives:[]});
+    if (!await saveGardenJournal(freshGarden(17),{fileOrigin:false,fileKey:null,ownedHeads:{},archives:[]})) throw Error('Fixture save failed');
   })()`);
   await page.reload();
   await page.locator('[data-pace="0"]').click();

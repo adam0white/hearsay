@@ -41,12 +41,32 @@ export const GARDEN_EDITION = 'hearsay-hf4/1' as const;
 import type { GardenChapter } from './garden4-continuity.ts';
 
 const sessions = new WeakMap<GardenRun, GardenSession>();
+export function attachGardenSession(g: GardenRun, s: GardenSession) {
+  sessions.set(g, s);
+  s.available = (id, o, stage) => {
+    if (stage === 'interrupt') return true;
+    if (o.actionId === 'chat') {
+      const partner = o.target as GardenPerson;
+      return (
+        gardenHere(g, id as GardenPerson) &&
+        !!partner &&
+        gardenHere(g, partner) &&
+        actualGardenLocation(g, id as GardenPerson) === actualGardenLocation(g, partner)
+      );
+    }
+    return true;
+  };
+  s.attending = (a, b) =>
+    gardenHere(g, a as GardenPerson) &&
+    gardenHere(g, b as GardenPerson) &&
+    actualGardenLocation(g, a as GardenPerson) === actualGardenLocation(g, b as GardenPerson);
+}
 export function sessionOf(g: GardenRun): GardenSession {
   let s = sessions.get(g);
   if (!s) {
     if (!g.engine) throw Error('Missing HF4 run. Keep the file. Start fresh.');
     s = restoreGardenSession(g.engine);
-    sessions.set(g, s);
+    attachGardenSession(g, s);
   }
   return s;
 }
@@ -175,24 +195,7 @@ export function freshGarden(
     released: false,
     ended: false,
   };
-  sessions.set(g, session);
-  session.available = (id, o, stage) => {
-    if (stage === 'interrupt') return true;
-    if (o.actionId === 'chat') {
-      const partner = o.target as GardenPerson;
-      return (
-        gardenHere(g, id as GardenPerson) &&
-        !!partner &&
-        gardenHere(g, partner) &&
-        actualGardenLocation(g, id as GardenPerson) === actualGardenLocation(g, partner)
-      );
-    }
-    return true;
-  };
-  session.attending = (a, b) =>
-    gardenHere(g, a as GardenPerson) &&
-    gardenHere(g, b as GardenPerson) &&
-    actualGardenLocation(g, a as GardenPerson) === actualGardenLocation(g, b as GardenPerson);
+  attachGardenSession(g, session);
   return g;
 }
 export function gardenHere(g: GardenRun, id: GardenPerson): boolean {

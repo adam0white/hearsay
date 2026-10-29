@@ -1,4 +1,4 @@
-import { DEFAULT_NORMS } from '@adam0white/human-framework';
+import { DEFAULT_NORMS, readRunHistory } from '@adam0white/human-framework';
 import { expect, it } from 'vitest';
 import { advanceGarden, chooseGarden, freshGarden, gardenAuthors } from '../src/sim/garden4.ts';
 import { exportGarden, importGarden } from '../src/sim/garden4-export.ts';
@@ -20,7 +20,7 @@ it('offers the next ordinary task after genuine completion instead of losing a q
   advanceGarden(garden, 407);
   const checkpoint = exportGarden(garden).state.engine;
   if (!checkpoint) throw new Error('Missing checkpoint');
-  const completed = checkpoint.archive.history
+  const completed = readRunHistory(checkpoint.archive)
     .flatMap((transaction) => transaction.inputs)
     .flatMap((input) =>
       input.kind === 'action.resolved' &&
@@ -83,7 +83,7 @@ it('records actual contrary speech under a sourced weaker held norm before deliv
   expect(conscience.norms.find((norm) => norm.normId === 'lying')?.provenance).toEqual(
     DEFAULT_NORMS.find((norm) => norm.id === 'lying')?.provenance,
   );
-  const inputs = checkpoint.archive.history.flatMap((transaction) => transaction.inputs);
+  const inputs = readRunHistory(checkpoint.archive).flatMap((transaction) => transaction.inputs);
   const spoken = inputs.findIndex(
     (input) =>
       input.kind === 'action.resolved' &&
