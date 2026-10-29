@@ -1,5 +1,7 @@
 # Requests from Hearsay
 
+Current HF4 source dispositions and precise remaining inputs are in [the 2026-10-29 reconciliation](followthrough-2026-10-29.md). The dated records below describe historical APIs and adapters. Current `gardenConfirm` submits ordinary `fact.confirmed`, conversation text follows actual `claim-heard` events, and the host retains its source-route graph. Generic SDK Derya admission exists; current Stairwell native departure excludes her. Do not treat the old HF3 adapter reassessment date as an engineering hold.
+
 Historical request record, 2026-10-20. Hearsay then pinned npm 2.10.0 and does not modify the framework checkout. Delivery status below refers to the published HF API; adoption is separate.
 
 - **Delivered in HF 2.10.0 — Optional testimony lineage token (Hearsay 1 / Stairwell 4).** `Belief.provenance`, `provenanceOf` and `converse(..., { provenance: true })` carry first acquisition, origin and an opaque host lineage token. The original request: `converse` selects a belief and returns a claim, but the host must match that claim to its own last received route to trace rumour ancestry. An optional opaque evidence token carried from an attended claim into later testimony would let a host keep a precise graph when several sources said the same thing. The framework should still own belief weighting; the host should still own the graph and its disclosure.
@@ -12,7 +14,7 @@ Historical request record, 2026-10-20. Hearsay then pinned npm 2.10.0 and does n
 - **Delivered in HF 2.10.0 — Same-source contradiction (`contradicted` / `Percept.reports`, Stairwell 2).** Hearsay does not carry Stairwell's `<source>:dishonest` / 0.75-scale workaround. Its `receiveTestimony` instead penalizes a less trusted source when a different, more trusted speaker disagrees. HF's new operation detects a single source giving opposite accounts, once per proposition. Substitution would change evidence requirements and penalties, so the game's rule stays.
 - **Delivered in HF 2.10.0 — Provenance and opaque lineage (Hearsay 1 / Stairwell 4).** Adoption is deferred in this upgrade. HF retains first acquisition even after a correction; Hearsay chooses an eligible route from current testimony, or starts a new root for firsthand knowledge. Its per-transmission graph also carries bends, incidents, withdrawals and household consequences. Replacing that lookup with first acquisition would change ancestry and confrontation outcomes. Opting in only to store unused metadata would change full-state fixtures without replacing the workaround. The route graph remains authoritative. Reassess provenance with any future route-rule change; no new gameplay work is scheduled here.
 
-## Current HF3 adoption decision — 2026-10-25
+## Historical HF3 adoption decision — 2026-10-25
 
 Hearsay pins released HF3.0.0, engine2.23.0. The explicit new-game `garden-talk/1` option adopts `confirmObservedReputation` at actual witnessed exchanges. The published helper performs the same `confirm` then `applyReputationBelief` composition, with the same default trait table. Source recalibration and root-specific confrontation still follow that correction. Unmarked runs retain the original composition.
 

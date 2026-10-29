@@ -4,13 +4,25 @@ The live entry in this tree now selects the eight-person canonical garden editio
 
 **What done means.** For this first increment: a public, playable build at https://hearsay.adamwhite.work with a playtest export that replays, HF-character playtester runs and two source-unread LLM playtester runs recorded verbatim in `docs/playtests/`, one polish round from them, and an entry on https://human.adamwhite.work/games/ and the lab dashboard. Adam (owner) accepts it by playing it. Later work goes in the Deferred list below, each item with a date.
 
-## HF 4 port update — 2026-10-28
+## Current source and Deferred — 2026-10-29
+
+Current source pins HF4.8.0/client0.5.6/kit0.5.24. PR5 delivered 82f5c25 with exact merged CI and a clean live stamp; the current kit/pacing/documentation batch still needs its own delivery gates. [The clause reconciliation](followthrough-2026-10-29.md) records current source and original return conditions. Current simulation is garden4.ts, edition hearsay-hf4/1, with one always-on HF4 behavior. The optional pinned host dialogue supplies authored public words; historical HF3 helper opt-ins are not live faculties.
+
+- Adam's current garden readiness, later-fortnight and cross-game feel: actual owner play, 2026-11-03. Technical controls do not accept it; player/panel/friends/Show HN remain paused.
+- Derya bounded relief/return: current Stairwell ordinary producer and full source/return witness, Stairwell source owner/root, check 2026-10-30. Current source excludes Derya from native departure. SDK role/admission APIs exist. Root can assign the current producer/audit unit immediately; see the [minimal plan](derya-current-source-prerequisite.md) for the separate temporary departure/reentry, published rollout and formal shared claim gaps. Approved Task4 S1/H0 precedes dependent Hearsay artifacts/UI; old HF3/930 receipts are historical. No new permission is required for the bounded plan.
+- Current Voice journey: SDK Voice source binding and verified peer readers, SDK owner then games-deferred current journey controls, check 2026-10-30. Portable writes remain guarded.
+- Generic feedback onClose lifecycle hook: SDK owner, check 2026-10-30. The current garden already holds time using the actual SDK veil; production close/Resume is controlled separately.
+- Actual recording/admission/ingestion: recording director's real receipts, check 2026-10-30. Browser initialization and note acknowledgment do not supply them.
+
+Automatic pace/reading slowdown and retained player overrides belong to the current UI. The old wedding, fixed household, UI grammar and clock sections below retain history. They do not restore Emre/Elif, an old panel, historical HF3 current status or invented future story outcomes. The current full/compact aliases both retain complete HF/host state; the historical compact-omits-state paragraph below describes an older codec.
+
+## Historical HF 4 port update — 2026-10-28
 
 [HF PR 51](https://github.com/adam0white/human-framework/pull/51) fixed G1, negative zero and G3; published 4.6.0 adds bounded journals and has verified provenance against source `db788` and [release run 40661542589](https://github.com/adam0white/human-framework/actions/runs/40661542589), including all 191 files. The uncommitted candidate pins the registry package directly and through the client override. A diagnostic engine `7895dd85` completed seed 17 through minute 20160 with an actual Rıza invitation. Its 54,755,706-byte export passed public import, HF and independent game replay, and byte-identical re-export. The published engine `8ac7b643` still needs that full-fortnight proof. The lane, hosted review, CI, deployment and Adam's acceptance remain. See the [control receipt](hf4-port-2026-10-28.md) and `~/code/.lab-scratch/codex/hearsay-size-fortnight.json`.
 
 The candidate uses a shared public Run, actual receipts and current exact export replay, with immutable lab-client 0.5.2 and lab-kit 0.5.19. Passport checks use public package version metadata and require the exact installed engine and supported source and rules. Older saves are kept and refused with Start fresh. HF3 remains a development dependency for historical tests, and the client retains its chapter clock. The evidence below records the earlier 4.5.1 failure, not the current blocker.
 
-## HF 4 port blocked — 2026-10-28
+## Historical HF 4 port blocked — 2026-10-28
 
 **At the time:** the HF director needed to resolve the first-midnight runtime failure below. Then retry the preserved garden port on the corrected published release, prove the complete fortnight and current-version playtest export, obtain the single hosted review, and deliver exact green CI and a clean release. Recheck on **2026-11-03**. Adam still accepts by playing.
 
@@ -119,7 +131,7 @@ A pending witnessed incident, question, family choice or confrontation keeps Slo
 
 **Rounds 4–6 (2026-10-20), from fresh-player quits.** The wedding is now a plan: Rıza holds three named doubts (honesty, promises, kindness) that settle only through other people's word or his own sight ("You are his mother, Hatice. I would rather hear it from someone else."), plus his trust in Hatice's word with a named way to mend it. The road has steps on Day 4 (coffee with Elif's family) and Day 8 (Rıza gives his word) before the Day 13 answer, and each step is a scene with choices drawn from the run's own record. A traced story becomes a confrontation scene (own it, name who told you, or stand by it), not only a penalty. Messages Hatice knows are on their way appear as threads, with a reason when they stall. A listener sits while the talk panel is open. Telling the person a matter concerns (Meryem and her own cart) is not treated as backbiting: in these neighbours' understanding, telling someone about a matter that concerns their own rights is not talebearing. That is the game's reading of a widely held exception (warning, seeking redress), an assumption and not a sourced ruling. The send dialog uses lab client 0.1.2 `compact` (seed, inputs, minute and fingerprint; the full state is left out) and a test replays the compacted run.
 
-## Current work and acceptance
+## Historical dialogue increment and acceptance
 
 The paid-lunch garden replaces the wedding game. Canonical adoption in `47f9caa` and replay correction `f273ceb` retired Emre, Elif and family coffee. The Elif dilemma was implemented historically in `a7256ad`; the request for earlier Emre kindness evidence no longer describes a current actor. Joanna's and Tom's round 5 words remain historical taste evidence, not a reproduction in the garden. No new round is part of this change.
 
@@ -131,7 +143,7 @@ Existing unmarked runs retain their exact prior continuation and wording. The ch
 - **Delivered baseline — Public game and HF3 adoption.** `4967957`, exact CI `40235203918`, live HF3.0.0/engine2.23.0 with `dirty:false`; current receiving contracts are in [canonical adoption](canonical-adoption.md). Historical source fixtures do not establish a current native journey.
 - **Open, requires Adam's play — Readiness and later-fortnight feel, target 2026-11-03.** Only Adam can accept the game by playing. Historical bounded sessions did not reach the current lunch or ending. Automated controls cannot supply that judgment. Friends and Show HN stay paused. The director owns any separately authorized lab panel round.
 
-## Clock presentation (2026-10-21)
+## Historical clock presentation (2026-10-21)
 
 The UI offers Slow, Walk, Trot and Gallop clock speeds, starting at Walk. Pending questions, incidents, scenes and open conversations hold time. Game menu and day cards keep their existing pause. Each minute still runs through the unchanged simulation; the UI stops immediately when a response appears and discards timing carry. Composer disclosures remain gameplay. The recorded-route tally appears only behind See tally at the end; no menu preference is needed. Simulation versions, inputs, replay and HF remain unchanged. Adam accepts feel by playing.
 
@@ -141,7 +153,7 @@ New fortnights use edition 3. On Day 6 at 18:00, Elif asks Hatice to keep her re
 
 This is an implementation choice for the open Elif-dilemma route, not an owner play verdict. The existing owner acceptance requirement still applies. Editions 1 and 2 never schedule the scene or acquire its marker. Their saves and full or compact playtest exports retain the original edition and replay exactly. Edition 3 inherits edition 2’s telling-memory limits.
 
-## Quiet Feedback adoption (2026-10-25)
+## Historical Quiet Feedback adoption (2026-10-25)
 
 The current garden uses immutable lab-client 0.4.11 and lab-kit 0.5.12 release artifacts from SDK source `569bfeed8042607e3b0357277e280e8bc1af01f5`. Its Feedback dialog offers “I'm stopping” and “I'm confused”. Selecting one sends nothing. Submit includes the selected words in the ordinary note. Recording off retains the unchecked option to share the run; an unchecked submission sends only the note. The receipt confirms the note, not optional run chunks. HF stays 3.0.0; simulation, native departure and export sources remain unchanged.
 
