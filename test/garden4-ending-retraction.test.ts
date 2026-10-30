@@ -22,6 +22,8 @@ import { captureGardenSource } from '../src/sim/garden4-continuity.ts';
 import { exportGarden, importGarden } from '../src/sim/garden4-export.ts';
 import { wantsLunch } from '../src/sim/garden4-stakes.ts';
 
+import { freshEmptyShelfGarden } from './helpers/garden-empty-opening.ts';
+
 const need = <T>(result: Result<T>): T => {
   if (!result.ok) throw new Error(result.error.message);
   return result.value;
@@ -33,7 +35,7 @@ const present = <T>(value: T | undefined): T => {
 
 // Public Run fixture at the ending, not a claim that the preceding fortnight was played.
 function endingFixture() {
-  const g = structuredClone(freshGarden(17));
+  const g = structuredClone(freshEmptyShelfGarden(17));
   const original = sessionOf(freshGarden(17));
   const spec = structuredClone(exportRun(original.run).initial.spec) as RunSpec;
   const start = 20129 * 60000;

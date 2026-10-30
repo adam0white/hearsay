@@ -25,6 +25,8 @@ import {
 import { advanceGarden, freshGarden, gardenAuthors, refreshGarden, sessionOf } from '../src/sim/garden4.ts';
 import { admitGardenBatch, captureGardenSource } from '../src/sim/garden4-continuity.ts';
 
+import { freshEmptyShelfGarden } from './helpers/garden-empty-opening.ts';
+
 const need = <T>(result: Result<T>): T => {
   if (!result.ok) throw new Error(result.error.message);
   return result.value;
@@ -36,7 +38,7 @@ const present = <T>(value: T | undefined): T => {
 
 // An actual public Run at the final 31 minutes, not a played preceding fortnight.
 function endingFixture() {
-  const g = structuredClone(freshGarden(17));
+  const g = structuredClone(freshEmptyShelfGarden(17));
   const original = sessionOf(freshGarden(17));
   const spec = structuredClone(exportRun(original.run).initial.spec) as RunSpec;
   const start = 20129 * 60000;

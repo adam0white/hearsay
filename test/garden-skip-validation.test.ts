@@ -30,3 +30,16 @@ it('does not grant outgoing authority to a compatible file without skip metadata
   expect(exportGarden(restored)).toEqual(original);
   expect(() => requireGardenWrite(restored, 'hf.cast.hatice.hearsay')).toThrow(/no saved skip record/);
 });
+
+it('records an explicit fresh empty opening without changing actor state or replay', async () => {
+  const { freshEmptyShelfGarden } = await import('./helpers/garden-empty-opening.ts');
+  const { requireGardenWrite } = await import('../src/sim/garden4-continuity.ts');
+  const opened = freshEmptyShelfGarden(17);
+  const bare = exportGarden(freshGarden(17));
+  const complete = exportGarden(opened);
+  expect(opened.chapter).toEqual({ version: 'hearsay-hf4-batch/1', claims: [], skipped: [] });
+  const { chapter: _chapter, ...state } = complete.state;
+  expect(state).toEqual(bare.state);
+  expect(() => requireGardenWrite(opened, 'hf.cast.hatice.hearsay')).not.toThrow();
+  expect(exportGarden(importGarden(JSON.stringify(complete)))).toEqual(complete);
+});
