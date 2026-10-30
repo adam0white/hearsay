@@ -1,4 +1,5 @@
-/** Local browser acceptance checks against a built preview. No telemetry or run is sent. */
+/** Historical wedding-engine research only; this is not a current garden control. */
+/** Historical browser checks require a retired wedding-game bundle. */
 import assert from 'node:assert/strict';
 import { mkdirSync, readFileSync } from 'node:fs';
 import { homedir } from 'node:os';

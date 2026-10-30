@@ -1,4 +1,5 @@
-/** Read-only use of the local HF playtester. No build or write in its checkout. */
+/** Current local-garden adapter runner. Running it is a separate synthetic cohort,
+ * not browser/player acceptance or a shared-person journey. No HF checkout writes. */
 import { writeFileSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
 import { make } from './adapter.ts';
@@ -20,7 +21,7 @@ if (command === 'session') {
   result = { report: readSession(trace), trace };
 } else if (command === 'run') {
   result = runCohort({
-    game: 'hearsay-0.1.0',
+    game: 'hearsay-hf4/1',
     build: arg('build', 'local'),
     make,
     personas,

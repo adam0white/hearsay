@@ -1,3 +1,4 @@
+/** Historical wedding-engine research only; this is not a current garden control. */
 import { act, advance, newGame, PEOPLE, tellingUnavailable, view } from '../src/sim/game.ts';
 import type { Game, Input } from '../src/sim/types.ts';
 

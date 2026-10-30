@@ -1,3 +1,4 @@
+/** Historical wedding-engine research only; this is not a current garden control. */
 /** Headless text driver. node scripts/drive.ts [careful|quiet|reckless|cunning] [seed] [days] */
 import { writeFileSync } from 'node:fs';
 import { fingerprint } from '../src/sim/game.ts';

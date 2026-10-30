@@ -569,8 +569,11 @@ export async function startGarden() {
       lab.setPersonaRecording(null);
       render();
     }
-  } catch {
-    notice = 'Your saved garden could not open. It is still stored on this device. Start fresh.';
+  } catch (error) {
+    notice =
+      error instanceof Error && /Keep the file.*Start fresh/.test(error.message)
+        ? error.message
+        : 'Your saved garden could not open. It is still stored on this device. Start fresh.';
     render();
   }
   const invalid = () => {

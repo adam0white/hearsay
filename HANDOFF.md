@@ -12,6 +12,12 @@ Hosted review is waived by coordinator ruling 2026-10-29T09:25Z, per this task. 
 
 Local validation: frozen install; check:lane; full suite **351 tests / 62 files**, 331.45 s; focused journal retry/cold recovery/old-save refusal, phrasebook/replay and observer-reading controls; built production control at four sizes in Chromium and WebKit. Audit reports no known vulnerabilities. These are bounded engineering controls, not owner acceptance or a new cross-host journey. Exact source/main CI and clean deployment receipts belong in `~/code/.lab-scratch/codex/hearsay-hf412.md`.
 
+## Current adapter follow-through — 2026-10-30
+
+The synthetic adapter now constructs the current local HF4 garden and uses public actions, emitted records and Hatice’s readings. Its bounded control covers one offered action and exact complete cold replay, not a player round, shared journey or full fortnight. Historical wedding-adapter assertions use a test helper only. Native refusal retains the validator’s older/keep-file/start-fresh reason and preserves stored bytes. New source CI and the SAME coordinator assessment remain root’s gates before integration and delivery.
+
+Review Low3 (optional current config typing) and Low4 (HF3 archive relocation) remain explicit cleanup carry for 2026-11-03 or the next necessary cleanup. They do not reopen historical continuation in the current engine.
+
 ## Previous handoff (historical delivery state)
 
 # Hearsay — current handoff, 2026-10-29

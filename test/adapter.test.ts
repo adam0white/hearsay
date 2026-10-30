@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import { HearsayAdapter } from '../scripts/hf-playtest/adapter.ts';
 import { advance } from '../src/sim/game.ts';
+import { HearsayAdapter } from './helpers/historical-hearsay-adapter.ts';
 
-describe('HF playtester boundary', () => {
+describe('historical HF playtester boundary', () => {
   it('reports witnessed information without hidden state', () => {
     const adapter = new HearsayAdapter(5);
     const shown = JSON.stringify(adapter.observe());

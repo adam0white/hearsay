@@ -102,3 +102,61 @@ it('starts current conversations and continues the native garden after reload', 
     await fresh.close();
   }
 });
+
+it.each([
+  { width: 360, height: 690 },
+  { width: 1280, height: 800 },
+])(
+  'explains an unmarked native refusal and retains every stored byte at $width×$height',
+  async (viewport) => {
+    const fresh = await browser.newPage({ viewport });
+    try {
+      await fresh.goto(`${server.resolvedUrls?.local[0] ?? ''}`);
+      const storedRows = () =>
+        fresh.evaluate(async () => {
+          const db = await new Promise<IDBDatabase>((resolve, reject) => {
+            const request = indexedDB.open('hearsay', 1);
+            request.onsuccess = () => resolve(request.result);
+            request.onerror = () => reject(request.error);
+          });
+          try {
+            const rows = await new Promise<{ plain?: string; blob?: Blob; at: number }[]>(
+              (resolve, reject) => {
+                const request = db.transaction('pages').objectStore('pages').getAll();
+                request.onsuccess = () => resolve(request.result);
+                request.onerror = () => reject(request.error);
+              },
+            );
+            return Promise.all(
+              rows.map(async (row) => ({
+                at: row.at,
+                plain: row.plain,
+                bytes: row.blob ? Array.from(new Uint8Array(await row.blob.arrayBuffer())) : null,
+              })),
+            );
+          } finally {
+            db.close();
+          }
+        });
+      await fresh.evaluate(`(async () => {
+      const { freshGarden } = await import('/src/sim/garden4.ts');
+      const { saveGardenJournal } = await import('/src/ui/garden-journal.ts');
+      const { get, put } = await import('/src/ui/store.ts');
+      await saveGardenJournal(freshGarden(17), {fileOrigin:false,fileKey:null,ownedHeads:{},archives:[]});
+      const key = 'garden-hf4-journal-1';
+      const head = (await get(key)).value;
+      delete head.state.config;
+      if (!await put(key, head)) throw Error('Refusal fixture was not stored');
+    })()`);
+      const before = await storedRows();
+      await fresh.reload();
+      await expect
+        .poll(() => fresh.locator('.cg-title [role="status"]').textContent())
+        .toContain('This older garden is unsupported. Keep the file. Start fresh.');
+      expect(await fresh.locator('.cg-game').count()).toBe(0);
+      expect(await storedRows()).toEqual(before);
+    } finally {
+      await fresh.close();
+    }
+  },
+);
