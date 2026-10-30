@@ -63,29 +63,100 @@ it.each([
   expect(await page.locator('.cg-confidence').innerText()).toContain('doorway');
   expect(await page.locator('.cg-panel').innerText()).toContain('keeps the sketches');
 });
-it('requires an unchecked new-game choice and saves that choice through reload', async () => {
+it('starts current conversations and continues the native garden after reload', async () => {
   const fresh = await browser.newPage();
   try {
+    await fresh.clock.install();
+    await fresh.clock.pauseAt(new Date());
     await fresh.goto(`${server.resolvedUrls?.local[0] ?? ''}`);
-    const option = fresh.getByLabel('Use longer conversations about the garden and lunch');
-    await option.waitFor();
-    expect(await option.isChecked()).toBe(false);
-    await option.check();
+    await fresh.getByRole('button', { name: 'Begin', exact: true }).waitFor();
+    expect(await fresh.getByLabel('Use longer conversations about the garden and lunch').count()).toBe(0);
+    expect(await fresh.locator('#cg-dialogue').count()).toBe(0);
+    await fresh.evaluate(() => localStorage.setItem('unrelated-ui-test', 'keep'));
     await fresh.getByText('Other ways to begin', { exact: true }).click();
     await fresh
       .getByRole('button', { name: 'Play fourteen days with new local people', exact: true })
       .click();
     await fresh.locator('[data-pace="0"]').click();
-    const config = () =>
+    await fresh.getByRole('button', { name: 'Pour tea without sharing news', exact: true }).click();
+    const saved = () =>
       fresh.evaluate(`(async()=>{
-      const {loadGardenJournal}=await import('/src/ui/garden-journal.ts');
-      return (await loadGardenJournal()).run.config;
-    })()`);
-    expect(await config()).toEqual({ dialogue: 'garden-talk/1' });
+        const {loadGardenJournal}=await import('/src/ui/garden-journal.ts');
+        const {exportGarden}=await import('/src/sim/garden4-export.ts');
+        const journal=await loadGardenJournal();
+        return journal ? exportGarden(journal.run) : null;
+      })()`);
+    await expect.poll(async () => ((await saved()) as { inputs: unknown[] } | null)?.inputs.length).toBe(1);
+    const before = (await saved()) as { config: unknown; inputs: unknown[] };
+    expect(before.config).toEqual({ dialogue: 'garden-talk/1' });
     await fresh.reload();
     await fresh.locator('[data-pace="0"]').click();
-    expect(await config()).toEqual({ dialogue: 'garden-talk/1' });
+    expect(await saved()).toEqual(before);
+    expect(await fresh.evaluate(() => localStorage.getItem('unrelated-ui-test'))).toBe('keep');
+    await fresh.getByRole('button', { name: 'Pour tea without sharing news', exact: true }).click();
+    await expect.poll(async () => ((await saved()) as { inputs: unknown[] } | null)?.inputs.length).toBe(2);
+    const continued = (await saved()) as { config: unknown; inputs: unknown[] };
+    expect(continued.config).toEqual(before.config);
+    expect(continued.inputs[0]).toEqual(before.inputs[0]);
   } finally {
     await fresh.close();
   }
 });
+
+it.each([
+  { width: 360, height: 690 },
+  { width: 1280, height: 800 },
+])(
+  'explains an unmarked native refusal and retains every stored byte at $width×$height',
+  async (viewport) => {
+    const fresh = await browser.newPage({ viewport });
+    try {
+      await fresh.goto(`${server.resolvedUrls?.local[0] ?? ''}`);
+      const storedRows = () =>
+        fresh.evaluate(async () => {
+          const db = await new Promise<IDBDatabase>((resolve, reject) => {
+            const request = indexedDB.open('hearsay', 1);
+            request.onsuccess = () => resolve(request.result);
+            request.onerror = () => reject(request.error);
+          });
+          try {
+            const rows = await new Promise<{ plain?: string; blob?: Blob; at: number }[]>(
+              (resolve, reject) => {
+                const request = db.transaction('pages').objectStore('pages').getAll();
+                request.onsuccess = () => resolve(request.result);
+                request.onerror = () => reject(request.error);
+              },
+            );
+            return Promise.all(
+              rows.map(async (row) => ({
+                at: row.at,
+                plain: row.plain,
+                bytes: row.blob ? Array.from(new Uint8Array(await row.blob.arrayBuffer())) : null,
+              })),
+            );
+          } finally {
+            db.close();
+          }
+        });
+      await fresh.evaluate(`(async () => {
+      const { freshGarden } = await import('/src/sim/garden4.ts');
+      const { saveGardenJournal } = await import('/src/ui/garden-journal.ts');
+      const { get, put } = await import('/src/ui/store.ts');
+      await saveGardenJournal(freshGarden(17), {fileOrigin:false,fileKey:null,ownedHeads:{},archives:[]});
+      const key = 'garden-hf4-journal-1';
+      const head = (await get(key)).value;
+      delete head.state.config;
+      if (!await put(key, head)) throw Error('Refusal fixture was not stored');
+    })()`);
+      const before = await storedRows();
+      await fresh.reload();
+      await expect
+        .poll(() => fresh.locator('.cg-title [role="status"]').textContent())
+        .toContain('This older garden is unsupported. Keep the file. Start fresh.');
+      expect(await fresh.locator('.cg-game').count()).toBe(0);
+      expect(await storedRows()).toEqual(before);
+    } finally {
+      await fresh.close();
+    }
+  },
+);

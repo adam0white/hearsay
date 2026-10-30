@@ -1,4 +1,4 @@
-/** Opt-in garden-talk/1: public conversation about the speaker's own work and
+/** garden-talk/1: public conversation about the speaker's own work and
  * the actual lunch. This module grants no discoveries or completed private
  * outcomes. Selection uses only the pinned run and its attended answer history.
  */
@@ -13,6 +13,10 @@ export function validateGardenConfig(config: GardenConfig | undefined): void {
     (!config || config.dialogue !== 'garden-talk/1' || Object.keys(config).length !== 1)
   )
     throw new Error('This conversation configuration is unsupported. Keep the file. Start fresh.');
+}
+export function requireCurrentGardenConfig(config: GardenConfig | undefined): void {
+  if (config === undefined) throw new Error('This older garden is unsupported. Keep the file. Start fresh.');
+  validateGardenConfig(config);
 }
 const publicWords: Record<Exclude<GardenPerson, 'hatice'>, readonly string[]> = {
   derya: [

@@ -1,0 +1,33 @@
+import { expect, it } from 'vitest';
+import { make } from '../scripts/hf-playtest/adapter.ts';
+import { GARDEN_CAST } from '../src/sim/garden-cast.ts';
+import { advanceGarden, type GardenRun } from '../src/sim/garden4.ts';
+import { exportGarden, importGarden } from '../src/sim/garden4-export.ts';
+
+it('controls the current garden through an offered action and replays its complete state', () => {
+  const adapter = make(17);
+  const current = adapter.game as unknown as GardenRun;
+  expect(current.edition).toBe('hearsay-hf4/1');
+  expect(current.config).toEqual({ dialogue: 'garden-talk/1' });
+  const shown = JSON.stringify(adapter.observe());
+  expect(shown).toContain('Day 13');
+  expect(shown).not.toContain('Emre');
+  expect(shown).not.toContain(GARDEN_CAST.derya.fact);
+  for (const hidden of ['sourceTrust', 'credence', 'rng', 'archive']) expect(shown).not.toContain(hidden);
+  const offered = adapter.actions().find((action) => action.kind === 'listen');
+  expect(offered).toBeDefined();
+  if (!offered) throw new Error('No current conversation action');
+  adapter.apply(offered.id);
+  expect(current.inputs).toHaveLength(1);
+  adapter.advance(20);
+  expect(current.minute).toBeGreaterThan(360);
+  const full = adapter.export();
+  expect(full).toEqual(exportGarden(current));
+  expect(full.state.engine?.archive.engine.package).toBe('@adam0white/human-framework@4.12.0');
+  const restored = importGarden(JSON.stringify(full));
+  expect(exportGarden(restored)).toEqual(full);
+  advanceGarden(current, current.minute + 5);
+  advanceGarden(restored, restored.minute + 5);
+  expect(exportGarden(restored)).toEqual(exportGarden(current));
+  expect(() => adapter.apply('not-offered')).toThrow();
+});

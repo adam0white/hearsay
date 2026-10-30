@@ -1,3 +1,4 @@
+/** Historical wedding-engine research only; this is not a current garden control. */
 import { fingerprint, replay } from '../src/sim/game.ts';
 import { runPolicy } from './policy.ts';
 

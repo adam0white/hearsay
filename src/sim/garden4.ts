@@ -2,7 +2,7 @@
 import { inspect, type PersonAuthoring } from '@adam0white/human-framework';
 import { canonicalCast } from '@adam0white/lab-client';
 import { GARDEN_CAST, GARDEN_IDS, type GardenPerson, gardenLocation } from './garden-cast.ts';
-import { type GardenConfig, gardenConversation, validateGardenConfig } from './garden-dialogue.ts';
+import { type GardenConfig, gardenConversation, requireCurrentGardenConfig } from './garden-dialogue.ts';
 import {
   advanceGardenSession,
   authorGardenPerson,
@@ -167,14 +167,12 @@ export function freshGarden(
   seed: number,
   admitted: PersonAuthoring[] = gardenAuthors(),
   chapter?: GardenChapter,
-  config?: GardenConfig,
 ): GardenRun {
-  validateGardenConfig(config);
   const session = createGardenSession(seed, admitted);
   const g: GardenRun = {
     edition: GARDEN_EDITION,
     seed,
-    ...(config ? { config: copy(config) } : {}),
+    config: { dialogue: 'garden-talk/1' },
     lunch: lunchOpening(),
     minute: 360,
     initialPeople: copy(admitted),
@@ -492,16 +490,6 @@ export function chooseGarden(g: GardenRun, input: GardenInput): boolean {
             ? `${GARDEN_CAST[source.id as GardenPerson].name} told me about it.`
             : 'I heard it in an earlier chapter. The details remain in that chapter.'
         : 'Nobody has told me about it.';
-      // Public concerns give an uncertain answer a personal subject without awarding a confidence.
-      const publicConcern: Record<Exclude<GardenPerson, 'hatice'>, string> = {
-        derya: 'I work nights. I need somewhere quiet after my shift.',
-        dilan: 'I have deliveries to finish. I want a break without another errand.',
-        nermin: 'I spend my day arranging work for other people. I want time to think about my own work.',
-        aylin: 'I cook at the school. My evenings are not another shift.',
-        ece: 'I want somewhere to sit between deliveries without having to buy anything.',
-        riza: 'I help deliver bread. I would like to talk about something besides work.',
-        osman: 'I supply produce. A written order matters more to me than praise.',
-      };
       const uncertain = belief >= -0.85 && belief <= 0.85;
       const invitation =
         uncertain && !g.discoveries[input.person]
@@ -510,7 +498,7 @@ export function chooseGarden(g: GardenRun, input: GardenInput): boolean {
       note(
         g,
         'answer',
-        `${GARDEN_CAST[input.person].name}: “${belief > 0.85 ? 'What I have heard makes me think' : belief < -0.85 ? 'What I have heard makes me doubt that' : 'I have not heard enough to judge whether'} ${GARDEN_CAST[input.about].name} is ${trait}. ${origin} ${g.config ? gardenConversation(g, input.person) : uncertain ? publicConcern[input.person] : `Ask ${GARDEN_CAST[input.about].sex === 'male' ? 'him' : 'her'} directly.`}”${invitation}`,
+        `${GARDEN_CAST[input.person].name}: “${belief > 0.85 ? 'What I have heard makes me think' : belief < -0.85 ? 'What I have heard makes me doubt that' : 'I have not heard enough to judge whether'} ${GARDEN_CAST[input.about].name} is ${trait}. ${origin} ${gardenConversation(g, input.person)}”${invitation}`,
         input.person,
       );
     } else if (input.type === 'amends') {
@@ -727,7 +715,8 @@ export function replayGarden(
   chapter?: GardenChapter,
   config?: GardenConfig,
 ): GardenRun {
-  const g = freshGarden(seed, initial, chapter, config);
+  requireCurrentGardenConfig(config);
+  const g = freshGarden(seed, initial, chapter);
   for (const e of inputs) {
     advanceGarden(g, e.at);
     if (!chooseGarden(g, e.input)) throw new Error('Invalid recorded garden choice');

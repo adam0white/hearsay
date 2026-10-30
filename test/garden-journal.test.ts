@@ -85,3 +85,61 @@ it('refuses the previous autosave with a plain fresh-start message and retains i
     await server.close();
   }
 });
+
+it('refuses an unmarked journal without changing the occupied save', async () => {
+  const server = await createServer({ server: { host: '127.0.0.1', port: 0, hmr: false, watch: null } });
+  await server.listen();
+  const browser = await chromium.launch();
+  try {
+    const page = await browser.newPage();
+    await page.goto(server.resolvedUrls?.local[0] ?? '');
+    const result = await page.evaluate(`(async () => {
+      const { freshGarden } = await import('/src/sim/garden4.ts');
+      const { saveGardenJournal, loadGardenJournal } = await import('/src/ui/garden-journal.ts');
+      const { get, put } = await import('/src/ui/store.ts');
+      const key = 'garden-hf4-journal-1';
+      await saveGardenJournal(freshGarden(17), {fileOrigin:false,fileKey:null,ownedHeads:{},archives:[]});
+      const old = (await get(key)).value;
+      delete old.state.config;
+      await put(key, old);
+      const before = JSON.stringify((await get(key)).value);
+      let error = '';
+      try { await loadGardenJournal(); } catch (e) { error = e.message; }
+      return { error, unchanged: before === JSON.stringify((await get(key)).value) };
+    })()`);
+    const refusal = result as { error: string; unchanged: boolean };
+    expect(refusal.error).toMatch(/Keep the file.*Start fresh/);
+    expect(refusal.unchanged).toBe(true);
+  } finally {
+    await browser.close();
+    await server.close();
+  }
+});
+
+it('starts a fresh garden with current conversations and no choice', async () => {
+  const server = await createServer({ server: { host: '127.0.0.1', port: 0, hmr: false, watch: null } });
+  await server.listen();
+  const browser = await chromium.launch();
+  try {
+    const page = await browser.newPage();
+    await page.goto(server.resolvedUrls?.local[0] ?? '');
+    await page.getByRole('button', { name: 'Begin', exact: true }).waitFor();
+    expect(await page.locator('#cg-dialogue').count()).toBe(0);
+    await page.getByText('Other ways to begin', { exact: true }).click();
+    await page.getByRole('button', { name: 'Play fourteen days with new local people', exact: true }).click();
+    await page.locator('.cg-game').waitFor();
+    const config = await page.evaluate(`(async () => {
+      const { loadGardenJournal } = await import('/src/ui/garden-journal.ts');
+      for (let i = 0; i < 100; i++) {
+        const saved = await loadGardenJournal();
+        if (saved) return saved.run.config;
+        await new Promise(resolve => setTimeout(resolve, 50));
+      }
+      return null;
+    })()`);
+    expect(config).toEqual({ dialogue: 'garden-talk/1' });
+  } finally {
+    await browser.close();
+    await server.close();
+  }
+});
