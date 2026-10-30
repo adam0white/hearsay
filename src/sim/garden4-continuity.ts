@@ -12,6 +12,7 @@ import {
   portableWriteBlockers,
 } from '@adam0white/lab-client';
 import { GARDEN_CAST, GARDEN_IDS, type GardenPerson } from './garden-cast.ts';
+import { validateGardenChapter } from './garden-chapter.ts';
 import { departureReason } from './garden-departure-rules.ts';
 import { GARDEN_ENGINE } from './garden-engine.ts';
 import { type GardenRun, gardenAuthors, sessionOf } from './garden4.ts';
@@ -20,6 +21,12 @@ import type { GardenExport } from './garden4-export.ts';
 export interface GardenChapter {
   version: 'hearsay-hf4-batch/1';
   claims: PersonaEnvelope[];
+  skipped?: GardenSkip[];
+}
+export interface GardenSkip {
+  castId: string;
+  reason: string;
+  revision?: string;
 }
 export interface SourceArchive {
   source: PersonaEnvelope['source'];
@@ -68,30 +75,47 @@ export function admitGardenBatch(batch: LifeBatchPreparation): PersonAuthoring[]
 }
 
 /** Keep each refused shelf head untouched while opening the remaining people. */
-export function eligibleGardenBatch(batch: LifeBatchPreparation): LifeBatchPreparation {
-  const blockedIds = new Set(batch.blocked.map((entry) => entry.castId));
+export function eligibleGardenBatch(
+  batch: LifeBatchPreparation,
+): LifeBatchPreparation & { skipped: GardenSkip[] } {
+  const skipped: GardenSkip[] = batch.blocked.map(({ castId }) => ({
+    castId,
+    reason:
+      'Their saved history is unavailable here. This garden uses a local person. The saved history stays unchanged.',
+    ...(batch.expectedHeads[castId] ? { revision: batch.expectedHeads[castId] } : {}),
+  }));
+  const blockedIds = new Set(skipped.map((entry) => entry.castId));
   const inputs = batch.inputs.filter((input) => {
-    const id = input.parent.castId;
-    if (portablePassport(input.parent) && portableWriteBlockers(id, 'hearsay').length) {
-      blockedIds.add(id);
-      return false;
-    }
+    const parent = input.parent;
+    if (blockedIds.has(parent.castId)) return false;
     try {
+      if (portablePassport(parent) && portableWriteBlockers(parent.castId, 'hearsay').length)
+        throw new Error('The other games cannot safely continue this history yet.');
       admitGardenBatch({ expectedHeads: {}, inputs: [input], blocked: [] });
       return true;
     } catch {
-      blockedIds.add(id);
+      blockedIds.add(parent.castId);
+      skipped.push({
+        castId: parent.castId,
+        revision: parent.revision,
+        reason:
+          'Their saved history cannot continue here. This garden uses a local person. The saved history stays unchanged.',
+      });
       return false;
     }
   });
-  return {
-    ...batch,
-    inputs,
-    blocked: [],
-    expectedHeads: Object.fromEntries(
-      Object.entries(batch.expectedHeads).filter(([id]) => !blockedIds.has(id)),
-    ),
-  };
+  return { ...batch, inputs, blocked: [], skipped };
+}
+
+/** Local substitutes never own the skipped person's shared history. */
+export function requireGardenWrite(g: GardenRun, castId: string): void {
+  validateGardenChapter(g.chapter);
+  if (!Array.isArray(g.chapter?.skipped))
+    throw new Error(
+      'This older garden has no saved skip record. Keep the original. Start fresh before saving people across games.',
+    );
+  if (g.chapter.skipped.some((entry) => entry.castId === castId))
+    throw new Error('This local person cannot replace the saved history that was skipped.');
 }
 
 export async function claimGardenBatch(
@@ -114,6 +138,7 @@ export async function claimGardenBatch(
   );
 }
 export function captureGardenSource(g: GardenRun, id: GardenPerson) {
+  requireGardenWrite(g, GARDEN_CAST[id].castId);
   const reason = departureReason(g, id);
   if (reason) throw new Error(reason);
   if (g.chat || g.lunch.pending || g.lunch.debt > 0)

@@ -163,3 +163,11 @@ HF is pinned exactly to 2.21.0, including the host source stamp and lab-client d
 ### Plain-English second pass — 2026-10-25
 
 The reading-audit follow-up fixes named-person pronouns, speaker self-reference in lunch refusals, unexplained location wording and the quoted heavy narration. Murat is introduced as the depot supervisor. Narration stays in source; semantic identifiers, HF labels, rules and difficulty remain unchanged. HF plain narration remains enabled at 2.21.0. Current exports still require full-state replay; old prose fingerprints may refuse with Start fresh. Technical checks, reading capture, independent Codex review and release receipts are in `~/code/.lab-scratch/plain3/hearsay-report.md`. Adam’s reading and feel acceptance remains separate, due 2026-11-03.
+
+## Portable reader local candidate — 2026-10-30
+
+Remaining: director review/integration and deployed qualification. The local candidate retains only skipped cast IDs, plain refusal reasons and original revision metadata in the chapter. It names each local substitution after reload, excludes skipped people from shared writes before terminal/projection paths, and includes every requested head in the atomic opening check. Unowned skipped envelopes stay on the shelf; they do not become run archives, recording claims or source authority. Current HF/client/kit pins remain unchanged. Evidence and the invalid initial allocation probe are distinguished in `~/code/.lab-scratch/games-deferred/resume-hearsay-reader-report.md`. Adam's play acceptance remains separate.
+
+## Portable reader validation R2 — 2026-10-30
+
+Remaining: director SAME-reviewer disposition and integration. One runtime chapter validator now runs before import replay, native journal cursor/session activation, journal saves and every useRun ownership/recording/save effect. It rejects malformed or contradictory skipped metadata without repair. Compatible current-engine files with absent skip metadata retain their exact data and replay, but all outgoing shared-person writes fail closed; no prior refusals are inferred or backfilled. HF3/older-engine continuation remains refused. R2 artifacts use separate filenames and preserve the first patch/proofs.

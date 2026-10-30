@@ -6,6 +6,7 @@ import {
   type RunJournalOpening,
   restoreRunJournal,
 } from '@adam0white/human-framework';
+import { validateGardenChapter } from '../sim/garden-chapter.ts';
 import { requireCurrentGardenConfig } from '../sim/garden-dialogue.ts';
 import { type GardenCheckpoint, restoreGardenSessionFromRun } from '../sim/garden-hf4.ts';
 import { attachGardenSession, type GardenRun, sessionOf } from '../sim/garden4.ts';
@@ -36,6 +37,7 @@ let queue: Promise<unknown> = Promise.resolve();
 export function saveGardenJournal(run: GardenRun, meta: GardenJournalMeta): Promise<boolean> {
   const work = queue
     .then(async () => {
+      validateGardenChapter(run.chapter, meta.ownedHeads);
       const session = sessionOf(run);
       const previous = current?.run === run ? current : undefined;
       const result = exportRunJournal(session.run, previous?.cursor);
@@ -83,6 +85,7 @@ export async function loadGardenJournal(): Promise<{ run: GardenRun; meta: Garde
   const head = saved.value;
   if (head.version !== 1 || !Array.isArray(head.chunkKeys)) throw Error('Invalid saved garden. Start fresh.');
   requireCurrentGardenConfig(head.state?.config);
+  validateGardenChapter(head.state?.chapter, head.meta?.ownedHeads);
   const opening = await get<RunJournalOpening>(head.openingKey);
   const chunks = await Promise.all(head.chunkKeys.map((key) => get<RunJournalChunk>(key)));
   if (!opening || chunks.some((chunk) => !chunk)) throw Error('Incomplete saved garden. Start fresh.');

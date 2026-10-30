@@ -277,7 +277,8 @@ it('skips a Voice portable head while the other garden roles open', async () => 
   expect(admitGardenBatch(batch).find((person) => person.id === 'riza')?.portable?.person).toEqual(portable);
   const eligible = eligibleGardenBatch(batch);
   expect(eligible.inputs).toEqual([]);
-  expect(eligible.expectedHeads).toEqual({});
+  expect(eligible.expectedHeads).toEqual(batch.expectedHeads);
+  expect(eligible.skipped.map((entry) => entry.castId)).toEqual([parent.castId]);
   expect(freshGarden(18, admitGardenBatch(eligible)).people.osman).toBeDefined();
   expect(JSON.stringify(parent)).toBe(before);
 });

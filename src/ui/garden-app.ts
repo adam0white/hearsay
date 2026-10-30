@@ -14,6 +14,7 @@ import {
 } from '@adam0white/lab-client';
 import { downloadJson, PEOPLE_ACROSS_GAMES, telemetryNotice, telemetryToggle } from '@adam0white/lab-kit';
 import { GARDEN_CAST, GARDEN_IDS, type GardenPerson } from '../sim/garden-cast.ts';
+import { validateGardenChapter } from '../sim/garden-chapter.ts';
 import { GARDEN_ENGINE } from '../sim/garden-engine.ts';
 import {
   advanceGarden,
@@ -31,6 +32,7 @@ import {
   claimGardenBatch,
   eligibleGardenBatch,
   type GardenChapter,
+  requireGardenWrite,
   type SourceArchive,
 } from '../sim/garden4-continuity.ts';
 import { exportGarden, importGarden } from '../sim/garden4-export.ts';
@@ -162,6 +164,7 @@ async function useRun(
   storedFileKey?: string | null,
   receipts: Record<string, PersonaEnvelope> = {},
 ) {
+  validateGardenChapter(next.chapter, receipts);
   const current = ++generation;
   if (generation !== current) return;
   ownedHeads = receipts;
@@ -203,6 +206,14 @@ function otherStarts() {
 }
 function fileControls() {
   return `<p>This file session stays in this tab. Download the game file to keep your progress. Your browser’s saved garden and shared histories are not changed.</p>${run ? button('Download this game file', 'export') : '<label class="cg-file">Open a game file<input type="file" id="import-run" accept=".json,application/json"></label>'}${button('Close file session', 'close-file')}<p>Saving a closing chapter, starting a separate history and starting a new garden are unavailable in a file session.</p>`;
+}
+function skippedNotice() {
+  return (run?.chapter?.skipped ?? [])
+    .map(
+      (entry) =>
+        `<p class="cg-skip" role="status">${esc(canonicalCast(entry.castId).name)}: ${esc(entry.reason)}</p>`,
+    )
+    .join('');
 }
 function menuControls() {
   if (fileSession)
@@ -276,7 +287,7 @@ function render() {
     panel +=
       `<p>Garden cash: ${run.lunch.cash} lira. Unpaid invoice: ${run.lunch.debt} lira.</p>` +
       button(`Pay the ${run.lunch.debt} lira invoice`, 'plan-settle', run.lunch.cash < run.lunch.debt);
-  root.innerHTML = `<main class="cg-game"><header class="cg-header"><div><strong>Hearsay</strong> <span>${clock()}</span></div>${button(menu ? 'Back' : 'Game menu', menu ? 'back' : 'menu')}<p>Day 13 lunch: ${run.lunch.breadDelivered ? 'The bread has been delivered.' : run.lunch.bread ? 'The bread is ordered.' : 'The bread is not ordered.'} ${run.lunch.produceDelivered ? 'The produce has been delivered.' : run.lunch.produce ? 'The produce is ordered.' : 'The produce is not ordered.'} ${run.lunch.prepared ? 'The food has been prepared.' : run.lunch.cook ? 'Paid cooking is arranged.' : 'Paid cooking is not arranged.'} Meals reserved: ${run.lunch.reservations.length}/${run.lunch.trial === 'credit' ? 5 : 4}.</p><p>You have ${run.lunch.cash} lira. You owe ${run.lunch.debt} lira.</p><p class="fine">${pace === null ? 'Pace: Automatic. The garden slows while you read.' : 'The garden slows while you read. Automatic pace is available in the game menu.'}</p><div class="cg-paces">${[0, 1, 4, 12].map((p, i) => `<button type="button" data-pace="${p}" aria-pressed="${pace === p}" ${menu ? 'disabled' : ''}>${['Pause', 'Slow', 'Normal', 'Fast'][i]}</button>`).join('')}</div></header><section class="cg-scene" aria-label="The tea garden"><div class="cg-gate">THE GARDEN GATE <span>${run.benchFree ? 'Anyone may sit here without buying.' : 'There are a few chairs in the shade.'}</span></div><div class="cg-tables">${GARDEN_IDS.map((p) => `<button type="button" class="cg-person ${gardenHere(rendering, p) ? 'here' : 'away'}" data-person="${p}" aria-pressed="${selected === p}"><span aria-hidden="true">${p === 'hatice' ? '☕' : '◯'}</span><strong>${esc(GARDEN_CAST[p].name)}</strong><small>${gardenHere(rendering, p) ? 'at the garden' : esc(gardenPlace(actualGardenLocation(rendering, p)))}</small></button>`).join('')}</div><p class="cg-standing">${esc(gardenStanding(run))}</p></section><section class="cg-panel" aria-live="polite">${notice ? `<p class="cg-notice" role="status">${esc(notice)}</p>` : ''}${panel}</section><details class="cg-account"><summary>Garden record: what you heard</summary>${run.log
+  root.innerHTML = `<main class="cg-game"><header class="cg-header"><div><strong>Hearsay</strong> <span>${clock()}</span></div>${button(menu ? 'Back' : 'Game menu', menu ? 'back' : 'menu')}<p>Day 13 lunch: ${run.lunch.breadDelivered ? 'The bread has been delivered.' : run.lunch.bread ? 'The bread is ordered.' : 'The bread is not ordered.'} ${run.lunch.produceDelivered ? 'The produce has been delivered.' : run.lunch.produce ? 'The produce is ordered.' : 'The produce is not ordered.'} ${run.lunch.prepared ? 'The food has been prepared.' : run.lunch.cook ? 'Paid cooking is arranged.' : 'Paid cooking is not arranged.'} Meals reserved: ${run.lunch.reservations.length}/${run.lunch.trial === 'credit' ? 5 : 4}.</p><p>You have ${run.lunch.cash} lira. You owe ${run.lunch.debt} lira.</p><p class="fine">${pace === null ? 'Pace: Automatic. The garden slows while you read.' : 'The garden slows while you read. Automatic pace is available in the game menu.'}</p><div class="cg-paces">${[0, 1, 4, 12].map((p, i) => `<button type="button" data-pace="${p}" aria-pressed="${pace === p}" ${menu ? 'disabled' : ''}>${['Pause', 'Slow', 'Normal', 'Fast'][i]}</button>`).join('')}</div></header><section class="cg-scene" aria-label="The tea garden"><div class="cg-gate">THE GARDEN GATE <span>${run.benchFree ? 'Anyone may sit here without buying.' : 'There are a few chairs in the shade.'}</span></div><div class="cg-tables">${GARDEN_IDS.map((p) => `<button type="button" class="cg-person ${gardenHere(rendering, p) ? 'here' : 'away'}" data-person="${p}" aria-pressed="${selected === p}"><span aria-hidden="true">${p === 'hatice' ? '☕' : '◯'}</span><strong>${esc(GARDEN_CAST[p].name)}</strong><small>${gardenHere(rendering, p) ? 'at the garden' : esc(gardenPlace(actualGardenLocation(rendering, p)))}</small></button>`).join('')}</div><p class="cg-standing">${esc(gardenStanding(run))}</p></section><section class="cg-panel" aria-live="polite">${skippedNotice()}${notice ? `<p class="cg-notice" role="status">${esc(notice)}</p>` : ''}${panel}</section><details class="cg-account"><summary>Garden record: what you heard</summary>${run.log
     .slice(-60)
     .map(
       (l) =>
@@ -342,13 +353,12 @@ function bind() {
       const attempt = ++loadGeneration;
       const file = importer.files?.[0];
       if (!file) return;
-      recordingGuard.invalidate();
       try {
         if (file.size > 64 * 1024 * 1024) throw new Error('This game file is larger than the 64 MiB limit.');
         const text = await file.text();
         if (attempt !== loadGeneration || !valid()) return;
-        ++generation;
-        await useRun(importGarden(text), true);
+        const next = importGarden(text);
+        await useRun(next, true);
       } catch (error) {
         console.error('Garden import failed', error);
         notice = error instanceof Error ? error.message : 'This game file could not be read.';
@@ -439,7 +449,11 @@ async function action(key: string) {
             expectedHeads: eligible.expectedHeads,
           });
         if (generation !== attempt) throw new Error('The game changed after the chapter was claimed.');
-        next.chapter = { version: 'hearsay-hf4-batch/1', claims } satisfies GardenChapter;
+        next.chapter = {
+          version: 'hearsay-hf4-batch/1',
+          claims,
+          skipped: eligible.skipped,
+        } satisfies GardenChapter;
         receipts = Object.fromEntries(claims.map((h) => [h.castId, h]));
       }
       if (generation === attempt) await useRun(next, false, undefined, receipts);
@@ -649,6 +663,7 @@ async function checkpoint() {
         parent = ownedHeads[cast.castId];
       if (parent?.terminal) continue;
       try {
+        requireGardenWrite(captured, cast.castId);
         if (fileOrigin && !parent)
           throw new Error(
             'People from an imported file cannot replace a history saved in this browser. Keep this game file for your own record.',
