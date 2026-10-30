@@ -63,28 +63,41 @@ it.each([
   expect(await page.locator('.cg-confidence').innerText()).toContain('doorway');
   expect(await page.locator('.cg-panel').innerText()).toContain('keeps the sketches');
 });
-it('requires an unchecked new-game choice and saves that choice through reload', async () => {
+it('starts current conversations and continues the native garden after reload', async () => {
   const fresh = await browser.newPage();
   try {
+    await fresh.clock.install();
+    await fresh.clock.pauseAt(new Date());
     await fresh.goto(`${server.resolvedUrls?.local[0] ?? ''}`);
-    const option = fresh.getByLabel('Use longer conversations about the garden and lunch');
-    await option.waitFor();
-    expect(await option.isChecked()).toBe(false);
-    await option.check();
+    await fresh.getByRole('button', { name: 'Begin', exact: true }).waitFor();
+    expect(await fresh.getByLabel('Use longer conversations about the garden and lunch').count()).toBe(0);
+    expect(await fresh.locator('#cg-dialogue').count()).toBe(0);
+    await fresh.evaluate(() => localStorage.setItem('unrelated-ui-test', 'keep'));
     await fresh.getByText('Other ways to begin', { exact: true }).click();
     await fresh
       .getByRole('button', { name: 'Play fourteen days with new local people', exact: true })
       .click();
     await fresh.locator('[data-pace="0"]').click();
-    const config = () =>
+    await fresh.getByRole('button', { name: 'Pour tea without sharing news', exact: true }).click();
+    const saved = () =>
       fresh.evaluate(`(async()=>{
-      const {loadGardenJournal}=await import('/src/ui/garden-journal.ts');
-      return (await loadGardenJournal()).run.config;
-    })()`);
-    expect(await config()).toEqual({ dialogue: 'garden-talk/1' });
+        const {loadGardenJournal}=await import('/src/ui/garden-journal.ts');
+        const {exportGarden}=await import('/src/sim/garden4-export.ts');
+        const journal=await loadGardenJournal();
+        return journal ? exportGarden(journal.run) : null;
+      })()`);
+    await expect.poll(async () => ((await saved()) as { inputs: unknown[] } | null)?.inputs.length).toBe(1);
+    const before = (await saved()) as { config: unknown; inputs: unknown[] };
+    expect(before.config).toEqual({ dialogue: 'garden-talk/1' });
     await fresh.reload();
     await fresh.locator('[data-pace="0"]').click();
-    expect(await config()).toEqual({ dialogue: 'garden-talk/1' });
+    expect(await saved()).toEqual(before);
+    expect(await fresh.evaluate(() => localStorage.getItem('unrelated-ui-test'))).toBe('keep');
+    await fresh.getByRole('button', { name: 'Pour tea without sharing news', exact: true }).click();
+    await expect.poll(async () => ((await saved()) as { inputs: unknown[] } | null)?.inputs.length).toBe(2);
+    const continued = (await saved()) as { config: unknown; inputs: unknown[] };
+    expect(continued.config).toEqual(before.config);
+    expect(continued.inputs[0]).toEqual(before.inputs[0]);
   } finally {
     await fresh.close();
   }
