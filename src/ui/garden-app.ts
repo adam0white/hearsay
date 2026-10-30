@@ -189,9 +189,11 @@ async function useRun(
   confirmNew = false;
   lastFrame = 0;
   carry = 0;
-  stopTrack = lab.trackRun(() => exportGarden(required(run, 'Garden recording requires a current run.')), {
-    getLogs: () => required(run, 'Garden recording requires a current run.').log,
-    runKey: () => `${required(run, 'Garden recording requires a current run.').seed}:${fileOrigin}`,
+  // The SDK may consult the last run key after this tracker stops.
+  // Keep its callbacks bound to the run they describe, including at file boundaries.
+  stopTrack = lab.trackRun(() => exportGarden(next), {
+    getLogs: () => next.log,
+    runKey: () => `${next.seed}:${file}`,
   });
   save();
   render();
