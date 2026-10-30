@@ -53,6 +53,9 @@ it('refuses malformed native and file metadata before cursor, save or recording 
     await page.getByRole('button', { name: 'Game menu', exact: true }).click();
     await page.getByText('Other ways to begin', { exact: true }).click();
     await page.getByRole('button', { name: 'Open a game file', exact: true }).click();
+    // The click returns before the route's awaited save and recording bind finish.
+    // The file input appears only after both complete. Measure import effects after that.
+    await page.locator('#import-run').waitFor({ state: 'visible' });
     const before = await page.evaluate(`(async()=>{
       const {get}=await import('/src/ui/store.ts');
       const {GardenRecordingGuard}=await import('/src/ui/garden-recording.ts');
