@@ -97,13 +97,13 @@ export function gardenRefusal(run: GardenRun, input: GardenInput): string {
   return UNKNOWN_REFUSAL;
 }
 
-/** Mirrors the host's repeat rule: the first other person at the garden hears one fixed claim. */
+/** Mirrors the host's repeat rule: the first other person at the garden hears the private story and one fixed claim. */
 export function repeatPreview(run: GardenRun, person: GardenPerson) {
   const audience = GARDEN_IDS.find((id) => id !== 'hatice' && id !== person && gardenHere(run, id));
   const trait = person === 'osman' || person === 'nermin' ? 'honest' : 'kind';
   const claim = `${name(person)} is not ${trait}.`;
   const text = audience
-    ? `If you repeat this, you tell ${name(audience)}: “${claim}” Repeating turns ${person === 'hatice' ? 'your own story' : 'what you were told in private'} into this one claim. It is not proof.${person === 'hatice' ? '' : ` ${name(person)} may stop trusting you with private matters.`} You might not complete the statement. Then nobody hears it.`
+    ? `If you repeat this, you tell ${name(audience)} ${person === 'hatice' ? 'your own story' : `what ${name(person)} told you in private`}, and you say: “${claim}” It is not proof.${person === 'hatice' ? '' : ` ${name(person)} may stop trusting you with private matters.`} You might not complete the statement. Then nobody hears it.`
     : 'Nobody else is at the garden to hear this, so it cannot be repeated now. It stays private.';
   return { audience, claim, text };
 }

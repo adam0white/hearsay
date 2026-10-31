@@ -189,8 +189,10 @@ it('explains the fixed repeated claim and the empty garden return wording', () =
   const g = freshGarden(17);
   chooseGarden(g, { type: 'listen', person: 'riza', approach: 'invite' });
   advanceGarden(g, 376);
-  expect(repeatPreview(g, 'riza').text).toContain(
-    'Repeating turns what you were told in private into this one claim. It is not proof.',
+  const preview = repeatPreview(g, 'riza');
+  expect(preview.audience).toBeDefined();
+  expect(preview.text).toContain(
+    `you tell ${GARDEN_CAST[preview.audience as keyof typeof GARDEN_CAST].name} what Rıza told you in private, and you say: “${preview.claim}” It is not proof.`,
   );
   advanceGarden(g, 8 * 60 + 5);
   expect(gardenEmpty(g)).toContain('The Garden record lists agreed visits. Other return times are unknown.');
