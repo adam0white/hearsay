@@ -14,6 +14,8 @@ Current source pins HF4.12.0/client0.5.12/kit0.5.29. PR5 delivered 82f5c25 with 
 - Generic feedback onClose lifecycle hook: SDK owner, check 2026-10-30. The current garden already holds time using the actual SDK veil; production close/Resume is controlled separately.
 - Actual recording/admission/ingestion: recording director's real receipts, check 2026-10-30. Browser initialization and note acknowledgment do not supply them.
 
+- LIGHT panel 2026-10-30 (F-2256–2265): candidate in source, unaccepted. Results beside actions, repeat preview, next-event line, empty-garden action list (no return forecast), slow-clock reason, record key lines, plain Who?/What? labels. Open inputs: phone in-play geometry of the selected-person panel (F-2265, no layout change made), and the independent-review gates (browser controls; owner play 2026-11-03). The shared lab resolver's exact-label behaviour is a lab finding, not changed here.
+
 Automatic pace/reading slowdown and retained player overrides belong to the current UI. The old wedding, fixed household, UI grammar and clock sections below retain history. They do not restore Emre/Elif, an old panel, historical HF3 current status or invented future story outcomes. The current full/compact aliases both retain complete HF/host state; the historical compact-omits-state paragraph below describes an older codec.
 
 ## Historical HF 4 port update — 2026-10-28

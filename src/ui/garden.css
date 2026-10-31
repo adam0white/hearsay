@@ -407,3 +407,30 @@ body .hflab :is(input, textarea) {
 .cg-footer .lk-telemetry-notice {
   grid-column: 1 / -1;
 }
+
+/* A folded heading opens a list. It is underlined and has a larger marker so it does not read as a button. */
+.cg-game summary,
+.cg-title summary {
+  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: 4px;
+}
+.cg-game summary::marker,
+.cg-title summary::marker {
+  color: #42634c;
+  font-size: 1.2em;
+}
+.cg-header .cg-next {
+  font-weight: 600;
+}
+.cg-empty {
+  padding: 10px;
+  border-left: 3px solid #8a714e;
+}
+.cg-account h3,
+.cg-account h4 {
+  margin: 14px 0 4px;
+}
+.cg-account details {
+  margin: 4px 0;
+}

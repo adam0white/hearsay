@@ -18,6 +18,10 @@ The synthetic adapter now constructs the current local HF4 garden and uses publi
 
 Review Low3 (optional current config typing) and Low4 (HF3 archive relocation) remain explicit cleanup carry for 2026-11-03 or the next necessary cleanup. They do not reopen historical continuation in the current engine.
 
+## LIGHT 2026-10-30 candidate (unfrozen until root accepts)
+
+Remaining: root browser grant for geometry and the Playwright spec in test/garden-answers-ui.test.ts (written, not run), signed commit, CI, review, deploy. Source: src/ui/garden-guidance.ts, garden-app.ts, garden.css. No simulation, input shape or pin changed. Report: ~/code/.lab-scratch/games-deferred/hearsay-light1030-report.md.
+
 ## Previous handoff (historical delivery state)
 
 # Hearsay — current handoff, 2026-10-29

@@ -39,6 +39,19 @@ import { exportGarden, importGarden } from '../sim/garden4-export.ts';
 import { actualGardenLocation, type PlanChoice, type ReputationTrait } from '../sim/garden4-stakes.ts';
 import { gardenPlace } from './garden-english.ts';
 import { openGardenFeedback } from './garden-feedback.ts';
+import {
+  claimControls,
+  esc,
+  gardenEmpty,
+  gardenInterruption,
+  gardenNext,
+  gardenRefusal,
+  gardenResult,
+  gardenSlowNote,
+  howToPlayHtml,
+  recordHtml,
+  repeatPreview,
+} from './garden-guidance.ts';
 import { loadGardenJournal, saveGardenJournal } from './garden-journal.ts';
 import { gardenReadings } from './garden-readings.ts';
 import { GardenRecordingGuard, type RecordingBinding } from './garden-recording.ts';
@@ -52,13 +65,6 @@ function required<T>(value: T | null | undefined, context: string): T {
   if (value === null || value === undefined) throw new Error(context);
   return value;
 }
-const esc = (s: string) =>
-  s.replace(/[&<>"']/g, (c) =>
-    required(
-      { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c],
-      'Garden escaping requires a matched character.',
-    ),
-  );
 // File play is a public route. It switches save sinks before importing a run.
 let fileSession = false;
 const shelf = personaChannel();
@@ -108,6 +114,16 @@ function renderDebug() {
 function information(id: string, label: string, text: string) {
   return `<span class="cg-info"><button type="button" data-info="${id}" aria-label="${label}" aria-expanded="false" aria-controls="${id}">i</button><span id="${id}" hidden>${text}</span></span>`;
 }
+function readingReasons(now: number): string[] {
+  const reasons: string[] = [];
+  if (now < readingUntil) reasons.push('you tapped in the last 15 seconds');
+  if (run?.chat) reasons.push('a conversation is running');
+  if (run?.discoveries[selected] && !run.discoveries[selected]?.response)
+    reasons.push('a private matter is waiting for your answer');
+  if (root.querySelector('.cg-panel details[open], .cg-account[open], .cg-info button[aria-expanded="true"]'))
+    reasons.push('the Garden record or a folded section is open');
+  return reasons;
+}
 function clock() {
   const m = run?.minute ?? 360,
     t = m % 1440;
@@ -142,10 +158,11 @@ async function save(): Promise<boolean> {
 }
 function input(value: GardenInput) {
   if (!run) return;
-  if (!chooseGarden(run, value))
-    notice = 'This person cannot do this now. Try again later, or keep the matter private.';
+  const before = run.log.length;
+  if (!chooseGarden(run, value)) notice = gardenRefusal(run, value);
   else {
-    notice = value.type === 'ask' ? (run.log.at(-1)?.text ?? '') : '';
+    // The result is the host's own new record lines. A refusal says so; nothing is added to them.
+    notice = gardenResult(run, before);
     save();
   }
   render();
@@ -221,7 +238,7 @@ function menuControls() {
   return `${run ? button('Resume', 'back') + button('Use automatic pace', 'automatic') : ''}${button('Feedback', 'send')}${button('Fullscreen', 'fullscreen')}<a href="https://human.adamwhite.work/games/" target="_top">All games</a><a href="https://human.adamwhite.work/lab/people/" target="_top">${PEOPLE_ACROSS_GAMES}</a><div id="cg-recording"></div>${run ? button('New game', 'new') : ''}${confirmNew ? `<p>Start a new fourteen-day game and replace this device’s saved garden?</p>${button('Start new game', 'restart', starting)}${button('Keep this garden', 'cancel-new', starting)}` : ''}${run ? button('Download this run', 'export') : ''}${otherStarts()}`;
 }
 function renderTitle() {
-  root.innerHTML = `<main class="cg-title"><p class="eyebrow">Fourteen days in the neighbourhood</p><h1>Hearsay</h1><p>You are Hatice. You run a tea garden in Istanbul. People visit between shifts, deliveries and appointments.</p><p class="goal">Your goal is to open a paid workers’ lunch on Day 13.</p><details><summary>How to play</summary><p>Arrange supplies on Day 4 and agree on paid cooking on Day 8. You need at least four meal reservations. People decide whether to book based on what they hear.</p><p>Choose a person to talk to. You can listen, repeat a claim or keep it private. Your words affect who trusts you and visits the garden. The clock runs for fourteen days.</p><p>Prices are in lira, the currency of Turkey. ${fileSession ? 'This file session stays in this tab. Download the game file to keep your progress.' : 'Your garden saves automatically on this device.'}</p></details>${notice ? `<p role="status">${esc(notice)}</p>` : ''}${fileSession ? '' : button('Begin', 'start', starting)}${menuControls()}</main>`;
+  root.innerHTML = `<main class="cg-title"><p class="eyebrow">Fourteen days in the neighbourhood</p><h1>Hearsay</h1><p>You are Hatice. You run a tea garden in Istanbul. People visit between shifts, deliveries and appointments.</p><p class="goal">Your goal is to open a paid workers’ lunch on Day 13.</p><details><summary>How to play</summary>${howToPlayHtml(fileSession)}</details>${notice ? `<p role="status">${esc(notice)}</p>` : ''}${fileSession ? '' : button('Begin', 'start', starting)}${menuControls()}</main>`;
   root.querySelector('#cg-recording')?.append(telemetryToggle(lab));
 }
 function render() {
@@ -235,6 +252,8 @@ function render() {
   const traitSelected = root.querySelector<HTMLSelectElement>('#cg-trait')?.value;
   const about = root.querySelector<HTMLSelectElement>('#cg-about')?.value;
   const focusedAction = (document.activeElement as HTMLElement | null)?.dataset.action;
+  // Read before the page is replaced: the open folds and the record are what slow the clock.
+  const slow = gardenSlowNote(pace ?? 4, readingReasons(performance.now()));
   if (!run) {
     renderTitle();
     bind();
@@ -248,7 +267,7 @@ function render() {
   const running = run.chat;
   let panel = '';
   if (menu) {
-    panel = `<h2>Game menu</h2><p>The clock is paused. ${fileSession ? 'Download the game file to keep your progress.' : 'Your garden saves automatically.'}</p>${menuControls()}`;
+    panel = `<h2>Game menu</h2><p>The clock is paused. ${fileSession ? 'Download the game file to keep your progress.' : 'Your garden saves automatically.'}</p><details><summary>How to play</summary>${howToPlayHtml(fileSession)}</details>${menuControls()}`;
   } else if (run.lunch.pending) {
     panel = `<h2>${run.lunch.pending === 'trial' ? 'Day 4 · Reserve the supplies' : 'Day 8 · Agree on paid cooking'}</h2><p>You have ${run.lunch.cash} lira. You owe ${run.lunch.debt} lira. Each meal sells for 100 lira. Selling four meals pays for the sample, preparation and food, which cost 380 lira if you pay now. Buying the sample on credit means paying later. It raises the total cost to 410 lira, so you need to sell five meals.</p><p>${run.lunch.pending === 'trial' ? 'Rıza will deliver the agreed number of loaves. Osman will supply the produce with a written order. Pay for a sample now, agree to pay a higher price later, or decline the sample.' : 'Aylin offers to prepare food after her school shift. She gives a time when she must leave. Pay her 180-lira fee before the preparation session at 17:00 on Day 10. Anyone may still use the free bench without buying food.'}</p>${run.lunch.pending === 'trial' ? button('Pay 120 lira for the sample now', 'plan-paid-trial') + button('Get the sample now and pay 150 lira before lunch', 'plan-credit-trial') + button('Decline the sample and reserve no supplies', 'plan-decline-trial') : button('Pay 180 lira for the preparation session', 'plan-paid-prep') + button('Agree to pay 180 lira before preparation', 'plan-unpaid-prep') + button('Cancel the lunch preparation', 'plan-cancel')}${running ? button('Finish the current conversation first', 'finish') + button('Leave the current conversation', 'release') : ''}<p>The clock is paused while you decide. These payments come from your garden cash. A promise to pay does not count as payment.</p>`;
   } else if (run.ended) {
@@ -263,7 +282,7 @@ function render() {
     else if (running)
       panel += `<p>You are listening to ${esc(GARDEN_CAST[running.person].name)}. Finish or leave that conversation first.</p>${button('Go to the conversation', 'chat')}`;
     else if (discovery)
-      panel += `<details><summary>About ${esc(c.name)}</summary><p>${esc(c.family)}</p></details><p class="cg-confidence">${esc(discovery.fact)}</p>${discovery.response ? `<p>${esc(discovery.outcome ?? '')}</p>${button('Sit and talk again', 'listen', !here)}` : `${button('Offer practical help and keep this private', 'support', !here)}${button('Keep this private', 'keep', !here)}${button('Repeat this at another table', 'spread', !here)}`}`;
+      panel += `<details><summary>About ${esc(c.name)}</summary><p>${esc(c.family)}</p></details><p class="cg-confidence">${esc(discovery.fact)}</p>${discovery.response ? `<p>${esc(discovery.outcome ?? '')}</p>${button('Sit and talk again', 'listen', !here)}` : `${button('Offer practical help and keep this private', 'support', !here)}${button('Keep this private', 'keep', !here)}${button('Repeat this at another table', 'spread', !here || !repeatPreview(rendering, id).audience)}<p class="fine cg-preview">${esc(repeatPreview(rendering, id).text)}</p>`}`;
     else
       panel += `<p>${here ? esc(c.cue) : `${esc(c.name)} is away or unavailable. Try again later.`}</p>${button(id === 'hatice' ? 'Reflect on your past for fifteen minutes' : 'Invite a quiet conversation', 'listen', !here)}${id !== 'hatice' ? button('Press for private details', 'pry', !here) : ''}`;
     const confrontation = run.lunch.confrontations.find(
@@ -274,37 +293,17 @@ function render() {
     if (!running && id !== 'hatice' && run.minute >= 7 * 1440 + 720 && run.minute < 12 * 1440 + 780)
       panel += button('Invite them to book the Day 13 lunch', 'reserve', !here);
     if (!running && id !== 'hatice')
-      panel += `<details><summary>Talk about someone else</summary><label>Who?<select id="cg-about">${GARDEN_IDS.filter(
-        (p) => p !== id && p !== 'hatice',
-      )
-        .map((p) => `<option value="${p}">${esc(GARDEN_CAST[p].name)}</option>`)
-        .join(
-          '',
-        )}</select></label><label>What?<select id="cg-trait"><option value="reliable">Keeping promises</option><option value="honest">Honesty</option><option value="kind">Kindness</option><option value="generous">Generosity</option></select></label>${button('Ask what they have heard', 'ask', !here)}${button('Make a positive claim about this trait', 'defend', !here)}${button('Make a damaging claim about this trait', 'tell', !here)}${button('Withdraw your accusation', 'amends', !here)}<p class="fine">Making a claim does not prove it. Something told to you in private stays private unless you repeat it.</p></details>`;
+      panel += `<details><summary>Talk about someone else</summary>${claimControls(id, about, traitSelected)}${button('Ask what they have heard', 'ask', !here)}${button('Make a positive claim about this trait', 'defend', !here)}${button('Make a damaging claim about this trait', 'tell', !here)}${button('Withdraw your accusation', 'amends', !here)}<p class="fine">Making a claim does not prove it. Something told to you in private stays private unless you repeat it.</p></details>`;
   }
   if (!menu && !run.ended && !running) panel += button('Pour tea without sharing news', 'silence');
   if (!menu && run.lunch.debt > 0)
     panel +=
       `<p>Garden cash: ${run.lunch.cash} lira. Unpaid invoice: ${run.lunch.debt} lira.</p>` +
       button(`Pay the ${run.lunch.debt} lira invoice`, 'plan-settle', run.lunch.cash < run.lunch.debt);
-  root.innerHTML = `<main class="cg-game"><header class="cg-header"><div><strong>Hearsay</strong> <span>${clock()}</span></div>${button(menu ? 'Back' : 'Game menu', menu ? 'back' : 'menu')}<p>Day 13 lunch: ${run.lunch.breadDelivered ? 'The bread has been delivered.' : run.lunch.bread ? 'The bread is ordered.' : 'The bread is not ordered.'} ${run.lunch.produceDelivered ? 'The produce has been delivered.' : run.lunch.produce ? 'The produce is ordered.' : 'The produce is not ordered.'} ${run.lunch.prepared ? 'The food has been prepared.' : run.lunch.cook ? 'Paid cooking is arranged.' : 'Paid cooking is not arranged.'} Meals reserved: ${run.lunch.reservations.length}/${run.lunch.trial === 'credit' ? 5 : 4}.</p><p>You have ${run.lunch.cash} lira. You owe ${run.lunch.debt} lira.</p><p class="fine">${pace === null ? 'Pace: Automatic. The garden slows while you read.' : 'The garden slows while you read. Automatic pace is available in the game menu.'}</p><div class="cg-paces">${[0, 1, 4, 12].map((p, i) => `<button type="button" data-pace="${p}" aria-pressed="${pace === p}" ${menu ? 'disabled' : ''}>${['Pause', 'Slow', 'Normal', 'Fast'][i]}</button>`).join('')}</div></header><section class="cg-scene" aria-label="The tea garden"><div class="cg-gate">THE GARDEN GATE <span>${run.benchFree ? 'Anyone may sit here without buying.' : 'There are a few chairs in the shade.'}</span></div><div class="cg-tables">${GARDEN_IDS.map((p) => `<button type="button" class="cg-person ${gardenHere(rendering, p) ? 'here' : 'away'}" data-person="${p}" aria-pressed="${selected === p}"><span aria-hidden="true">${p === 'hatice' ? '☕' : '◯'}</span><strong>${esc(GARDEN_CAST[p].name)}</strong><small>${gardenHere(rendering, p) ? 'at the garden' : esc(gardenPlace(actualGardenLocation(rendering, p)))}</small></button>`).join('')}</div><p class="cg-standing">${esc(gardenStanding(run))}</p></section><section class="cg-panel" aria-live="polite">${skippedNotice()}${notice ? `<p class="cg-notice" role="status">${esc(notice)}</p>` : ''}${panel}</section><details class="cg-account"><summary>Garden record: what you heard</summary>${run.log
-    .slice(-60)
-    .map(
-      (l) =>
-        `<p><small>Day ${Math.floor(l.at / 1440) + 1} ${Math.floor((l.at % 1440) / 60)}:${String(l.at % 60).padStart(2, '0')}</small> ${esc(l.text)}</p>`,
-    )
-    .join('')}</details></main>`;
+  root.innerHTML = `<main class="cg-game"><header class="cg-header"><div><strong>Hearsay</strong> <span>${clock()}</span></div>${button(menu ? 'Back' : 'Game menu', menu ? 'back' : 'menu')}<p>Day 13 lunch: ${run.lunch.breadDelivered ? 'The bread has been delivered.' : run.lunch.bread ? 'The bread is ordered.' : 'The bread is not ordered.'} ${run.lunch.produceDelivered ? 'The produce has been delivered.' : run.lunch.produce ? 'The produce is ordered.' : 'The produce is not ordered.'} ${run.lunch.prepared ? 'The food has been prepared.' : run.lunch.cook ? 'Paid cooking is arranged.' : 'Paid cooking is not arranged.'} Meals reserved: ${run.lunch.reservations.length}/${run.lunch.trial === 'credit' ? 5 : 4}.</p>${gardenNext(run) ? `<p class="cg-next">${esc(gardenNext(run))}</p>` : ''}<p>You have ${run.lunch.cash} lira. You owe ${run.lunch.debt} lira.</p><p class="fine">${pace === null ? 'Pace: Automatic. The garden slows while you read.' : 'The garden slows while you read. Automatic pace is available in the game menu.'}${slow ? ` ${esc(slow)}` : ''}</p><div class="cg-paces">${[0, 1, 4, 12].map((p, i) => `<button type="button" data-pace="${p}" aria-pressed="${pace === p}" ${menu ? 'disabled' : ''}>${['Pause', 'Slow', 'Normal', 'Fast'][i]}</button>`).join('')}</div></header><section class="cg-scene" aria-label="The tea garden"><div class="cg-gate">THE GARDEN GATE <span>${run.benchFree ? 'Anyone may sit here without buying.' : 'There are a few chairs in the shade.'}</span></div><div class="cg-tables">${GARDEN_IDS.map((p) => `<button type="button" class="cg-person ${gardenHere(rendering, p) ? 'here' : 'away'}" data-person="${p}" aria-pressed="${selected === p}"><span aria-hidden="true">${p === 'hatice' ? '☕' : '◯'}</span><strong>${esc(GARDEN_CAST[p].name)}</strong><small>${gardenHere(rendering, p) ? 'at the garden' : esc(gardenPlace(actualGardenLocation(rendering, p)))}</small></button>`).join('')}</div><p class="cg-standing">${esc(gardenStanding(run))}</p>${gardenEmpty(run) ? `<p class="cg-empty">${esc(gardenEmpty(run))}</p>` : ''}</section><section class="cg-panel" aria-live="polite">${skippedNotice()}${notice ? `<p class="cg-notice" role="status">${esc(notice)}</p>` : ''}${panel}</section><details class="cg-account"><summary>Garden record: what you heard</summary>${recordHtml(run)}</details></main>`;
   root.querySelectorAll<HTMLDetailsElement>('details').forEach((d) => {
     d.open = opened.has(d.querySelector('summary')?.textContent);
   });
-  if (traitSelected) {
-    const select = root.querySelector<HTMLSelectElement>('#cg-trait');
-    if (select) select.value = traitSelected;
-  }
-  if (about) {
-    const select = root.querySelector<HTMLSelectElement>('#cg-about');
-    if (select) select.value = about;
-  }
   if (focusedAction)
     root.querySelector<HTMLButtonElement>(`[data-action="${focusedAction}"]`)?.focus({ preventScroll: true });
   if (menu) root.querySelector('#cg-recording')?.append(telemetryToggle(lab));
@@ -509,7 +508,9 @@ async function action(key: string) {
     return;
   }
   if (key === 'finish') {
+    const before = run.log.length;
     if (run.chat) advanceGarden(run, run.chat.until);
+    notice = gardenResult(run, before, ['interrupted', 'conversation']);
     save();
     render();
     return;
@@ -621,18 +622,15 @@ export async function startGarden() {
       !document.hidden &&
       !document.querySelector('.hflab-veil, .hf-lab-veil')
     ) {
-      const reading =
-        now < readingUntil ||
-        !!run.chat ||
-        !!(run.discoveries[selected] && !run.discoveries[selected]?.response) ||
-        !!root.querySelector(
-          '.cg-panel details[open], .cg-account[open], .cg-info button[aria-expanded="true"]',
-        );
+      const reading = readingReasons(now).length > 0;
       carry += (Math.min(1000, now - lastFrame) * gardenPace(pace, reading)) / 1000;
       if (carry >= 1) {
         const minutes = Math.floor(carry);
         carry -= minutes;
+        const before = run.log.length;
         advanceGarden(run, Math.min(14 * 1440, run.minute + minutes));
+        const stopped = gardenInterruption(run, before);
+        if (stopped) notice = stopped;
         if (run.minute % 5 === 0) save();
         if (run.minute % 1440 === 0) void checkpoint();
         render();
