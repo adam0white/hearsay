@@ -156,3 +156,43 @@ it('keeps every record line and opens the day the game clock is in', () => {
   expect(ended).not.toContain('<h4>Day 15</h4>');
   expect(ended).toContain('The two weeks end.');
 });
+
+it('words a busy refusal from the player’s view, without inventing a reason or a time', () => {
+  const g = freshGarden(17);
+  advanceGarden(g, 425);
+  const other = { type: 'listen', person: 'derya', approach: 'invite' } as const;
+  expect(g.people.derya.activity?.action).toBe('chat');
+  expect(chooseGarden(g, other)).toBe(false);
+  const refusal = gardenRefusal(g, other);
+  expect(refusal).toBe(
+    'Derya cannot talk now. You do not know when Derya will be free. This choice was not made.',
+  );
+  expect(refusal).not.toMatch(/busy|work|pray|\d:\d\d/i);
+  const self = { type: 'listen', person: 'hatice', approach: 'invite' } as const;
+  expect(g.people.hatice.activity?.action).toBe('work');
+  expect(chooseGarden(g, self)).toBe(false);
+  expect(gardenRefusal(g, self)).toBe(
+    'You cannot reflect while your current activity is unfinished. Try again later. This choice was not made.',
+  );
+});
+
+it('shows the opening once in the record and keeps it in the log', () => {
+  const g = freshGarden(17);
+  const opening = 'Your goal is to serve a paid workers’ lunch on Day 13.';
+  expect(g.log.filter((l) => l.kind === 'opening').length).toBe(1);
+  expect(recordHtml(g).split(opening).length - 1).toBe(1);
+  g.minute = 1440 + 5;
+  expect(recordHtml(g).split(opening).length - 1).toBe(1);
+});
+
+it('explains the fixed repeated claim and the empty garden return wording', () => {
+  const g = freshGarden(17);
+  chooseGarden(g, { type: 'listen', person: 'riza', approach: 'invite' });
+  advanceGarden(g, 376);
+  expect(repeatPreview(g, 'riza').text).toContain(
+    'Repeating turns what you were told in private into this one claim. It is not proof.',
+  );
+  advanceGarden(g, 8 * 60 + 5);
+  expect(gardenEmpty(g)).toContain('The Garden record lists agreed visits. Other return times are unknown.');
+  expect(gardenEmpty(g)).not.toContain('No one has promised');
+});

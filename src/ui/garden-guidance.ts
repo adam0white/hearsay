@@ -76,7 +76,9 @@ export function gardenRefusal(run: GardenRun, input: GardenInput): string {
   if (input.type === 'listen') {
     if (!gardenHere(run, input.person)) return `${name(input.person)} is not at the garden now. ${end}`;
     if (busy(run, input.person))
-      return `${name(input.person)} is busy right now. You can try again later. ${end}`;
+      return input.person === 'hatice'
+        ? `You cannot reflect while your current activity is unfinished. Try again later. ${end}`
+        : `${name(input.person)} cannot talk now. You do not know when ${name(input.person)} will be free. ${end}`;
     if (input.person !== 'hatice' && run.people.hatice.activity?.action === 'chat')
       return `You are already talking with someone else. ${end}`;
   } else if (input.type === 'respond') {
@@ -101,15 +103,15 @@ export function repeatPreview(run: GardenRun, person: GardenPerson) {
   const trait = person === 'osman' || person === 'nermin' ? 'honest' : 'kind';
   const claim = `${name(person)} is not ${trait}.`;
   const text = audience
-    ? `If you repeat this, you tell ${name(audience)}: “${claim}” It is not proof.${person === 'hatice' ? '' : ` ${name(person)} may stop trusting you with private matters.`} You might not complete the statement. Then nobody hears it.`
+    ? `If you repeat this, you tell ${name(audience)}: “${claim}” Repeating turns ${person === 'hatice' ? 'your own story' : 'what you were told in private'} into this one claim. It is not proof.${person === 'hatice' ? '' : ` ${name(person)} may stop trusting you with private matters.`} You might not complete the statement. Then nobody hears it.`
     : 'Nobody else is at the garden to hear this, so it cannot be repeated now. It stays private.';
   return { audience, claim, text };
 }
 
-/** Empty garden: the actions that exist. The game states no return time, so none is given. */
+/** Empty garden: the actions that exist. Only agreed visits are in the record; other return times are unknown, and the text says so. */
 export function gardenEmpty(run: GardenRun): string {
   if (run.ended || GARDEN_IDS.some((id) => id !== 'hatice' && gardenHere(run, id))) return '';
-  return 'Nobody else is at the garden now. You can pour tea, read the Garden record, tap a name to see where that person is, or change the pace.';
+  return 'Nobody else is at the garden now. You can pour tea, read the Garden record, tap a name to see where that person is, or change the pace. The Garden record lists agreed visits. Other return times are unknown.';
 }
 
 /** The next dated event the host will run. Nothing can be ordered before it. */
@@ -150,7 +152,7 @@ export function gardenNext(run: GardenRun): string {
 /** Why the clock is slow right now. Pace buttons and the pace rule are unchanged. */
 export function gardenSlowNote(chosen: number, reasons: string[]): string {
   if (!reasons.length || chosen <= 1) return '';
-  return `The clock is slowed to 1 game minute a second because ${reasons.join(' and ')}. It returns to ${chosen} game minutes a second when none of that applies.`;
+  return `The clock is slowed to 1 game minute a second because ${reasons.join(' and ')}.`;
 }
 
 export function howToPlayHtml(fileSession: boolean): string {
@@ -194,17 +196,22 @@ const KEY_KINDS = new Set([
 export function recordHtml(run: GardenRun): string {
   const row = (l: GardenRun['log'][number]) =>
     `<p><small>Day ${dayOf(l.at)} ${Math.floor((l.at % 1440) / 60)}:${String(l.at % 60).padStart(2, '0')}</small> ${esc(l.text)}</p>`;
+  const shownLater = (l: GardenRun['log'][number]) => l.kind !== 'opening';
   const days = new Map<number, GardenRun['log']>();
   for (const l of run.log) days.set(dayOf(l.at), [...(days.get(dayOf(l.at)) ?? []), l]);
   // The current day is the game clock's day. Rows keep their own labels. After the end, that section is not a game day.
   const today = dayOf(run.minute);
   const earlier = [...days].filter(([day]) => day !== today);
+  // The opening is shown once, under the goal. It stays in the log.
   return `<h3>Goal, agreements and what you saw</h3>${run.log
     .filter((l) => KEY_KINDS.has(l.kind))
     .map(row)
     .join('')}<h3>Everything you heard</h3>${earlier
-    .map(([day, lines]) => `<details><summary>Day ${day}</summary>${lines.map(row).join('')}</details>`)
+    .map(
+      ([day, lines]) =>
+        `<details><summary>Day ${day}</summary>${lines.filter(shownLater).map(row).join('')}</details>`,
+    )
     .join(
       '',
-    )}<h4>${run.ended ? 'After the fourteen days' : `Day ${today}`}</h4>${(days.get(today) ?? []).map(row).join('') || '<p class="fine">Nothing has been added to the record today.</p>'}`;
+    )}<h4>${run.ended ? 'After the fourteen days' : `Day ${today}`}</h4>${(days.get(today) ?? []).filter(shownLater).map(row).join('') || '<p class="fine">Nothing has been added to the record today.</p>'}`;
 }
