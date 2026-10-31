@@ -510,7 +510,9 @@ async function action(key: string) {
   if (key === 'finish') {
     const before = run.log.length;
     if (run.chat) advanceGarden(run, run.chat.until);
-    notice = gardenResult(run, before, ['interrupted', 'conversation']);
+    notice = [gardenResult(run, before, ['conversation']), gardenInterruption(run, before)]
+      .filter(Boolean)
+      .join(' ');
     save();
     render();
     return;
