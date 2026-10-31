@@ -42,3 +42,24 @@ it.each([
     await page.close();
   }
 });
+
+it('takes Who? and What? by their exact labels and shows the refusal beside the action', async () => {
+  const page = await browser.newPage({ viewport: { width: 360, height: 690 } });
+  try {
+    await page.goto(`${server.resolvedUrls?.local[0] ?? ''}`);
+    await page.getByText('Other ways to begin', { exact: true }).click();
+    await page.getByRole('button', { name: 'Play fourteen days with new local people', exact: true }).click();
+    await page.getByRole('button', { name: 'Pause', exact: true }).click();
+    await page.getByRole('button', { name: 'Press for private details', exact: true }).click();
+    await expect
+      .poll(() => page.locator('.cg-panel .cg-notice').textContent())
+      .toContain('keep this private');
+    await page.getByText('Talk about someone else', { exact: true }).click();
+    await page.getByLabel('Who?', { exact: true }).selectOption('osman');
+    await page.getByLabel('What?', { exact: true }).selectOption('honest');
+    expect(await page.getByLabel('Who?', { exact: true }).inputValue()).toBe('osman');
+    expect(await page.getByLabel('What?', { exact: true }).inputValue()).toBe('honest');
+  } finally {
+    await page.close();
+  }
+});
