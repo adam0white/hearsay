@@ -33,6 +33,14 @@ export interface SourceArchive {
   export: GardenExport;
 }
 
+/** An expected, deliberate refusal to write a closing chapter. Every other error is a real failure. */
+export class GardenChapterUnavailable extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'GardenChapterUnavailable';
+  }
+}
+
 export function gardenId(castId: string): GardenPerson {
   const id = GARDEN_IDS.find((person) => GARDEN_CAST[person].castId === castId);
   if (!id) throw new Error('This person has no Hearsay role.');
@@ -115,7 +123,9 @@ export function requireGardenWrite(g: GardenRun, castId: string): void {
       'This older garden has no saved skip record. Keep the original. Start fresh before saving people across games.',
     );
   if (g.chapter.skipped.some((entry) => entry.castId === castId))
-    throw new Error('This local person cannot replace the saved history that was skipped.');
+    throw new GardenChapterUnavailable(
+      'This local person cannot replace the saved history that was skipped.',
+    );
 }
 
 export async function claimGardenBatch(
@@ -140,9 +150,9 @@ export async function claimGardenBatch(
 export function captureGardenSource(g: GardenRun, id: GardenPerson) {
   requireGardenWrite(g, GARDEN_CAST[id].castId);
   const reason = departureReason(g, id);
-  if (reason) throw new Error(reason);
+  if (reason) throw new GardenChapterUnavailable(reason);
   if (g.chat || g.lunch.pending || g.lunch.debt > 0)
-    throw new Error(
+    throw new GardenChapterUnavailable(
       'Finish the current conversation and unpaid lunch responsibilities before saving this person.',
     );
   const cast = canonicalCast(GARDEN_CAST[id].castId);
@@ -159,7 +169,8 @@ export function captureGardenSource(g: GardenRun, id: GardenPerson) {
   if (part?.select !== 'persona') throw new Error('The portable person is unavailable.');
   const portable = validatePortablePerson(part.value);
   const blockers = portableWriteBlockers(cast.castId, 'hearsay');
-  if (blockers.length) throw new Error('This person cannot be saved across games yet. Keep this chapter.');
+  if (blockers.length)
+    throw new GardenChapterUnavailable('This person cannot be saved across games yet. Keep this chapter.');
   return {
     transfer: {
       castPassport: `hf-portable-person/${portable.version}`,

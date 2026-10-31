@@ -22,6 +22,12 @@ Review Low3 (optional current config typing) and Low4 (HF3 archive relocation) r
 
 Remaining: root browser grant for geometry and the Playwright spec in test/garden-answers-ui.test.ts (written, not run), signed commit, CI, review, deploy. Source: src/ui/garden-guidance.ts, garden-app.ts, garden.css. No simulation, input shape or pin changed. Report: ~/code/.lab-scratch/games-deferred/hearsay-light1030-report.md.
 
+## Retest1 candidate — 2026-10-31 (dirty, unsigned)
+
+Remaining: independent same-code review, signed commit, exact green CI, exact-SHA Opus, deploy; Adam's acceptance by playing stays separate (2026-11-03). Source: `src/ui/garden-checkpoint.ts` (new), `garden-app.ts`, `garden-guidance.ts`, `src/sim/garden4-continuity.ts`; tests `test/garden-checkpoint.test.ts`, `test/garden-guidance.test.ts`. The daily closing-chapter checkpoint now stays quiet when a chapter is expected to be unavailable (deliberate local skip, ongoing activity or duty, peer games not yet able to write). Every other failure shows one plain sentence per stage; the device save keeps its own notice. Busy refusals, the pace sentence, the repeat preview, the empty-garden line and the doubled opening paragraph changed in wording only. No simulation, clock, gate, pin or input shape changed. Report: `~/code/.lab-scratch/games-deferred/restart-hearsay-retest1-candidate.md`.
+
+Remaining first, doc update: every F-2466–F-2480 disposition, with reason, owner and date, is now in [docs/design.md](docs/design.md) under "Current source and Deferred" (candidate wording only; nothing delivered, accepted or marked fixed). Open dates: 2026-11-03 (Adam's Day-4 tail and money-display choices, Ece reason-code contract checkpoint), 2026-11-10 (C14 comparison; recipient choice F-2468 and slandered-person reaction F-2473 pending source and owner taste).
+
 ## Previous handoff (historical delivery state)
 
 # Hearsay — current handoff, 2026-10-29

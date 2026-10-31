@@ -1,15 +1,9 @@
 /** Live canonical garden shell. A loaded run never refreshes its initial people. */
 import {
-  anchorPersonaLife,
   canonicalCast,
   castForGame,
-  closePersonaBranch,
-  createPersona,
-  initialPersonaLife,
   type PersonaEnvelope,
   personaChannel,
-  portablePassport,
-  portableWriteBlockers,
   validatePersona,
 } from '@adam0white/lab-client';
 import { downloadJson, PEOPLE_ACROSS_GAMES, telemetryNotice, telemetryToggle } from '@adam0white/lab-kit';
@@ -28,15 +22,14 @@ import {
 } from '../sim/garden4.ts';
 import {
   admitGardenBatch,
-  captureGardenSource,
   claimGardenBatch,
   eligibleGardenBatch,
   type GardenChapter,
-  requireGardenWrite,
   type SourceArchive,
 } from '../sim/garden4-continuity.ts';
 import { exportGarden, importGarden } from '../sim/garden4-export.ts';
 import { actualGardenLocation, type PlanChoice, type ReputationTrait } from '../sim/garden4-stakes.ts';
+import { runCheckpoint } from './garden-checkpoint.ts';
 import { gardenPlace } from './garden-english.ts';
 import { openGardenFeedback } from './garden-feedback.ts';
 import {
@@ -119,7 +112,13 @@ function readingReasons(now: number): string[] {
   if (now < readingUntil) reasons.push('you tapped in the last 15 seconds');
   if (run?.chat) reasons.push('a conversation is running');
   if (run?.discoveries[selected] && !run.discoveries[selected]?.response)
-    reasons.push('a private matter is waiting for your answer');
+    reasons.push(
+      gardenHere(run, selected)
+        ? 'a private matter is waiting for your answer'
+        : selected === 'hatice'
+          ? 'a private matter from your own past has no answer yet'
+          : `a private matter from ${GARDEN_CAST[selected].name} has no answer yet, and ${GARDEN_CAST[selected].name} is away`,
+    );
   if (root.querySelector('.cg-panel details[open], .cg-account[open], .cg-info button[aria-expanded="true"]'))
     reasons.push('the Garden record or a folded section is open');
   return reasons;
@@ -134,6 +133,11 @@ function button(label: string, key: string, disabled = false) {
 }
 async function save(): Promise<boolean> {
   if (!run) return false;
+  const saving = run,
+    wasFile = fileSession,
+    atGeneration = generation;
+  // A save that finishes after the game or file session changed must not speak for the new one.
+  const open = () => run === saving && fileSession === wasFile && generation === atGeneration;
   if (fileSession) {
     const value = { export: exportGarden(run), fileOrigin, fileKey, ownedHeads, archives };
     try {
@@ -143,13 +147,15 @@ async function save(): Promise<boolean> {
       });
       return true;
     } catch {
-      notice = 'This file session could not be recorded. Download this game file before closing the tab.';
-      render();
+      if (open()) {
+        notice = 'This file session could not be recorded. Download this game file before closing the tab.';
+        render();
+      }
       return false;
     }
   }
   const stored = await saveGardenJournal(run, { fileOrigin, fileKey, ownedHeads, archives });
-  if (!stored) {
+  if (!stored && open()) {
     notice =
       'Your garden could not be saved on this device. Keep this page open. You can send feedback from the game menu.';
     render();
@@ -644,101 +650,45 @@ export async function startGarden() {
   requestAnimationFrame(frame);
 }
 
-async function checkpoint() {
-  if (fileSession || !run || starting || checkpointBusy) return;
-  checkpointBusy = true;
-  const captured = run,
-    atGeneration = generation;
-  try {
-    await shelf.ready;
-    if (!shelf.enabled) {
-      shelf.setEnabled(true);
+function checkpoint() {
+  return runCheckpoint({
+    begin() {
+      if (fileSession || !run || starting || checkpointBusy) return undefined;
+      checkpointBusy = true;
+      const captured = run,
+        atGeneration = generation;
+      return {
+        current: () => !fileSession && run === captured && generation === atGeneration,
+        end: () => {
+          checkpointBusy = false;
+        },
+      };
+    },
+    async ready() {
       await shelf.ready;
-    }
-    if (fileSession || run !== captured || generation !== atGeneration) return;
-    for (const id of GARDEN_IDS) {
-      const capturedMinute = captured.minute,
-        capturedInputs = captured.inputs.length;
-      const cast = canonicalCast(GARDEN_CAST[id].castId),
-        parent = ownedHeads[cast.castId];
-      if (parent?.terminal) continue;
-      try {
-        requireGardenWrite(captured, cast.castId);
-        if (fileOrigin && !parent)
-          throw new Error(
-            'People from an imported file cannot replace a history saved in this browser. Keep this game file for your own record.',
-          );
-        const actor = captured.people[id];
-        let next: PersonaEnvelope;
-        if (parent && portablePassport(parent) && portableWriteBlockers(cast.castId, 'hearsay').length)
-          throw new Error('This person cannot be saved across games yet. Keep this chapter.');
-        if (!actor.body.alive) {
-          if (!parent)
-            throw new Error(
-              'There is no saved living history for this person to close. Their death is still saved in this game.',
-            );
-          next = await closePersonaBranch(parent, stamps(), Math.round(actor.now * 60_000));
-        } else {
-          const projected = await captureGardenSource(captured, id);
-          const sourceArchive = await retainGardenSource(captured, stamps());
-          const branchId = parent?.branchId ?? crypto.randomUUID();
-          const life = parent?.transfer.life
-            ? anchorPersonaLife(
-                parent.transfer.life as Parameters<typeof anchorPersonaLife>[0],
-                cast.castId,
-                Date.now(),
-              )
-            : initialPersonaLife(cast.castId, branchId, Date.now());
-          next = await createPersona({
-            format: 'hf-persona/1',
-            castId: cast.castId,
-            castRevision: cast.revision,
-            branchId,
-            parentRevision: parent?.revision ?? null,
-            source: stamps(),
-            transfer: { ...projected.transfer, life, sourceArchive },
-            limitations: projected.limitations,
-          });
-        }
-        if (
-          generation !== atGeneration ||
-          run !== captured ||
-          captured.minute !== capturedMinute ||
-          captured.inputs.length !== capturedInputs
-        )
-          throw new Error('The game or person changed. Their chapter was not saved.');
-        if (!(await save())) throw new Error('The source game could not be saved on this device.');
-        if (
-          generation !== atGeneration ||
-          run !== captured ||
-          captured.minute !== capturedMinute ||
-          captured.inputs.length !== capturedInputs
-        )
-          throw new Error('The game or person changed. Their chapter was not saved.');
-        await shelf.request({
-          action: 'put',
-          envelope: next,
-        });
-        if (generation !== atGeneration || run !== captured) return;
-        ownedHeads[cast.castId] = next;
-        const initial = captured.chapter?.claims ?? [];
-        const heads = [
-          ...initial,
-          ...Object.values(ownedHeads).filter((h) => !initial.some((p) => p.branchId === h.branchId)),
-        ];
-        recordingBinding = {
-          key: fileKey ? `garden-file:${fileKey}` : `garden-group:${crypto.randomUUID()}`,
-          file: fileOrigin,
-          heads,
-        };
-        await recordingGuard.bind(recordingBinding);
-
-        await save();
-      } catch {
-        notice = `A person’s chapter could not be saved. Finish outstanding responsibilities and try again.`;
+      if (!shelf.enabled) {
+        shelf.setEnabled(true);
+        await shelf.ready;
       }
-    }
-  } finally {
-    checkpointBusy = false;
-  }
+    },
+    context: (current) => ({
+      run: required(run, 'Checkpoint requires its run.'),
+      current,
+      ownedHeads: () => ownedHeads,
+      fileOrigin,
+      fileKey,
+      shelf,
+      save,
+      retain: retainGardenSource,
+      stamps,
+      bind: (binding) => recordingGuard.bind(binding),
+      rebind: (binding) => {
+        recordingBinding = binding;
+      },
+    }),
+    publish(text) {
+      notice = text;
+      render();
+    },
+  });
 }
