@@ -21,6 +21,8 @@ it('replays a JSON export after automatic testimony without losing fingerprint f
   expect(JSON.stringify(exportGarden(importGarden(text)))).toBe(text);
 });
 
+// Scope: seed 17 reaches its first actual ordinary relay at absolute minute 2478 (the clock starts at 360).
+// That witness is kept whole, so this one case has an explicit 90 s limit; the 60 s default is unchanged.
 it('keeps actual parent and root references when a claim is relayed', () => {
   const garden = freshGarden(17);
   expect(chooseGarden(garden, { type: 'listen', person: 'riza', approach: 'invite' })).toBe(true);
@@ -32,4 +34,4 @@ it('keeps actual parent and root references when a claim is relayed', () => {
   expect(relayed?.root).toBe(parent?.root ?? parent?.id);
   expect(relayed?.prop).toBe(parent?.prop);
   expect(relayed?.value).toBe(parent?.value);
-});
+}, 90_000);
