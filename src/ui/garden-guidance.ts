@@ -101,7 +101,7 @@ export function repeatPreview(run: GardenRun, person: GardenPerson) {
   const trait = person === 'osman' || person === 'nermin' ? 'honest' : 'kind';
   const claim = `${name(person)} is not ${trait}.`;
   const text = audience
-    ? `If you repeat this, you tell ${name(audience)}: “${claim}” You have not proved it. ${name(audience)} hears it${person === 'hatice' ? '' : `, and ${name(person)} stops trusting you with private matters`}. Hatice may refuse to say it. If she does, nobody is told. To choose who hears a claim and what it says, select that person and open “Talk about someone else”. That makes a general claim. It does not repeat this private story.`
+    ? `If you repeat this, you tell ${name(audience)}: “${claim}” It is not proof.${person === 'hatice' ? '' : ` ${name(person)} may stop trusting you with private matters.`} You might not complete the statement. Then nobody hears it.`
     : 'Nobody else is at the garden to hear this, so it cannot be repeated now. It stays private.';
   return { audience, claim, text };
 }
@@ -109,7 +109,7 @@ export function repeatPreview(run: GardenRun, person: GardenPerson) {
 /** Empty garden: the actions that exist. The game states no return time, so none is given. */
 export function gardenEmpty(run: GardenRun): string {
   if (run.ended || GARDEN_IDS.some((id) => id !== 'hatice' && gardenHere(run, id))) return '';
-  return 'Nobody is at the garden now. The game does not say when anyone returns. Meanwhile you can pour tea without sharing news, read the Garden record, select a person to see where they are, and change the pace.';
+  return 'Nobody else is at the garden now. You can pour tea, read the Garden record, tap a name to see where that person is, or change the pace.';
 }
 
 /** The next dated event the host will run. Nothing can be ordered before it. */
@@ -117,27 +117,32 @@ export function gardenNext(run: GardenRun): string {
   const l = run.lunch,
     m = run.minute;
   if (run.ended || l.pending || l.result !== 'waiting') return '';
+  // Supplies are never delivered after a declined or missed order, and nothing is cooked after a cancelled
+  // or missed preparation, so inviting bookings would promise a lunch that cannot open.
+  if (l.trial === 'missed' || l.prep === 'cancelled' || (m >= at(10, 17) && !l.prepared))
+    return 'Next: the lunch result is decided at 13:00 on Day 13.';
   if (l.trial === 'waiting' && m < at(4, 12))
     return 'Next: Day 4 at 12:00. Rıza and Osman offer the bread and produce order, and the clock pauses for your answer. Nothing can be ordered before then.';
   if (l.prep === 'waiting' && m < at(8, 12))
     return 'Next: Day 8 at 12:00. Aylin offers paid cooking, and the clock pauses for your answer.';
-  if (l.prep === 'unpaid' && !l.cook && m < at(10, 17))
+  if (!l.cook && m < at(10, 17))
     return 'Next: pay the invoice before 17:00 on Day 10, or Aylin will not cook.';
-  if (l.prep === 'paid' && !l.prepared && m < at(10, 17))
+  if (l.cook && !l.prepared && m < at(10, 17))
     return 'Next: the paid preparation is on Day 10 at 17:00, and Aylin must be at the garden. You can invite people to book meals until Day 13 at 13:00.';
   if (m < at(13, 13)) {
     const orders = [
       l.bread && !l.breadDelivered
-        ? 'Bread is delivered only if Rıza is at the garden between 12:30 and 13:00.'
+        ? 'Rıza delivers the bread only if he is at the garden on Day 13 between 12:30 and 13:00.'
         : '',
       l.produce && !l.produceDelivered
-        ? `Produce is delivered only if Osman is at the garden between 12:30 and 13:00${l.debt > 0 ? ' and your invoice is paid' : ''}.`
+        ? `Osman delivers the produce only if he is at the garden on Day 13 between 12:30 and 13:00${l.debt > 0 ? ' and your invoice is paid' : ''}.`
         : '',
-      !l.bread && !l.produce ? 'No bread or produce is ordered, so none will be delivered.' : '',
-    ]
-      .filter(Boolean)
-      .join(' ');
-    return `Next: invite people to book meals until Day 13 at 13:00. ${orders} The lunch result is decided at 13:00 on Day 13.`;
+    ].filter(Boolean);
+    return [
+      'Next: invite people to book meals until Day 13 at 13:00.',
+      ...orders,
+      'The lunch result is decided at 13:00 on Day 13.',
+    ].join(' ');
   }
   return '';
 }
@@ -149,7 +154,7 @@ export function gardenSlowNote(chosen: number, reasons: string[]): string {
 }
 
 export function howToPlayHtml(fileSession: boolean): string {
-  return `<p>Arrange supplies on Day 4 and agree on paid cooking on Day 8. You need at least four meal reservations. People decide whether to book based on what they hear.</p><p>The game asks about supplies on Day 4 at 12:00 and about paid cooking on Day 8 at 12:00. The clock pauses while you decide. You cannot order earlier.</p><p>Choose a person to talk to. You can listen, repeat a claim or keep it private. Your words affect who trusts you and visits the garden. The clock runs for fourteen days.</p><p>Prices are in lira, the currency of Turkey. ${fileSession ? 'This file session stays in this tab. Download the game file to keep your progress.' : 'Your garden saves automatically on this device.'}</p>`;
+  return `<p>You need at least four meal reservations. People decide whether to book based on what they hear.</p><p>On Day 4 at 12:00 you decide about supplies. On Day 8 at 12:00 you decide about paid cooking. The clock pauses while you decide. You cannot order earlier.</p><p>Choose a person to talk to. You can listen, repeat a claim or keep it private. Your words affect who trusts you and visits the garden. The clock runs for fourteen days.</p><p>Prices are in lira, the currency of Turkey. ${fileSession ? 'This file session stays in this tab. Download the game file to keep your progress.' : 'Your garden saves automatically on this device.'}</p>`;
 }
 
 /** The two claim lists. Each label is its own element so that its name is only "Who?" or "What?".
@@ -191,7 +196,7 @@ export function recordHtml(run: GardenRun): string {
     `<p><small>Day ${dayOf(l.at)} ${Math.floor((l.at % 1440) / 60)}:${String(l.at % 60).padStart(2, '0')}</small> ${esc(l.text)}</p>`;
   const days = new Map<number, GardenRun['log']>();
   for (const l of run.log) days.set(dayOf(l.at), [...(days.get(dayOf(l.at)) ?? []), l]);
-  // The current day is the game clock's day. Rows keep their own labels, so the final line reads Day 15.
+  // The current day is the game clock's day. Rows keep their own labels. After the end, that section is not a game day.
   const today = dayOf(run.minute);
   const earlier = [...days].filter(([day]) => day !== today);
   return `<h3>Goal, agreements and what you saw</h3>${run.log
@@ -201,5 +206,5 @@ export function recordHtml(run: GardenRun): string {
     .map(([day, lines]) => `<details><summary>Day ${day}</summary>${lines.map(row).join('')}</details>`)
     .join(
       '',
-    )}<h4>Day ${today}</h4>${(days.get(today) ?? []).map(row).join('') || '<p class="fine">Nothing has been added to the record today.</p>'}`;
+    )}<h4>${run.ended ? 'After the fourteen days' : `Day ${today}`}</h4>${(days.get(today) ?? []).map(row).join('') || '<p class="fine">Nothing has been added to the record today.</p>'}`;
 }
